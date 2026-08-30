@@ -155,10 +155,34 @@ class Orchestrator:
         retrieved_memory = []
 
         try:
-            query_text = (
-                str(self.attack_tree.get("next", ""))
-                or "Initial recon"
+            target_desc = (
+                target.get("description", "")
+                if isinstance(target, dict)
+                else str(target)
             )
+            
+            # Extract current stage and next tasks
+            current_stage = self.attack_tree.get("stage", "")
+            
+            next_tasks = self.attack_tree.get("next", [])
+            if isinstance(next_tasks, list):
+                next_tasks_str = " ".join(next_tasks)
+            else:
+                next_tasks_str = str(next_tasks)
+                
+            # Extract findings
+            findings = self.attack_tree.get("findings", [])
+            if isinstance(findings, list):
+                findings_str = " ".join(findings)
+            else:
+                findings_str = str(findings)
+                
+            extracted = self.attack_tree.get("extracted_data", {})
+            findings_str += " " + str(extracted)
+
+            # Combine query
+            query_parts = [target_desc[:200], current_stage, findings_str[:150], next_tasks_str[:200]]
+            query_text = " ".join(filter(None, query_parts)) or "vulnerability exploitation"
 
             # Query memory collection
             mem_res = self.memory.query(
@@ -548,9 +572,9 @@ class Orchestrator:
                     failed_command=commands,
                     error_output=full_output,
                     history=self.compressed_history,
-                    discovered="\n".join(
+                    discovered="Findings:\n" + "\n".join(
                         self.attack_tree.get("findings", [])
-                    )
+                    ) + "\nExtracted Data:\n" + str(self.attack_tree.get("extracted_data", {}))
                 )
 
                 parsed_refine = refine_result.get(

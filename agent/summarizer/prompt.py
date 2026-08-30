@@ -21,6 +21,9 @@ _schema = json.dumps(
             "findings": [
                 "List of discovered facts, open ports, vulnerabilities, etc."
             ],
+            "extracted_data": {
+                "<any_relevant_key>": "<exact_extracted_value>"
+            },
             "next": [
                 "List of prioritized subtasks to try next"
             ],
@@ -92,6 +95,13 @@ RULES OF SUMMARIZATION
 3. No Hallucinations
    - Only add information to the Attack Tree that has been explicitly
      confirmed by the latest step or was already in the previous tree.
+
+4. Technical Fact Preservation (CRITICAL)
+   - You MUST preserve EXACT technical values (offsets, keys, addresses, port numbers, versions, etc.).
+   - Do NOT summarize them away into prose.
+   - Use the `extracted_data` JSON dictionary to store key-value pairs of ANY discovered technical facts.
+   - Examples of generic keys you can create: "overflow_offset": 44, "web_admin_path": "/secret-admin", "rsa_n": "0x1234...", "architecture": "ELF32", "canary_found": true.
+   - These exact facts will be passed to other agents to avoid guessing.
 
 OUTPUT FORMAT
 
