@@ -71,7 +71,9 @@ MISSION SCOPING & RULES OF ENGAGEMENT
 3. Tactic Constraint [MITRE ATT&CK-lite]
    - hypothesis.tactic must be one of:
      [Reconnaissance, Initial-Access, Execution, Privilege-Escalation,
-      Defense-Evasion, Collection, Exfiltration]
+      Defense-Evasion, Collection, Exfiltration, Retrieval-Augmented-Generation]
+   - Use 'Retrieval-Augmented-Generation' when you need to search your internal database for CTF writeups or known bypass techniques.
+   - You are ALSO allowed to use 'Reconnaissance' with `curl` to search the internet if RAG fails or you prefer to search live.
 
 4. Tooling
    - The Executor initially has these tools available: <TOOL_LIST>

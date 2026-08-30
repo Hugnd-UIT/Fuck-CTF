@@ -1,5 +1,5 @@
 import hashlib
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from .firecrawl import scrape
 import concurrent.futures
 
