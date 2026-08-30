@@ -38,9 +38,9 @@ RULES OF EVALUATION
 1. Ground Truth
    - Only evaluate based on the provided STDOUT/STDERR. Do not hallucinate success.
 2. Result Categorization
-   - "success": The command executed perfectly and found what it was looking for [matched success_indicator].
-   - "fail": The command errored out [command not found, syntax error, connection refused] or found absolutely nothing.
-   - "partial": The command ran successfully but didn't fully achieve the intended goal, OR it failed midway but still revealed some useful info.
+   - "success": The command executed perfectly, found what it was looking for, AND confirmed the hypothesis [matched success_indicator].
+   - "fail": The command errored out, found nothing, OR explicitly disproved the hypothesis.
+   - "partial": The command ran successfully but didn't fully achieve the goal, OR only partially confirmed the hypothesis.
 3. Knowledge Extraction
    - Extract concrete facts [IPs, open ports, versions, paths, credentials]. Keep them concise. Do not write paragraphs.
 4. Flag Check
@@ -55,7 +55,10 @@ Example [format reference only, not real data]:
 {_example}
 """
 
-USER_PROMPT = """SUBTASK EXECUTED:
+USER_PROMPT = """PLANNER HYPOTHESIS:
+{hypothesis}
+
+SUBTASK EXECUTED:
 {subtask}
 
 COMMAND[S] RUN:
@@ -67,5 +70,5 @@ EXPECTED SUCCESS INDICATOR:
 ACTUAL OUTPUT [STDOUT/STDERR]:
 {output}
 
-Analyze the output and return the JSON verification object.
+Analyze the output against the hypothesis and return the JSON verification object.
 """

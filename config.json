@@ -45,6 +45,7 @@
     "limit": 2000,
     "flag": "247CTF{32-hex}",
     "target": {
+        "category": "pwn",
         "desc": "We might not be able to write secure code, but at least we are starting to learn about secure compilation flags. Can you beat the cookie monster?",
         "server": "nc 1864b958e7312f96.247ctf.com 50277",
         "dir": "/data/cookie_monster"

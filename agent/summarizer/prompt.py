@@ -5,7 +5,13 @@ _schema = json.dumps(
         "reason": {
             "analysis": "Identify key facts from the latest step and how they affect the attack tree"
         },
-        "attack_tree": "Updated markdown string representing the current attack tree [discovered assets, open ports, vulnerabilities]. Keep it highly structured.",
+        "attack_tree": {
+            "stage": "The current stage of the attack (e.g. reconnaissance, binary_analysis, vulnerability_discovery, exploit)",
+            "done": ["List of subtasks that have been successfully completed"],
+            "findings": ["List of discovered facts, open ports, vulnerabilities, etc."],
+            "next": ["List of prioritized subtasks to try next"],
+            "failed": ["List of subtasks or approaches that failed and should not be retried"]
+        },
         "summary": "A 1-2 sentence summary of what was achieved in this step to be appended to the history."
     },
     indent=2
@@ -16,7 +22,13 @@ _example = json.dumps(
         "reason": {
             "analysis": "The latest step discovered a hidden /admin panel. I need to add this to the attack tree under the web service."
         },
-        "attack_tree": "- Port 80 [HTTP]\n  - /login [200 OK]\n  - /admin [403 Forbidden]",
+        "attack_tree": {
+            "stage": "vulnerability_discovery",
+            "done": ["scan port 80", "fuzz directories on port 80"],
+            "findings": ["Port 80 is HTTP", "/login returns 200 OK", "/admin returns 403 Forbidden"],
+            "next": ["bypass 403 on /admin", "fuzz parameters on /login"],
+            "failed": []
+        },
         "summary": "Discovered /admin endpoint [403] on port 80 using gobuster."
     },
     indent=2
@@ -27,8 +39,9 @@ Your job is to read the results of the latest execution step and update the glob
 
 RULES OF SUMMARIZATION
 1. Attack Tree format
-   - Maintain a concise, hierarchical markdown list representing the attack surface.
-   - Include found ports, services, paths, and confirmed vulnerabilities.
+   - Maintain a highly structured JSON object tracking the state of the attack.
+   - Keep findings concise and actionable.
+   - Update `done` and `failed` lists to prevent the Planner from repeating mistakes.
 2. Summary constraint
    - The 'summary' field should be a very brief 1-2 sentence description of what happened. It will be added to the history log.
 3. No hallucinations

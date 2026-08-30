@@ -64,8 +64,15 @@ class Orchestrator:
         )
 
         # Initialize state variables
-        self.history = []
-        self.attack_tree = "- Initial target mapped"
+        self.history_log = []
+        self.compressed_history = ""
+        self.attack_tree = {
+            "stage": "reconnaissance",
+            "done": [],
+            "findings": ["Initial target mapped"],
+            "next": ["Analyze target category and apply playbook"],
+            "failed": []
+        }
 
         self.tool_list = config.get("tools", "nmap, gobuster, curl, nc, python3, gdb")
 
@@ -75,11 +82,12 @@ class Orchestrator:
         print("\n[PLANNER] Thinking...")
         import json
         target_str = json.dumps(target, indent=2) if isinstance(target, dict) else target
+        tree_str = json.dumps(self.attack_tree, indent=2) if isinstance(self.attack_tree, dict) else self.attack_tree
         
         plan_result = self.planner.plan(
-            history=self.history,
+            history=self.compressed_history,
             target=target_str,
-            attack_tree=self.attack_tree,
+            attack_tree=tree_str,
             tool_list=self.tool_list
         )
         plan_json = plan_result["parsed_plan"]
@@ -97,7 +105,7 @@ class Orchestrator:
             target=target_str,
             subtask=subtask,
             tool_hint=tool_hint,
-            history=self.history
+            history=self.compressed_history
         )
         exec_json = exec_result["parsed_exec"]
         commands = exec_json.get("commands", [])
@@ -107,8 +115,16 @@ class Orchestrator:
         print(f"[SANDBOX] Running {len(commands)} command(s)...")
         full_output = ""
         for cmd in commands:
-            result = sandbox.exec_run(f'/bin/bash -c "{cmd}"', stdout=True, stderr=True)
-            out = result.output.decode("utf-8", errors="ignore")
+            cmd_timeout = exec_json.get("timeout", 30)
+            try:
+                wrapped_cmd = f'timeout {cmd_timeout} /bin/bash -c "{cmd}"'
+                result = sandbox.exec_run(wrapped_cmd, stdout=True, stderr=True)
+                out = result.output.decode("utf-8", errors="ignore")
+                
+                if result.exit_code == 124: # 124 is the standard exit code for the timeout command
+                    out = f"[TIMEOUT] Command exceeded {cmd_timeout}s. Partial output:\n" + out
+            except Exception as e:
+                out = f"[TIMEOUT] Command execution failed: {e}"
             full_output += f"--- Output of '{cmd}' ---\n{out}\n"
 
         # Call verifier to evaluate output
@@ -117,21 +133,65 @@ class Orchestrator:
             subtask=subtask,
             commands=commands,
             success_indicator=success_indicator,
-            output=full_output
+            output=full_output,
+            hypothesis=plan_json.get("reason", {}).get("hypothesis", {})
         )
         verify_json = verify_result["parsed_verify"]
 
         # Call refiner if verification failed
-        if verify_json.get("result") == "fail":
-            print("[REFINER] Strategy failed, refining...")
+        MAX_REFINE_RETRIES = 1
+        refine_attempts = 0
+        while verify_json.get("result") == "fail" and refine_attempts < MAX_REFINE_RETRIES:
+            print(f"[REFINER] Strategy failed, refining (Attempt {refine_attempts + 1}/{MAX_REFINE_RETRIES})...")
             refine_result = self.refiner.refine(
                 target=target_str,
                 subtask=subtask,
                 failed_command=commands,
                 error_output=full_output,
-                history=self.history
+                history=self.compressed_history
             )
-            verify_json["knowledge"].append(f"Refinement suggestion: {refine_result['parsed_refine'].get('reason', {}).get('fix_strategy')}")
+            
+            parsed_refine = refine_result.get("parsed_refine", {})
+            refined_commands = parsed_refine.get("commands", [])
+            
+            if not refined_commands:
+                verify_json["knowledge"].append("Refinement failed to produce new commands.")
+                break
+                
+            print(f"[SANDBOX] Running {len(refined_commands)} refined command(s)...")
+            commands = refined_commands # Update for next verification
+            full_output = ""
+            for cmd in commands:
+                raw_timeout = exec_json.get("timeout", 30)
+                try:
+                    cmd_timeout = min(int(raw_timeout), 120) # Cap timeout at 120s to prevent hanging
+                except:
+                    cmd_timeout = 30
+                    
+                try:
+                    wrapped_cmd = ["timeout", "--preserve-status", "-k", "5", str(cmd_timeout), "/bin/bash", "-c", cmd]
+                    result = sandbox.exec_run(wrapped_cmd, stdout=True, stderr=True)
+                    out = result.output.decode("utf-8", errors="ignore")
+                    
+                    if result.exit_code == 124:
+                        out = f"[TIMEOUT] Command exceeded {cmd_timeout}s. Partial output:\n" + out
+                except Exception as e:
+                    out = f"[TIMEOUT] Command execution failed: {e}"
+                full_output += f"--- Output of '{cmd}' ---\n{out}\n"
+                
+            print("[VERIFIER] Evaluating refined results...")
+            verify_result = self.verifier.verify(
+                subtask=subtask,
+                commands=commands,
+                success_indicator=success_indicator,
+                output=full_output,
+                hypothesis=plan_json.get("reason", {}).get("hypothesis", {})
+            )
+            verify_json = verify_result.get("parsed_verify", verify_json)
+            fix_strategy = parsed_refine.get('reason', {}).get('fix_strategy', 'Unknown')
+            verify_json.setdefault("knowledge", []).append(f"Refinement applied: {fix_strategy}")
+            
+            refine_attempts += 1
 
         # Format latest step
         latest_step = {
@@ -144,7 +204,7 @@ class Orchestrator:
         # Call summarizer to update state
         print("[SUMMARIZER] Updating Attack Tree and History...")
         summary_result = self.summarizer.summarize(
-            attack_tree=self.attack_tree,
+            attack_tree=tree_str,
             latest_step=latest_step
         )
         summary_json = summary_result["parsed_summary"]
@@ -152,14 +212,20 @@ class Orchestrator:
         # Update attack tree
         self.attack_tree = summary_json.get("attack_tree", self.attack_tree)
         
-        # Update history
-        step_id = f"step_{len(self.history) + 1}"
-        self.history.append({
+        # Update history log
+        step_id = f"step_{len(self.history_log) + 1}"
+        self.history_log.append({
             "step_id": step_id,
             "tactic": plan_json.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown"),
             "plan": subtask,
             "observation": summary_json.get("summary", ""),
             "result": verify_json.get("result", "unknown")
         })
+        
+        # Update compressed history
+        new_obs = summary_json.get("summary", "")
+        self.compressed_history += f"\n[{step_id}] {new_obs}"
+        if len(self.compressed_history) > 3000:
+            self.compressed_history = "...[truncated]\n" + self.compressed_history[-3000:]
 
         return summary_json.get("summary", ""), exec_json

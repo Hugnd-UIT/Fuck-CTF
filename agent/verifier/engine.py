@@ -15,10 +15,13 @@ class VerifierAgent(PentestAgent):
             tokens=tokens
         )
 
-    def verify(self, subtask, commands, success_indicator, output):
+    def verify(self, subtask, commands, success_indicator, output, hypothesis=None):
+        import json
+        hypothesis_str = json.dumps(hypothesis, indent=2) if hypothesis else "None"
         
         # Format user prompt
         user_content = USER_PROMPT.format(
+            hypothesis=hypothesis_str,
             subtask=subtask,
             commands=json.dumps(commands),
             success_indicator=success_indicator,
