@@ -61,7 +61,7 @@ class PlannerAgent(PentestAgent):
             playbook = {}
 
         history = self.build_history(history_log, fail_streak)
-        last_output = history_log[-1].get("raw_output_preview", "") if history_log else ""
+        last_output = history_log[-1].get("raw_output", "") if history_log else ""
 
 
         # Format history

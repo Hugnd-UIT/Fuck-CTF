@@ -41,7 +41,7 @@ display = (
 
 print()
 print("╭──────────────────────────────────────────────────────────────╮")
-print("│                         F*ck CTF                             │")
+print("│                     F*ck Capture The Flag                    │")
 print("╰──────────────────────────────────────────────────────────────╯")
 print(display)
 print(f"\n  Timeout   : {timeout_minutes} minutes")

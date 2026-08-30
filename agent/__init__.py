@@ -247,8 +247,7 @@ class Orchestrator:
             attack_tree=tree_str,
             tool_list=self.tool_list,
             playbook=self.active_playbook,
-            memory_context=memory_context,
-            last_output=last_raw
+            memory_context=memory_context
         )
 
         plan_json = plan_result["parsed_plan"]
