@@ -128,7 +128,7 @@ class Orchestrator:
         )
 
         self.command_hashes = set()
-        self.consecutive_fail_streak = {}
+        self.fail_streak = {}
         self.subtask_attempts = {}
 
     def normalize(self, text: str) -> str:
@@ -136,33 +136,7 @@ class Orchestrator:
         norm = re.sub(r"\b\d+\b", "<NUM>", norm)
         return norm.strip().lower()
 
-    def is_duplicate_command(self, cmd: str) -> bool:
-        # Disabled deduplication to allow running the same command (e.g. python script.py) multiple times
-        return False
-
-    def build_history_for_planner(self):
-        notices = []
-
-        for tactic, streak in self.consecutive_fail_streak.items():
-            if streak >= 3:
-                notices.append(
-                    {
-                        "step_id": "SYSTEM_NOTICE",
-                        "tactic": tactic,
-                        "plan": "N/A",
-                        "observation": (
-                            f"Tactic '{tactic}' has failed "
-                            f"{streak} times in a row. "
-                            "You are FORBIDDEN from proposing "
-                            "this tactic next."
-                        ),
-                        "result": "forced_block"
-                    }
-                )
-
-        return notices + self.history_log[-15:]
-
-    def execute_step(self, target, sandbox):
+    def execute(self, target, sandbox):
         print("\n[PLANNER] Thinking...")
 
         target_str = (
@@ -238,13 +212,19 @@ class Orchestrator:
             f"{len(retrieved_memory)} chunks injected"
         )
 
+        last_raw = ""
+        if self.history_log:
+            last_raw = self.history_log[-1].get("raw_output", "")
+
         plan_result = self.planner.plan(
-            history=self.build_history_for_planner(),
+            history_log=self.history_log,
+            fail_streak=self.fail_streak,
             target=target_str,
             attack_tree=tree_str,
             tool_list=self.tool_list,
             playbook=self.active_playbook,
-            memory_context=memory_context
+            memory_context=memory_context,
+            last_output=last_raw
         )
 
         plan_json = plan_result["parsed_plan"]
@@ -446,8 +426,8 @@ class Orchestrator:
                 "Unknown"
             )
 
-            self.consecutive_fail_streak[tactic] = (
-                self.consecutive_fail_streak.get(tactic, 0) + 1
+            self.fail_streak[tactic] = (
+                self.fail_streak.get(tactic, 0) + 1
             )
 
             full_output = "[SKIPPED - circuit breaker]"
@@ -477,13 +457,6 @@ class Orchestrator:
             full_output = ""
 
             for cmd in commands:
-                if self.is_duplicate_command(cmd):
-                    full_output += (
-                        f"--- Output of '{cmd}' ---\n"
-                        "[SKIPPED - identical command already "
-                        "attempted this session]\n"
-                    )
-                    continue
 
                 raw_timeout = exec_json.get("timeout", 30)
 
@@ -607,13 +580,6 @@ class Orchestrator:
                 full_output = ""
 
                 for cmd in commands:
-                    if self.is_duplicate_command(cmd):
-                        full_output += (
-                            f"--- Output of '{cmd}' ---\n"
-                            "[SKIPPED - identical command "
-                            "already attempted this session]\n"
-                        )
-                        continue
 
                     raw_timeout = exec_json.get(
                         "timeout",
@@ -721,11 +687,11 @@ class Orchestrator:
             )
 
             if verify_json.get("result") == "fail":
-                self.consecutive_fail_streak[tactic] = (
-                    self.consecutive_fail_streak.get(tactic, 0) + 1
+                self.fail_streak[tactic] = (
+                    self.fail_streak.get(tactic, 0) + 1
                 )
             else:
-                self.consecutive_fail_streak[tactic] = 0
+                self.fail_streak[tactic] = 0
 
         latest_step = {
             "subtask": subtask,
@@ -773,7 +739,8 @@ class Orchestrator:
                 "result": verify_json.get(
                     "result",
                     "unknown"
-                )
+                ),
+                "raw_output_preview": full_output[:1500]
             }
         )
 

@@ -25,9 +25,32 @@ class PlannerAgent(PentestAgent):
             tokens=tokens
         )
 
+    def build_history(self, history_log, fail_streak):
+        notices = []
+
+        for tactic, streak in fail_streak.items():
+            if streak >= 3:
+                notices.append(
+                    {
+                        "step_id": "SYSTEM_NOTICE",
+                        "tactic": tactic,
+                        "plan": "N/A",
+                        "observation": (
+                            f"Tactic '{tactic}' has failed "
+                            f"{streak} times in a row. "
+                            "You are FORBIDDEN from proposing "
+                            "this tactic next."
+                        ),
+                        "result": "forced_block"
+                    }
+                )
+
+        return notices + history_log[-15:]
+
     def plan(
         self,
-        history,
+        history_log,
+        fail_streak,
         target,
         attack_tree,
         tool_list,
@@ -36,6 +59,10 @@ class PlannerAgent(PentestAgent):
     ):
         if playbook is None:
             playbook = {}
+
+        history = self.build_history(history_log, fail_streak)
+        last_output = history_log[-1].get("raw_output_preview", "") if history_log else ""
+
 
         # Format history
         if isinstance(history, (list, dict)):
@@ -68,6 +95,7 @@ class PlannerAgent(PentestAgent):
             target=target,
             tool_list=tool_list,
             attack_tree=attack_tree,
+            last_output=last_output or "No previous command output.",
             memory=memory_context,
             history=history_str
         )

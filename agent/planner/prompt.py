@@ -119,6 +119,9 @@ TOOLS AVAILABLE TO EXECUTOR:
 ATTACK TREE [validated paths so far]:
 {attack_tree}
 
+LAST STEP RAW OUTPUT [Read carefully for exact numbers, addresses, offsets]:
+{last_output}
+
 MEMORY [Vector DB retrieved memories and external knowledge]:
 {memory}
 

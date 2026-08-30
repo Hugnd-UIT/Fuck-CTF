@@ -68,7 +68,7 @@ while True:
     print("────────────────────────────────────────────────────────────────")
 
     try:
-        summary, exec_json = agent.execute_step(
+        summary, exec_json = agent.execute(
             target=target,
             sandbox=container
         )
