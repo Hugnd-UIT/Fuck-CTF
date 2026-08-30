@@ -43,10 +43,8 @@ venv.bak/
 *.swo
 .DS_Store
 
-# Test code
-samples/
-
 # Export
 dist/
 output/
 *.spec
+db/

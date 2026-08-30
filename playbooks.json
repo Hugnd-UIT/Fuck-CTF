@@ -1,6 +1,7 @@
 {
     "pwn": {
         "tactics": [
+            "Retrieval-Augmented-Generation",
             "Static-Analysis",
             "Dynamic-Analysis",
             "Offset-Discovery",
@@ -9,7 +10,8 @@
             "Exploitation"
         ],
         "procedure": [
-            "1. Static-Analysis: run `file`, `checksec`, `strings`, `objdump -d` on the binary to identify architecture, protections (NX/PIE/Canary/RELRO), and interesting functions.",
+            "1. Retrieval-Augmented-Generation: ALWAYS start with this tactic to search online (e.g. Github writeups, blog posts) for vulnerabilities related to the challenge binary, before doing any local analysis.",
+            "2. Static-Analysis: run `file`, `checksec`, `strings`, `objdump -d` on the binary to identify architecture, protections (NX/PIE/Canary/RELRO), and interesting functions.",
             "2. Dynamic-Analysis: use gdb/pwndbg (batch mode, -batch -ex) to inspect stack layout, registers, and crash behavior with a simple test input.",
             "3. Offset-Discovery: use a cyclic pattern (pwntools cyclic / msf-pattern_create equivalent via python) to find the exact overflow offset. This is ONE python script call, not iterative guessing.",
             "4. Protection-Bypass (INCLUDING CANARY BRUTE-FORCE): If a canary or PIE is present, you ARE ALLOWED to brute-force it if there are no leaks. When brute-forcing, write a python script that loops internally to find the value.",

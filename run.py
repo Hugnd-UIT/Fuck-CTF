@@ -3,7 +3,7 @@ import json
 import dotenv
 from agent import Orchestrator
 from sandbox import init
-import re
+import time
 
 dotenv.load_dotenv()
 
@@ -24,47 +24,96 @@ container = init(config=config)
 agent = Orchestrator(config=config, container=container)
 
 target = config["target"]
-flag_pattern = config.get("flag", "247CTF{")
-import time
-timeout_minutes = config.get("timeout", 15)
+target["flag"] = config.get("flag", "247CTF{")
+timeout_minutes = config.get("timeout", 15) 
 timeout_seconds = timeout_minutes * 60
 start_time = time.time()
 step = 0
 
-print(f"Target: \n{json.dumps(target, indent=2)}")
-print(f"Flag  : {flag_pattern}")
-print(f"Timeout: {timeout_minutes} minutes\n")
+display = (
+    f"\n"
+    f"  Category      : {target.get('category', '-')}\n"
+    f"  Description   : {target.get('desc', '-')}\n"
+    f"  Server        : {target.get('server', '-')}\n"
+    f"  Directory     : {target.get('dir', '-')}\n"
+    f"  Flag          : {target['flag']}"
+)
+
+print()
+print("╭──────────────────────────────────────────────────────────────╮")
+print("│                         F*ck CTF                             │")
+print("╰──────────────────────────────────────────────────────────────╯")
+print(display)
+print(f"\n  Timeout   : {timeout_minutes} minutes")
+print()
+print("────────────────────────────────────────────────────────────────")
 
 while True:
     elapsed = time.time() - start_time
+
     if elapsed > timeout_seconds:
-        print(f"\nTime is up! Reached {timeout_minutes} minutes timeout.")
+        print()
+        print("  ✗ TIMEOUT")
+        print(f"    Reached {timeout_minutes} minutes.")
         break
-        
+
     step += 1
-    print(f"\n=======================================================\n[ Elapsed: {int(elapsed//60)}m {int(elapsed%60)}s ]")
-    
+
+    print()
+    print("────────────────────────────────────────────────────────────────")
+    print(
+        f"  STEP {step:02d}"
+        f"  •  {int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
+    )
+    print("────────────────────────────────────────────────────────────────")
+
     try:
-        summary, exec_json = agent.execute_step(target=target, sandbox=container)
-        
+        summary, exec_json = agent.execute_step(
+            target=target,
+            sandbox=container
+        )
+
         if summary == "Goal Achieved":
-            print("\n>>> AGENT DECLARED FINISHED <<<")
-            print(exec_json)
+            elapsed = time.time() - start_time
+
+            print()
+            print("  ✓ GOAL ACHIEVED")
+            print()
+            print(f"  {exec_json}")
+            print()
+            print(
+                f"  Completed in {step} steps"
+                f"  •  {int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
+            )
             break
-            
-        print(f"> {summary}")
-        
+
+        print(f"  > {summary}")
+
     except KeyboardInterrupt:
-        print("\nStopped by user")
+        print()
+        print("  ✗ STOPPED BY USER")
         break
-    except Exception as e:
+
+    except Exception:
         import traceback
         traceback.print_exc()
         continue
 
     # Check for flag
-    if flag_pattern in summary or "CTF{" in summary:
-        print(f"\n[!] FLAG FOUND in {step} steps! <<<")
+    if target["flag"] in summary or "CTF{" in summary:
+        elapsed = time.time() - start_time
+
+        print()
+        print("════════════════════════════════════════════════════════════════")
+        print("  ✓ FLAG FOUND")
+        print("════════════════════════════════════════════════════════════════")
+        print()
+        print(f"  {summary}")
+        print()
+        print(
+            f"  Completed in {step} steps"
+            f"  •  {int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
+        )
         break
 
 # Stop sandbox if needed

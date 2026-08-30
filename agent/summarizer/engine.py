@@ -3,7 +3,7 @@ from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
 
 class SummarizerAgent(PentestAgent):
-    def __init__(self, model, local=False, temperature=0.3, top=1.0, sample=False, tokens=1024):
+    def __init__(self, model, local=False, temperature=0.3, top=1.0, sample=False, tokens=4096):
         
         # Initialize base agent
         super().__init__(

@@ -13,7 +13,7 @@
         "temperature": 0.2,
         "top": 1.0,
         "sample": false,
-        "tokens": 1024
+        "tokens": 4096
     },
     "verifier": {
         "model": "deepseek/deepseek-v4-flash",
@@ -21,7 +21,7 @@
         "temperature": 0.1,
         "top": 1.0,
         "sample": false,
-        "tokens": 1024
+        "tokens": 4096
     },
     "refiner": {
         "model": "deepseek/deepseek-v4-pro",
@@ -29,7 +29,7 @@
         "temperature": 0.2,
         "top": 1.0,
         "sample": false,
-        "tokens": 1024
+        "tokens": 4096
     },
     "summarizer": {
         "model": "deepseek/deepseek-v4-flash",
@@ -37,7 +37,7 @@
         "temperature": 0.3,
         "top": 1.0,
         "sample": false,
-        "tokens": 1024
+        "tokens": 4096
     },
     "tools": "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, john, hashcat, binwalk, exiftool, steghide, linpeas",
     "sandbox": "ctf",

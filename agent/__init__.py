@@ -8,9 +8,17 @@ from .refiner.engine import RefinerAgent
 from .summarizer.engine import SummarizerAgent
 from rag.github import search_github
 from rag.firecrawl import scrape
+import chromadb
+import os
 
 class Orchestrator:
     def __init__(self, config, container=None):
+        # Initialize Vector DB
+        db_path = os.path.join(os.getcwd(), "db")
+        os.makedirs(db_path, exist_ok=True)
+        self.chroma_client = chromadb.PersistentClient(path=db_path)
+        self.memory = self.chroma_client.get_or_create_collection(name="memory")
+        self.knowledge = self.chroma_client.get_or_create_collection(name="knowledge")
         
         # Load agent-specific configs
         p_cfg = config.get("planner", {})
@@ -67,10 +75,7 @@ class Orchestrator:
         return norm.strip().lower()
 
     def _is_duplicate_command(self, cmd: str) -> bool:
-        h = hashlib.sha256(self._normalize(cmd).encode()).hexdigest()
-        if h in self.command_hashes:
-            return True
-        self.command_hashes.add(h)
+        # Disabled deduplication to allow running the same command (e.g. python script.py) multiple times
         return False
 
     def _build_history_for_planner(self):
@@ -99,13 +104,13 @@ class Orchestrator:
         try:
             query_text = str(self.attack_tree.get("next", "")) or "Initial recon"
             # Query memory collection
-            mem_res = self.memory_collection.query(query_texts=[query_text], n_results=3)
+            mem_res = self.memory.query(query_texts=[query_text], n_results=3)
             if mem_res and "documents" in mem_res and mem_res["documents"] and mem_res["documents"][0]:
                 for doc in mem_res["documents"][0]:
                     retrieved_memory.append(f"[PAST_MEMORY] {doc}")
             
             # Query knowledge collection
-            know_res = self.knowledge_collection.query(query_texts=[query_text], n_results=50)
+            know_res = self.knowledge.query(query_texts=[query_text], n_results=50)
             if know_res and "documents" in know_res and know_res["documents"] and know_res["documents"][0]:
                 for doc, dist in zip(know_res["documents"][0], know_res["distances"][0]):
                     if dist < 1.5: # Similarity threshold
@@ -166,7 +171,7 @@ class Orchestrator:
                         
                     for chunks, ids, md_text in results:
                         if chunks:
-                            self.knowledge_collection.add(documents=chunks, ids=ids)
+                            self.knowledge.add(documents=chunks, ids=ids)
                             total_gh_chunks += len(chunks)
                             if not preview: preview = md_text[:1500]
                     return total_gh_chunks, preview
@@ -174,7 +179,7 @@ class Orchestrator:
                 def task_web():
                     res = search_web(subtask, max_results=5)
                     if "docs" in res and res["docs"]:
-                        self.knowledge_collection.add(documents=res["docs"], ids=res["ids"])
+                        self.knowledge.add(documents=res["docs"], ids=res["ids"])
                         return res["total_chunks"], res["preview"]
                     return 0, res.get("error", "No web results.")
 
