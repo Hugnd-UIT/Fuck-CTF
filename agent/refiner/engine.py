@@ -1,10 +1,20 @@
 import json
+
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
 
+
 class RefinerAgent(PentestAgent):
-    def __init__(self, model, local=False, temperature=0.2, top=1.0, sample=False, tokens=1024):
-        
+    def __init__(
+        self,
+        model,
+        local=False,
+        temperature=0.2,
+        top=1.0,
+        sample=False,
+        tokens=1024
+    ):
+
         # Initialize base agent
         super().__init__(
             model=model,
@@ -15,8 +25,15 @@ class RefinerAgent(PentestAgent):
             tokens=tokens
         )
 
-    def refine(self, target, subtask, failed_command, error_output, history):
-        
+    def refine(
+        self,
+        target,
+        subtask,
+        failed_command,
+        error_output,
+        history
+    ):
+
         # Format history
         if isinstance(history, (list, dict)):
             history_str = json.dumps(history, indent=2)
@@ -39,8 +56,14 @@ class RefinerAgent(PentestAgent):
         )
 
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_content}
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            },
+            {
+                "role": "user",
+                "content": user_content
+            }
         ]
 
         # Call model
@@ -49,17 +72,31 @@ class RefinerAgent(PentestAgent):
         # Parse JSON
         try:
             if "```json" in text:
-                json_str = text.split("```json")[1].split("```")[0].strip()
+                json_str = (
+                    text.split("```json")[1]
+                    .split("```")[0]
+                    .strip()
+                )
             elif "```" in text:
-                json_str = text.split("```")[1].split("```")[0].strip()
+                json_str = (
+                    text.split("```")[1]
+                    .split("```")[0]
+                    .strip()
+                )
             else:
                 json_str = text.strip()
 
             parsed_refine = json.loads(json_str)
+
+            print("  ✓ Refiner    : command refined")
+
         except json.JSONDecodeError as e:
-            print(f"[!] Error parsing JSON from Refiner: {e}")
+            print(f"  ✗ Refiner    : JSON parse failed - {e}")
+
             parsed_refine = {
-                "reason": {"error": "Failed to parse JSON"},
+                "reason": {
+                    "error": "Failed to parse JSON"
+                },
                 "commands": []
             }
 

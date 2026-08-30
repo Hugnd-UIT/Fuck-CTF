@@ -1,10 +1,20 @@
 import json
+
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
 
+
 class PlannerAgent(PentestAgent):
-    def __init__(self, model, local=False, temperature=0.7, top=1.0, sample=False, tokens=1024):
-        
+    def __init__(
+        self,
+        model,
+        local=False,
+        temperature=0.7,
+        top=1.0,
+        sample=False,
+        tokens=1024
+    ):
+
         # Initialize base agent
         super().__init__(
             model=model,
@@ -15,10 +25,18 @@ class PlannerAgent(PentestAgent):
             tokens=tokens
         )
 
-    def plan(self, history, target, attack_tree, tool_list, playbook=None, memory_context="None"):
+    def plan(
+        self,
+        history,
+        target,
+        attack_tree,
+        tool_list,
+        playbook=None,
+        memory_context="None"
+    ):
         if playbook is None:
             playbook = {}
-            
+
         # Format history
         if isinstance(history, (list, dict)):
             history_str = json.dumps(history, indent=2)
@@ -28,17 +46,24 @@ class PlannerAgent(PentestAgent):
         # Build playbook parts
         tactics_str = ", ".join(playbook.get("tactics", []))
         procedure_str = "\n".join(playbook.get("procedure", []))
-        forbidden_str = "\n".join(f"- {x}" for x in playbook.get("forbidden", []))
+        forbidden_str = "\n".join(
+            f"- {item}"
+            for item in playbook.get("forbidden", [])
+        )
 
         # Format system prompts
         system_content = (
             SYSTEM_PROMPT
             .replace("<TOOL_LIST>", tool_list)
-            .replace("<CATEGORY>", playbook.get("category", "default"))
+            .replace(
+                "<CATEGORY>",
+                playbook.get("category", "default")
+            )
             .replace("<TACTIC_LIST>", tactics_str)
             .replace("<PROCEDURE>", procedure_str)
             .replace("<FORBIDDEN>", forbidden_str)
         )
+
         user_content = USER_PROMPT.format(
             target=target,
             tool_list=tool_list,
@@ -48,8 +73,14 @@ class PlannerAgent(PentestAgent):
         )
 
         messages = [
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": user_content}
+            {
+                "role": "system",
+                "content": system_content
+            },
+            {
+                "role": "user",
+                "content": user_content
+            }
         ]
 
         # Call model
@@ -58,18 +89,38 @@ class PlannerAgent(PentestAgent):
         # Parse JSON
         try:
             if "```json" in text:
-                json_str = text.split("```json")[1].split("```")[0].strip()
+                json_str = (
+                    text.split("```json")[1]
+                    .split("```")[0]
+                    .strip()
+                )
             elif "```" in text:
-                json_str = text.split("```")[1].split("```")[0].strip()
+                json_str = (
+                    text.split("```")[1]
+                    .split("```")[0]
+                    .strip()
+                )
             else:
                 json_str = text.strip()
 
             parsed_plan = json.loads(json_str)
+
+            plan = parsed_plan.get("plan", {})
+            subtask = plan.get("subtask", "plan generated")
+
+            print(f"  ✓ Planner    : {subtask}")
+
         except json.JSONDecodeError as e:
-            print(f"[!] Error parsing JSON from Planner: {e}")
+            print(f"  ✗ Planner    : JSON parse failed - {e}")
+
             parsed_plan = {
-                "reason": {"error": "Failed to parse JSON"},
-                "plan": {"subtask": "Error parsing plan", "finished": False}
+                "reason": {
+                    "error": "Failed to parse JSON"
+                },
+                "plan": {
+                    "subtask": "Error parsing plan",
+                    "finished": False
+                }
             }
 
         return {

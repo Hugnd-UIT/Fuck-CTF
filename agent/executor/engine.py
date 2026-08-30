@@ -1,10 +1,20 @@
 import json
+
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
 
+
 class ExecutorAgent(PentestAgent):
-    def __init__(self, model, local=False, temperature=0.2, top=1.0, sample=False, tokens=1024):
-        
+    def __init__(
+        self,
+        model,
+        local=False,
+        temperature=0.2,
+        top=1.0,
+        sample=False,
+        tokens=1024
+    ):
+
         # Initialize base agent
         super().__init__(
             model=model,
@@ -15,8 +25,14 @@ class ExecutorAgent(PentestAgent):
             tokens=tokens
         )
 
-    def execute_plan(self, target, subtask, tool_hint, history):
-        
+    def execute_plan(
+        self,
+        target,
+        subtask,
+        tool_hint,
+        history
+    ):
+
         # Format history
         if isinstance(history, (list, dict)):
             history_str = json.dumps(history, indent=2)
@@ -32,8 +48,14 @@ class ExecutorAgent(PentestAgent):
         )
 
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_content}
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            },
+            {
+                "role": "user",
+                "content": user_content
+            }
         ]
 
         # Call model
@@ -42,18 +64,38 @@ class ExecutorAgent(PentestAgent):
         # Parse JSON
         try:
             if "```json" in text:
-                json_str = text.split("```json")[1].split("```")[0].strip()
+                json_str = (
+                    text.split("```json")[1]
+                    .split("```")[0]
+                    .strip()
+                )
             elif "```" in text:
-                json_str = text.split("```")[1].split("```")[0].strip()
+                json_str = (
+                    text.split("```")[1]
+                    .split("```")[0]
+                    .strip()
+                )
             else:
                 json_str = text.strip()
 
             parsed_exec = json.loads(json_str)
+
+            commands = parsed_exec.get("commands", [])
+            print(
+                f"  ✓ Executor   : "
+                f"{len(commands)} command(s) generated"
+            )
+
         except json.JSONDecodeError as e:
-            print(f"[!] Error parsing JSON from Executor: {e}")
+            print(f"  ✗ Executor   : JSON parse failed - {e}")
+
             parsed_exec = {
-                "reason": {"error": "Failed to parse JSON"},
-                "commands": ["echo 'Executor failed to parse JSON'"],
+                "reason": {
+                    "error": "Failed to parse JSON"
+                },
+                "commands": [
+                    "echo 'Executor failed to parse JSON'"
+                ],
                 "timeout": 10,
                 "success": "false"
             }

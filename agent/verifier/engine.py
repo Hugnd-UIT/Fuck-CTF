@@ -1,10 +1,20 @@
 import json
+
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
 
+
 class VerifierAgent(PentestAgent):
-    def __init__(self, model, local=False, temperature=0.1, top=1.0, sample=False, tokens=1024):
-        
+    def __init__(
+        self,
+        model,
+        local=False,
+        temperature=0.1,
+        top=1.0,
+        sample=False,
+        tokens=1024
+    ):
+
         # Initialize base agent
         super().__init__(
             model=model,
@@ -15,10 +25,20 @@ class VerifierAgent(PentestAgent):
             tokens=tokens
         )
 
-    def verify(self, subtask, commands, success_indicator, output, hypothesis=None):
-        import json
-        hypothesis_str = json.dumps(hypothesis, indent=2) if hypothesis else "None"
-        
+    def verify(
+        self,
+        subtask,
+        commands,
+        success_indicator,
+        output,
+        hypothesis=None
+    ):
+        hypothesis_str = (
+            json.dumps(hypothesis, indent=2)
+            if hypothesis
+            else "None"
+        )
+
         # Format user prompt
         user_content = USER_PROMPT.format(
             hypothesis=hypothesis_str,
@@ -29,8 +49,14 @@ class VerifierAgent(PentestAgent):
         )
 
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_content}
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT
+            },
+            {
+                "role": "user",
+                "content": user_content
+            }
         ]
 
         # Call model
@@ -39,21 +65,39 @@ class VerifierAgent(PentestAgent):
         # Parse JSON
         try:
             if "```json" in text:
-                json_str = text.split("```json")[1].split("```")[0].strip()
+                json_str = (
+                    text.split("```json")[1]
+                    .split("```")[0]
+                    .strip()
+                )
             elif "```" in text:
-                json_str = text.split("```")[1].split("```")[0].strip()
+                json_str = (
+                    text.split("```")[1]
+                    .split("```")[0]
+                    .strip()
+                )
             else:
                 json_str = text.strip()
 
             parsed_verify = json.loads(json_str)
+
         except json.JSONDecodeError as e:
-            print(f"[!] Error parsing JSON from Verifier: {e}")
+            print(f"  ✗ Verifier   : JSON parse failed - {e}")
+
             parsed_verify = {
-                "reason": {"error": "Failed to parse JSON"},
+                "reason": {
+                    "error": "Failed to parse JSON"
+                },
                 "result": "fail",
                 "knowledge": [],
                 "flag": False
             }
+
+        else:
+            print(
+                f"  ✓ Verifier   : "
+                f"{parsed_verify.get('result', 'unknown')}"
+            )
 
         return {
             "parsed_verify": parsed_verify,

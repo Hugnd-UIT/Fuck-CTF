@@ -3,42 +3,66 @@ from duckduckgo_search import DDGS
 from .firecrawl import scrape
 import concurrent.futures
 
+
 def search_web(query: str, max_results: int = 5) -> dict:
-    print(f"[RAG-WEB] Searching DuckDuckGo for: {query}")
+    print(f"  → DuckDuckGo : {query}")
+
     try:
         results = DDGS().text(query, max_results=max_results)
         urls = [r.get("href") for r in results if r.get("href")]
     except Exception as e:
-        print(f"[RAG-WEB] DDGS Search failed: {e}")
+        print(f"  ✗ DuckDuckGo : {e}")
         return {"error": str(e)}
 
     if not urls:
+        print("  ✗ DuckDuckGo : No URLs found")
         return {"error": "No URLs found from DuckDuckGo"}
+
+    print(f"  ✓ DuckDuckGo : {len(urls)} URLs found")
 
     total_chunks = 0
     knowledge_preview = ""
     docs = []
     doc_ids = []
 
+    # Scrape search results
     def scrape_job(url):
-        print(f"[RAG-WEB] Scraping URL: {url}")
         md_text, err = scrape(url)
+
         if md_text:
-            chunks = [md_text[i:i+2000] for i in range(0, len(md_text), 2000)]
-            ids = [f"web_{hashlib.md5((url + str(i)).encode()).hexdigest()}" for i in range(len(chunks))]
+            # Split content into chunks
+            chunks = [
+                md_text[i:i + 2000]
+                for i in range(0, len(md_text), 2000)
+            ]
+
+            # Generate document IDs
+            ids = [
+                f"web_{hashlib.md5((url + str(i)).encode()).hexdigest()}"
+                for i in range(len(chunks))
+            ]
+
             return chunks, ids, md_text
+
         return [], [], ""
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_results) as executor:
+    # Scrape URLs concurrently
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=max_results
+    ) as executor:
         scrape_results = list(executor.map(scrape_job, urls))
 
+    # Collect scraped documents
     for chunks, ids, md_text in scrape_results:
         if chunks:
             docs.extend(chunks)
             doc_ids.extend(ids)
             total_chunks += len(chunks)
+
             if not knowledge_preview:
                 knowledge_preview = md_text[:1500] + "...[truncated]"
+
+    print(f"  ✓ Web Search  : {total_chunks} chunks collected")
 
     return {
         "docs": docs,
