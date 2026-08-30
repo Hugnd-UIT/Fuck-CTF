@@ -151,7 +151,7 @@ class Orchestrator:
             else self.attack_tree
         )
 
-        # MEMORY RETRIEVAL
+        # Memory retrieval
         retrieved_memory = []
 
         try:
@@ -547,7 +547,10 @@ class Orchestrator:
                     subtask=subtask,
                     failed_command=commands,
                     error_output=full_output,
-                    history=self.compressed_history
+                    history=self.compressed_history,
+                    discovered="\n".join(
+                        self.attack_tree.get("findings", [])
+                    )
                 )
 
                 parsed_refine = refine_result.get(

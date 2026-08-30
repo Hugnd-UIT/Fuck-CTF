@@ -31,7 +31,8 @@ class RefinerAgent(PentestAgent):
         subtask,
         failed_command,
         error_output,
-        history
+        history,
+        discovered=""
     ):
 
         # Format history
@@ -49,6 +50,7 @@ class RefinerAgent(PentestAgent):
         # Format user prompt
         user_content = USER_PROMPT.format(
             target=target,
+            discovered=discovered or "Not yet collected.",
             subtask=subtask,
             failed_command=failed_command_str,
             error_output=error_output,

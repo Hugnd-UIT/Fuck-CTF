@@ -82,6 +82,9 @@ USER_PROMPT = """
 TARGET ENVIRONMENT:
 {target}
 
+DISCOVERED TECHNICAL FACTS [Use these to avoid wrong assumptions]:
+{discovered}
+
 INTENDED SUBTASK:
 {subtask}
 

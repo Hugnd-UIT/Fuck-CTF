@@ -79,6 +79,13 @@ MISSION SCOPING & RULES OF ENGAGEMENT
      that is not installed, you CAN propose a subtask to install it
      (e.g., via `apt-get update && apt-get install -y <package>`).
 
+5. Category-Aware Strategy
+   - For "pwn" / binary: Prioritize identifying architecture, memory protections (NX, Canary), and exact offsets. Propose Python (pwntools) for exploitation.
+   - For "web": Prioritize directory fuzzing, parameter discovery, and checking OWASP vulnerabilities.
+   - For "crypto": Prioritize identifying the algorithm and known mathematical weaknesses before writing solver scripts.
+   - For "reverse": Prioritize static analysis (strings, objdump) and dynamic tracing (ltrace, strace, gdb).
+   - IMPORTANT: Never guess exact numbers (offsets, keys) - always propose a step to extract or calculate them dynamically.
+
 LOOP DISCIPLINE
 
 - HISTORY is a list of prior steps, each with fields:

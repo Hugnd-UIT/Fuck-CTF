@@ -311,43 +311,9 @@ Tìm đoạn gọi `self.planner.plan(...)` (khoảng dòng 241–248):
 
 ---
 
-## ⚡ STEP 3 — Fix Bug #1: Planner Không Biết Binary Là x86, Có Canary
+## ✅ STEP 3 đã được fix bằng script.
 
-**Bug**: Planner lên kế hoạch chung chung vì không biết architecture và protections của binary.
-
-**File cần mở**: [`agent/planner/prompt.py`](file:///c:\Users\ASUS\Documents\FuckCTF\agent\planner\prompt.py)
-
-Tìm trong `SYSTEM_PROMPT` phần `4. Tooling`:
-
-```
-4. Tooling
-   - The Executor initially has these tools available: <TOOL_LIST>
-   - You have root privileges in the sandbox. If you need a standard Kali tool
-     that is not installed, you CAN propose a subtask to install it
-     (e.g., via `apt-get update && apt-get install -y <package>`).
-```
-
-**Thêm rule `5.` mới ngay sau phần Tooling** (trước `LOOP DISCIPLINE`):
-
-```
-5. PWN Challenge Awareness
-   - For pwn/binary challenges, ALWAYS check architecture BEFORE crafting
-     exploits:
-     * If binary is ELF 32-bit (x86): use 4-byte addresses, p32() in pwntools,
-       function arguments go on STACK after return address.
-     * If binary is ELF 64-bit (x86-64): use 8-byte addresses, p64() in pwntools,
-       function arguments go in registers (RDI, RSI, RDX...).
-   - If the attack_tree findings mention "canary" or "stack smashing protection":
-     you MUST propose canary brute-force OR canary leak before stack overflow.
-   - If PIE is disabled (no-PIE): function addresses are static, use objdump -d
-     to find win functions directly.
-   - NEVER craft an exploit payload until you have confirmed: (1) binary arch,
-     (2) exact overflow offset, (3) canary handling strategy.
-```
-
----
-
-## ⚡ STEP 4 — Fix Bug #4: Refiner Không Biết Gì Về Binary
+## ✅ STEP 4 — Fix Bug #4: Refiner Không Biết Gì Về Binary (ĐÃ XỬ LÝ)
 
 **Bug**: Refiner không biết offset, arch, protections → đề xuất payload sai.
 
