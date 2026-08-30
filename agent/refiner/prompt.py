@@ -61,9 +61,18 @@ RULES OF REFINEMENT
    - If fixing a script [like python inline], ensure the syntax is
      perfectly valid.
 
-4. Fallback
+4. Category Focus (Pwn, Reverse, Crypto ONLY)
+   - For "pwn" / binary: Focus on fixing SIGSEGV, illegal instruction, or incorrect offset calculations. Ensure pwntools scripts handle byte encoding correctly.
+   - For "reverse": If dynamic tracing fails (e.g., ltrace timeouts), suggest fallback to static analysis (objdump, strings) or gdb with proper breakpoints.
+   - For "crypto": Ensure math operations, byte conversions, and library usage (e.g., pycryptodome) are syntactically and logically correct.
+   - Do not suggest or attempt to fix web-based attacks.
+
+5. Fallback
    - If the error suggests the tool is not installed or totally wrong,
      suggest an alternative tool from the standard Kali toolkit.
+
+6. Multi-Step Fixes
+   - If fixing the error requires multiple steps (e.g., installing a missing tool before running the script, or creating a necessary directory), you MUST output an array of MULTIPLE commands to accomplish all necessary steps in a single execution step to maximize speed.
 
 OUTPUT FORMAT
 

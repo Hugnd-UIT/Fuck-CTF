@@ -45,30 +45,28 @@ _example = json.dumps(
     {
         "reason": {
             "analysis": (
-                "The latest step discovered a hidden /admin panel. "
-                "I need to add this to the attack tree under the web service."
+                "The latest step ran checksec and discovered NX is enabled "
+                "but there is no canary. I need to add this to findings."
             ),
         },
         "attack_tree": {
-            "stage": "vulnerability_discovery",
+            "stage": "binary_analysis",
             "done": [
-                "scan port 80",
-                "fuzz directories on port 80",
+                "run file on binary",
+                "run checksec on binary",
             ],
             "findings": [
-                "Port 80 is HTTP",
-                "/login returns 200 OK",
-                "/admin returns 403 Forbidden",
+                "32-bit ELF",
+                "NX enabled, No PIE, No Canary",
             ],
             "next": [
-                "bypass 403 on /admin",
-                "fuzz parameters on /login",
+                "find exact offset to EIP using gdb/pattern",
+                "find address of system() in libc",
             ],
             "failed": [],
         },
         "summary": (
-            "Discovered /admin endpoint [403] on port 80 "
-            "using gobuster."
+            "Discovered NX enabled but no canary via checksec."
         ),
     },
     indent=2,

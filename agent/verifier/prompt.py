@@ -28,18 +28,18 @@ _example = json.dumps(
     {
         "reason": {
             "analysis": (
-                "The success_indicator was 'Status: 200'. "
-                "The output shows '/login [Status: 200]' and "
-                "'/admin [Status: 403]'."
+                "The success_indicator was 'Arch:'. "
+                "The output shows 'Arch: i386-32-little' and "
+                "'NX: NX enabled'."
             ),
             "discovery": (
-                "Found a login page and a forbidden admin panel."
+                "Found the architecture and memory protections of the binary."
             ),
         },
         "result": "success",
         "knowledge": [
-            "http://target:80/login exists [200 OK]",
-            "http://target:80/admin is forbidden [403 Forbidden]",
+            "Binary is 32-bit ELF",
+            "NX is enabled, preventing execution on stack",
         ],
         "flag": False,
     },

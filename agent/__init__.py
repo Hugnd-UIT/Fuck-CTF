@@ -93,9 +93,9 @@ class Orchestrator:
 
         self.active_playbook = {
             "category": category,
-            **self.playbooks.get(
+            **self.playbooks.get("playbooks", {}).get(
                 category,
-                self.playbooks.get("default", {})
+                self.playbooks.get("playbooks", {}).get("default", {})
             )
         }
 
@@ -122,9 +122,12 @@ class Orchestrator:
             "failed": []
         }
 
-        self.tool_list = config.get(
+        self.tool_list = self.playbooks.get(
             "tools",
-            "nmap, gobuster, curl, nc, python3, gdb"
+            config.get(
+                "tools",
+                "nmap, gobuster, curl, nc, python3, gdb"
+            )
         )
 
         self.command_hashes = set()
@@ -565,12 +568,12 @@ class Orchestrator:
 
             verify_json = verify_result["parsed_verify"]
 
-            MAX_REFINE_RETRIES = 5
+            MAX_RETRIES = 2
             refine_attempts = 0
 
             while (
                 verify_json.get("result") == "fail"
-                and refine_attempts < MAX_REFINE_RETRIES
+                and refine_attempts < MAX_RETRIES
             ):
                 print(
                     f"\n╭─ REFINER ────────────────────────────────────────────╮"
@@ -578,7 +581,7 @@ class Orchestrator:
                 print(
                     f"│ Strategy failed — retry "
                     f"{refine_attempts + 1}/"
-                    f"{MAX_REFINE_RETRIES}"
+                    f"{MAX_RETRIES}"
                 )
                 print(
                     "╰──────────────────────────────────────────────────────╯"

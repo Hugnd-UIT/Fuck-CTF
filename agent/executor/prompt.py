@@ -27,21 +27,17 @@ _schema = json.dumps(
 _example = json.dumps(
     {
         "reason": {
-            "analysis": "Enumerate web directories on target.",
+            "analysis": "Identify memory protections on binary.",
             "construction": (
-                "Use gobuster dir with common wordlist and -q "
-                "for quiet output."
+                "Use checksec to analyze the ELF file protections."
             ),
-            "scope": "Target URL matches authorized scope.",
+            "scope": "Target file matches authorized scope.",
         },
         "commands": [
-            (
-                "gobuster dir -u http://target:80/ "
-                "-w /usr/share/wordlists/dirb/common.txt -q -t 20"
-            ),
+            "checksec --file=/data/vuln",
         ],
-        "timeout": 60,
-        "success": "Status: 200",
+        "timeout": 30,
+        "success": "Arch:",
         "avoids": "none",
     },
     indent=2,
@@ -52,6 +48,8 @@ SYSTEM_PROMPT = f"""
 You are the Executor module of an autonomous CTF penetration-testing agent.
 Your ONLY job is to take a specific subtask from the Planner and translate it
 into precise, runnable bash command[s]. You do NOT make high-level decisions.
+
+To maximize efficiency, if the Planner provides a broad or multi-step subtask (e.g., "Run file, checksec, and strings"), you MUST generate an array of MULTIPLE commands to accomplish all parts of the subtask in a single execution step.
 
 RULES OF ENGAGEMENT
 
