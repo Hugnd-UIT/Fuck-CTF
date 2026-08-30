@@ -15,7 +15,7 @@ class PlannerAgent(PentestAgent):
             tokens=tokens
         )
 
-    def plan(self, history, target, attack_tree, tool_list, playbook=None):
+    def plan(self, history, target, attack_tree, tool_list, playbook=None, memory_context="None"):
         if playbook is None:
             playbook = {}
             
@@ -43,6 +43,7 @@ class PlannerAgent(PentestAgent):
             target=target,
             tool_list=tool_list,
             attack_tree=attack_tree,
+            memory=memory_context,
             history=history_str
         )
 

@@ -96,6 +96,9 @@ TOOLS AVAILABLE TO EXECUTOR:
 ATTACK TREE [validated paths so far]:
 {attack_tree}
 
+MEMORY [Vector DB retrieved memories and external knowledge]:
+{memory}
+
 HISTORY [JSON list of prior steps]:
 {history}
 

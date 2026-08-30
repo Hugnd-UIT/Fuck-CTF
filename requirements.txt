@@ -1,3 +1,5 @@
 docker
 openai
 python-dotenv
+chromadb
+sentence-transformers

@@ -35,7 +35,6 @@ print(f"Target: \n{json.dumps(target, indent=2)}")
 print(f"Flag  : {flag_pattern}")
 print(f"Timeout: {timeout_minutes} minutes\n")
 
-# Start hacking loop
 while True:
     elapsed = time.time() - start_time
     if elapsed > timeout_seconds:

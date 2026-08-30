@@ -6,6 +6,8 @@ from .executor.engine import ExecutorAgent
 from .verifier.engine import VerifierAgent
 from .refiner.engine import RefinerAgent
 from .summarizer.engine import SummarizerAgent
+from rag.github import search_github
+from rag.firecrawl import scrape
 
 class Orchestrator:
     def __init__(self, config, container=None):
@@ -92,12 +94,35 @@ class Orchestrator:
         target_str = json.dumps(target, indent=2) if isinstance(target, dict) else target
         tree_str = json.dumps(self.attack_tree, indent=2) if isinstance(self.attack_tree, dict) else self.attack_tree
         
+        # MEMORY RETRIEVAL
+        retrieved_memory = []
+        try:
+            query_text = str(self.attack_tree.get("next", "")) or "Initial recon"
+            # Query memory collection
+            mem_res = self.memory_collection.query(query_texts=[query_text], n_results=3)
+            if mem_res and "documents" in mem_res and mem_res["documents"] and mem_res["documents"][0]:
+                for doc in mem_res["documents"][0]:
+                    retrieved_memory.append(f"[PAST_MEMORY] {doc}")
+            
+            # Query knowledge collection
+            know_res = self.knowledge_collection.query(query_texts=[query_text], n_results=50)
+            if know_res and "documents" in know_res and know_res["documents"] and know_res["documents"][0]:
+                for doc, dist in zip(know_res["documents"][0], know_res["distances"][0]):
+                    if dist < 1.5: # Similarity threshold
+                        retrieved_memory.append(f"[EXTERNAL_KNOWLEDGE] {doc}")
+        except Exception as e:
+            print(f"[!] Error retrieving from DB: {e}")
+            
+        memory_context = "\n".join(retrieved_memory) if retrieved_memory else "No relevant memories found."
+        print(f"[MEMORY] Injected {len(retrieved_memory)} memory/knowledge chunks.")
+
         plan_result = self.planner.plan(
             history=self._build_history_for_planner(),
             target=target_str,
             attack_tree=tree_str,
             tool_list=self.tool_list,
-            playbook=self.active_playbook
+            playbook=self.active_playbook,
+            memory_context=memory_context
         )
         plan_json = plan_result["parsed_plan"]
         
@@ -107,6 +132,79 @@ class Orchestrator:
         subtask = plan_json.get("plan", {}).get("subtask", "")
         tool_hint = plan_json.get("plan", {}).get("tool", "")
 
+        tactic = plan_json.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
+        
+        # RAG
+        if tactic == "Retrieval-Augmented-Generation":
+            print(f"[ORCHESTRATOR] RAG Intercept: Activating GitHub and Web Scraping for '{subtask}'")
+            try:
+                import concurrent.futures
+                from rag.duckduckgo import search_web
+                
+                def task_github():
+                    gh_res = search_github(subtask)
+                    issues = gh_res.get("github_issues", [])
+                    total_gh_chunks = 0
+                    preview = ""
+                    
+                    if not issues: return 0, "No GH issues found."
+                    
+                    def scrape_and_store(issue):
+                        url = issue.get("url")
+                        from rag.firecrawl import scrape
+                        md_text, err = scrape(url)
+                        if md_text:
+                            chunks = [md_text[i:i+2000] for i in range(0, len(md_text), 2000)]
+                            import hashlib
+                            ids = [f"know_{hashlib.md5((url + str(i)).encode()).hexdigest()}" for i in range(len(chunks))]
+                            return chunks, ids, md_text
+                        return [], [], ""
+
+                    # Run Firecrawl for Github issues in parallel
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
+                        results = list(ex.map(scrape_and_store, issues))
+                        
+                    for chunks, ids, md_text in results:
+                        if chunks:
+                            self.knowledge_collection.add(documents=chunks, ids=ids)
+                            total_gh_chunks += len(chunks)
+                            if not preview: preview = md_text[:1500]
+                    return total_gh_chunks, preview
+
+                def task_web():
+                    res = search_web(subtask, max_results=5)
+                    if "docs" in res and res["docs"]:
+                        self.knowledge_collection.add(documents=res["docs"], ids=res["ids"])
+                        return res["total_chunks"], res["preview"]
+                    return 0, res.get("error", "No web results.")
+
+                # Run both Github and Web searches in parallel
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as main_executor:
+                    future_gh = main_executor.submit(task_github)
+                    future_web = main_executor.submit(task_web)
+                    
+                    gh_chunks, gh_preview = future_gh.result()
+                    web_chunks, web_preview = future_web.result()
+
+                knowledge_gathered = f"Scraped GitHub ({gh_chunks} chunks) and Web ({web_chunks} chunks). Total: {gh_chunks + web_chunks} chunks saved to DB."
+                print(f"[ORCHESTRATOR] {knowledge_gathered}")
+                
+                step_id = f"step_{len(self.history_log) + 1}"
+                self.history_log.append({
+                    "step_id": step_id,
+                    "tactic": tactic,
+                    "plan": subtask,
+                    "observation": f"[Knowledge Gathered] {knowledge_gathered} Preview: {gh_preview or web_preview}",
+                    "result": "success"
+                })
+                # Skip executor, sandbox, verifier
+                return "Knowledge Retrieval Completed", {"commands": [], "success": "none"}
+                
+            except Exception as e:
+                print(f"[!] RAG Intercept failed: {e}")
+                import traceback
+                traceback.print_exc()
+                
         norm_subtask = self._normalize(subtask)
         self.subtask_attempts[norm_subtask] = self.subtask_attempts.get(norm_subtask, 0) + 1
         if self.subtask_attempts[norm_subtask] > 3:
