@@ -465,7 +465,7 @@ class Orchestrator:
                 target=target_str,
                 subtask=subtask,
                 tool_hint=tool_hint,
-                history=self.build_history_for_planner()
+                history=self.history_log
             )
 
             exec_json = exec_result["parsed_exec"]
