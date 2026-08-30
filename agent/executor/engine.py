@@ -17,7 +17,7 @@ class ExecutorAgent(PentestAgent):
 
     def execute_plan(self, target, subtask, tool_hint, history):
         
-        # Format history as JSON string
+        # Format history
         if isinstance(history, (list, dict)):
             history_str = json.dumps(history, indent=2)
         else:
@@ -36,10 +36,10 @@ class ExecutorAgent(PentestAgent):
             {"role": "user", "content": user_content}
         ]
 
-        # Call model to generate bash command
+        # Call model
         text, in_tokens, out_tokens = self.call(messages)
 
-        # Parse JSON output
+        # Parse JSON
         try:
             if "```json" in text:
                 json_str = text.split("```json")[1].split("```")[0].strip()

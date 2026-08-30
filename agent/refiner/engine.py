@@ -17,13 +17,13 @@ class RefinerAgent(PentestAgent):
 
     def refine(self, target, subtask, failed_command, error_output, history):
         
-        # Format history as JSON string
+        # Format history
         if isinstance(history, (list, dict)):
             history_str = json.dumps(history, indent=2)
         else:
             history_str = str(history)
 
-        # Format failed commands as JSON string if it's a list
+        # Format commands
         if isinstance(failed_command, list):
             failed_command_str = json.dumps(failed_command)
         else:
@@ -43,10 +43,10 @@ class RefinerAgent(PentestAgent):
             {"role": "user", "content": user_content}
         ]
 
-        # Call model to generate refined commands
+        # Call model
         text, in_tokens, out_tokens = self.call(messages)
 
-        # Parse JSON output
+        # Parse JSON
         try:
             if "```json" in text:
                 json_str = text.split("```json")[1].split("```")[0].strip()

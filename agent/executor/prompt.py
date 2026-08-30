@@ -54,7 +54,8 @@ RULES OF ENGAGEMENT
      return a command like `echo 'out of scope'` and explain in scope check.
 4. Environment & Privileges
    - You have root privileges in this Kali container.
-   - If a required tool is missing, you MUST generate commands to install it (e.g., `apt-get update -y && apt-get install -y <tool>`) before executing the payload.
+   - The LLM does not know exactly what is pre-installed. For essential CTF tools (gdb, pwndbg, checksec, ropper, etc.), you MUST wrap your command with an auto-install check so it installs automatically if missing.
+   - Example pattern: `if ! command -v gdb &> /dev/null; then apt-get update -y && apt-get install -y gdb; fi; gdb -batch ...`
 5. Safety
    - No destructive actions [rm -rf, DROP TABLE, service kill] unless explicit.
 6. Precision
@@ -67,6 +68,12 @@ RULES OF ENGAGEMENT
 9. Avoid repeats
    - Check HISTORY SUMMARY. If an identical command failed, change flags/tools
      and record the avoided step_id.
+10. Heuristics & Best Practices
+   - Brute-forcing is ALLOWED, but NEVER run a custom script on a massive wordlist (like rockyou.txt) all at once.
+   - ALWAYS test your brute-force script/tool on a small subset first (e.g., `head -n 100 rockyou.txt > test.txt`).
+   - Prefer specialized tools (`hydra`, `medusa`, `ffuf`) over custom Python loops for large wordlists.
+   - If writing a custom Python brute-force script, ALWAYS implement a maximum attempt limit (e.g., 500 attempts) so it doesn't hang forever.
+   - If the subtask involves guessing (password, byte value, offset), you MUST construct ONE tool call or ONE python script that performs the full search internally (loop inside the script/tool, not across multiple Executor calls). Never output a command that only tries a single candidate value when the subtask implies an exhaustive search.
 
 OUTPUT FORMAT
 Return ONLY the JSON object below, filled in - no markdown, no comments,

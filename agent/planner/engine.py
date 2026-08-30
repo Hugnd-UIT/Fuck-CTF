@@ -15,16 +15,30 @@ class PlannerAgent(PentestAgent):
             tokens=tokens
         )
 
-    def plan(self, history, target, attack_tree, tool_list):
-        
-        # Format history as JSON string
+    def plan(self, history, target, attack_tree, tool_list, playbook=None):
+        if playbook is None:
+            playbook = {}
+            
+        # Format history
         if isinstance(history, (list, dict)):
             history_str = json.dumps(history, indent=2)
         else:
             history_str = str(history)
 
-        # Format prompts
-        system_content = SYSTEM_PROMPT.replace("<TOOL_LIST>", tool_list)
+        # Build playbook parts
+        tactics_str = ", ".join(playbook.get("tactics", []))
+        procedure_str = "\n".join(playbook.get("procedure", []))
+        forbidden_str = "\n".join(f"- {x}" for x in playbook.get("forbidden", []))
+
+        # Format system prompts
+        system_content = (
+            SYSTEM_PROMPT
+            .replace("<TOOL_LIST>", tool_list)
+            .replace("<CATEGORY>", playbook.get("category", "default"))
+            .replace("<TACTIC_LIST>", tactics_str)
+            .replace("<PROCEDURE>", procedure_str)
+            .replace("<FORBIDDEN>", forbidden_str)
+        )
         user_content = USER_PROMPT.format(
             target=target,
             tool_list=tool_list,
@@ -37,10 +51,10 @@ class PlannerAgent(PentestAgent):
             {"role": "user", "content": user_content}
         ]
 
-        # Call model to generate plan
+        # Call model
         text, in_tokens, out_tokens = self.call(messages)
 
-        # Parse JSON output
+        # Parse JSON
         try:
             if "```json" in text:
                 json_str = text.split("```json")[1].split("```")[0].strip()

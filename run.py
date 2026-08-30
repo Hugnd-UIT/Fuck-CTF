@@ -5,7 +5,6 @@ from agent import Orchestrator
 from sandbox import init
 import re
 
-# Load environment variables
 dotenv.load_dotenv()
 
 # Parse arguments
@@ -72,4 +71,3 @@ while True:
 # Stop sandbox if needed
 if not args.keep_running:
     container.stop()
-

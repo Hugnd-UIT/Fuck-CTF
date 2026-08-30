@@ -1,0 +1,24 @@
+{
+    "pwn": {
+        "tactics": [
+            "Static-Analysis",
+            "Dynamic-Analysis",
+            "Offset-Discovery",
+            "Protection-Bypass",
+            "Payload-Crafting",
+            "Exploitation"
+        ],
+        "procedure": [
+            "1. Static-Analysis: run `file`, `checksec`, `strings`, `objdump -d` on the binary to identify architecture, protections (NX/PIE/Canary/RELRO), and interesting functions.",
+            "2. Dynamic-Analysis: use gdb/pwndbg (batch mode, -batch -ex) to inspect stack layout, registers, and crash behavior with a simple test input.",
+            "3. Offset-Discovery: use a cyclic pattern (pwntools cyclic / msf-pattern_create equivalent via python) to find the exact overflow offset. This is ONE python script call, not iterative guessing.",
+            "4. Protection-Bypass (INCLUDING CANARY BRUTE-FORCE): If a canary or PIE is present, you ARE ALLOWED to brute-force it if there are no leaks. When brute-forcing, write a python script that loops internally to find the value.",
+            "5. Payload-Crafting: write ONE python script (pwntools-style) that builds the full exploit payload deterministically from the discovered offset/leak.",
+            "6. Exploitation: run the crafted payload against the remote target and capture the flag."
+        ],
+        "forbidden": [
+            "Do NOT skip checksec and static analysis before trying to exploit.",
+            "Do NOT skip Offset-Discovery and jump straight to Exploitation."
+        ]
+    }
+}

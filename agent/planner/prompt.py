@@ -71,6 +71,7 @@ LOOP DISCIPLINE
 - Before proposing a plan, scan HISTORY for the same tactic + similar target.
   - If found and result == "fail": your new plan MUST differ in tactic OR
     target OR technique, and you must cite that step_id in "avoids".
+    (EXCEPTION: If the failure was clearly because a tool was "not found" or "command not found", your next plan SHOULD be to install that tool, rather than abandoning the tactic).
   - If the same tactic has failed 3+ times in a row, you MUST switch to a
     different tactic category entirely, regardless of hypothesis appeal.
 - Always read the "observation" of the most recent HISTORY entry before

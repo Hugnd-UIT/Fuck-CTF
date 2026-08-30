@@ -28,10 +28,10 @@ class SummarizerAgent(PentestAgent):
             {"role": "user", "content": user_content}
         ]
 
-        # Call model to generate summary
+        # Call model
         text, in_tokens, out_tokens = self.call(messages)
 
-        # Parse JSON output
+        # Parse JSON
         try:
             if "```json" in text:
                 json_str = text.split("```json")[1].split("```")[0].strip()
