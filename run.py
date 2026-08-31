@@ -1,10 +1,16 @@
 import argparse
 import json
+import sys
+
+if sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 import dotenv
 from agent import Orchestrator
 from sandbox import init
 import time
 import re
+from timeline import print_header, print_footer, console, print_line
 
 FLAG = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
 
@@ -33,24 +39,7 @@ timeout_seconds = timeout_minutes * 60
 start_time = time.time()
 step = 0
 
-display = (
-    f"\n"
-    f"  Category      : {target.get('category', '-')}\n"
-    f"  Description   : {target.get('desc', '-')}\n"
-    f"  Host          : {target.get('host', '-')}\n"
-    f"  Port          : {target.get('port', '-')}\n"
-    f"  Directory     : {target.get('dir', '-')}\n"
-    f"  Flag          : {target['flag']}"
-)
-
-print()
-print("╭──────────────────────────────────────────────────────────────╮")
-print("│                     F*ck Capture The Flag                    │")
-print("╰──────────────────────────────────────────────────────────────╯")
-print(display)
-print(f"\n  Timeout   : {timeout_minutes} minutes")
-print()
-print("────────────────────────────────────────────────────────────────")
+print_header(target, timeout_minutes)
 
 consecutive_crashes = 0
 MAX_CONSECUTIVE_CRASHES = 5
@@ -60,20 +49,10 @@ while True:
     remaining = timeout_seconds - elapsed
 
     if elapsed > timeout_seconds:
-        print()
-        print("  ✗ TIMEOUT")
-        print(f"    Reached {timeout_minutes} minutes.")
+        print_line(f"└─ 🛑 TIMEOUT: Reached {timeout_minutes} minutes.", color="red")
         break
 
-    step += 1
-
-    print()
-    print("────────────────────────────────────────────────────────────────")
-    print(
-        f"  STEP {step:02d}"
-        f"  •  {int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
-    )
-    print("────────────────────────────────────────────────────────────────")
+    # Remove STEP separators entirely
 
     try:
         summary, exec_json = agent.execute(
@@ -85,23 +64,11 @@ while True:
 
         if summary == "Goal Achieved":
             elapsed = time.time() - start_time
-
-            print()
-            print("  ✓ GOAL ACHIEVED")
-            print()
-            print(f"  {exec_json}")
-            print()
-            print(
-                f"  Completed in {step} steps"
-                f"  •  {int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
-            )
+            # Keep line empty for continuity if we want, or just break
             break
 
-        print(f"  > {summary}")
-
     except KeyboardInterrupt:
-        print()
-        print("  ✗ STOPPED BY USER")
+        print_line("└─ 🛑 STOPPED BY USER", color="red")
         break
 
     except Exception:
@@ -109,7 +76,7 @@ while True:
         traceback.print_exc()
         consecutive_crashes += 1
         if consecutive_crashes >= MAX_CONSECUTIVE_CRASHES:
-            print(f"\n  ✗ ABORTED: {consecutive_crashes} consecutive crashes. Check API keys, etc.")
+            print_line(f"└─ 🛑 ABORTED: {consecutive_crashes} consecutive crashes.", color="red")
             break
         time.sleep(min(2 ** consecutive_crashes, 30))
         continue
@@ -118,18 +85,7 @@ while True:
     found = FLAG.search(summary)
     if found:
         elapsed = time.time() - start_time
-
-        print()
-        print("════════════════════════════════════════════════════════════════")
-        print("  ✓ FLAG FOUND")
-        print("════════════════════════════════════════════════════════════════")
-        print()
-        print(f"  {found.group(0)}")
-        print()
-        print(
-            f"  Completed in {step} steps"
-            f"  •  {int(elapsed // 60):02d}:{int(elapsed % 60):02d}"
-        )
+        print_footer(found.group(0), elapsed)
         break
 
 # Stop sandbox if needed

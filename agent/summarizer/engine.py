@@ -71,13 +71,8 @@ class SummarizerAgent(PentestAgent):
 
             summary_data = json_repair.loads(json_str)
 
-            print(
-                f"  ✓ Summarizer : "
-                f"{summary_data.get('summary', 'completed')}"
-            )
 
         except Exception as e:
-            print(f"  ✗ Summarizer : JSON parse failed - {e}")
 
             summary_data = {
                 "reason": {

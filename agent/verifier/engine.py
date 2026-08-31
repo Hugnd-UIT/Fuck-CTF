@@ -87,7 +87,6 @@ class VerifierAgent(PentestAgent):
             verify_data = json_repair.loads(json_str)
 
         except Exception as e:
-            print(f"  ✗ Verifier   : JSON parse failed - {e}")
 
             verify_data = {
                 "reason": {
@@ -97,12 +96,6 @@ class VerifierAgent(PentestAgent):
                 "knowledge": [],
                 "flag": False
             }
-
-        else:
-            print(
-                f"  ✓ Verifier   : "
-                f"{verify_data.get('result', 'unknown')}"
-            )
 
         return {
             "verify_data": verify_data,

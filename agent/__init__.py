@@ -14,6 +14,8 @@ from .summarizer.engine import SummarizerAgent
 from .reflector.engine import ReflectorAgent
 from rag.github import search_github
 from rag.firecrawl import scrape
+from timeline import print_node, print_line, print_error, format_time, console
+import time
 
 
 class Orchestrator:
@@ -212,9 +214,7 @@ class Orchestrator:
             self.snap_done = list(set(self.snap_done) | set(done))
 
     def execute(self, target, sandbox, time_left=None):
-        print("\n╭─ PLANNER ────────────────────────────────────────────╮")
-        print("│ Thinking...")
-        print("╰──────────────────────────────────────────────────────╯")
+        start_plan = time.time()
 
         category = (
             target.get("category", "")
@@ -227,6 +227,15 @@ class Orchestrator:
             if isinstance(target, dict)
             else target
         )
+
+        import os
+        workspace = os.path.join(os.getcwd(), 'workspace')
+        if os.path.exists(workspace):
+            files = os.listdir(workspace)
+            if not files:
+                self.absorb({"Environment": "Directory /data is EMPTY. This is a black-box challenge. DO NOT try to read files."})
+            else:
+                self.absorb({"Environment": f"Directory /data contains: {files}."})
 
         tree = self.tree
 
@@ -310,7 +319,7 @@ class Orchestrator:
                         )
 
         except Exception as e:
-            print(f"  ✗ Memory DB : {e}")
+            print_error(f"Memory DB: {e}")
 
         memory = (
             "\n".join(memories)
@@ -318,10 +327,7 @@ class Orchestrator:
             else "No relevant memories found."
         )
 
-        print(
-            f"  ✓ Memory    : "
-            f"{len(memories)} chunks injected"
-        )
+        memories_count = len(memories) if memories else 0
 
         last_raw = ""
         if self.history:
@@ -341,12 +347,19 @@ class Orchestrator:
         )
 
         plan_data = plan_res["plan_data"]
+        
+        elapsed_plan = time.time() - start_plan
 
         if plan_data.get("plan", {}).get("finished", False):
-            print("  ✓ Planner   : goal achieved")
+            print_node("Planning...", format_time(elapsed_plan), "cyan")
+            print_line("└─ Goal achieved")
             return "Goal Achieved", plan_data
 
         subtask = plan_data.get("plan", {}).get("subtask", "")
+        print_node("Planning...", format_time(elapsed_plan), "cyan")
+        if memories_count > 0:
+            print_line("├─ Thinking...")
+        print_line(f"└─ {subtask}")
         tool_hint = plan_data.get("plan", {}).get("tool", "")
 
         tactic = plan_data.get(
@@ -362,14 +375,7 @@ class Orchestrator:
 
         # RAG
         if tactic == "Retrieval-Augmented-Generation":
-            print(
-                "\n╭─ RAG ─────────────────────────────────────────────────╮"
-            )
-            print("│ Activating GitHub + Web Scraping")
-            print(f"│ Query: {subtask}")
-            print(
-                "╰──────────────────────────────────────────────────────╯"
-            )
+            start_rag = time.time()
 
             try:
                 from rag.duckduckgo import search_web
@@ -467,14 +473,12 @@ class Orchestrator:
                     gh_chunks, gh_preview = future_gh.result()
                     web_chunks, web_preview = future_web.result()
 
-                knowledge_gathered = (
-                    f"Scraped GitHub ({gh_chunks} chunks) "
-                    f"and Web ({web_chunks} chunks). "
-                    f"Total: {gh_chunks + web_chunks} chunks "
-                    "saved to DB."
-                )
-
-                print(f"  ✓ RAG       : {knowledge_gathered}")
+                elapsed_rag = time.time() - start_rag
+                print_node("Retrieving...", format_time(elapsed_rag), "blue")
+                print_line("Searching...")
+                print_line(f"├─ Github: found {gh_chunks} chunks")
+                print_line(f"├─ Web: found {web_chunks} chunks")
+                print_line("└─ Saved!")
 
                 step_id = f"step_{len(self.history) + 1}"
 
@@ -503,7 +507,9 @@ class Orchestrator:
                 )
 
             except Exception as e:
-                print(f"  ✗ RAG       : {e}")
+                elapsed_rag = time.time() - start_rag
+                print_node("Retrieving...", format_time(elapsed_rag), "blue")
+                print_error(str(e))
 
         norm_subtask = self.normalize(subtask)
 
@@ -512,11 +518,7 @@ class Orchestrator:
         )
 
         if self.attempts[norm_subtask] > 3:
-            print(
-                f"  ⚠ Guard     : "
-                f"subtask repeated "
-                f"{self.attempts[norm_subtask]}x — skipped"
-            )
+            print_error(f"Guard: subtask repeated {self.attempts[norm_subtask]}x — skipped")
 
             exec_json = {
                 "commands": [],
@@ -550,9 +552,7 @@ class Orchestrator:
             commands = []
 
         else:
-            print("\n╭─ EXECUTOR ───────────────────────────────────────────╮")
-            print(f"│ Translating: {subtask}")
-            print("╰──────────────────────────────────────────────────────╯")
+            start_exec = time.time()
 
             exec_result = self.executor.execute_plan(
                 target=target,
@@ -565,10 +565,12 @@ class Orchestrator:
             commands = exec_json.get("commands", [])
             indicator = exec_json.get("success", "")
 
-            print(
-                f"  → Sandbox   : "
-                f"running {len(commands)} command(s)..."
-            )
+            elapsed_exec = time.time() - start_exec
+            print_node("Executing...", format_time(elapsed_exec), "magenta")
+            
+            for i, cmd in enumerate(commands):
+                prefix = "└─ " if i == len(commands) - 1 else "├─ "
+                print_line(f"{prefix}$ {cmd}")
 
             output = ""
 
@@ -630,14 +632,9 @@ class Orchestrator:
             FLAG = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
             flag_match = FLAG.search(output)
             if flag_match:
-                print(f"\n╭─ ORCHESTRATOR ───────────────────────────────────────╮")
-                print("│ Flag Detected in Output!")
-                print("╰──────────────────────────────────────────────────────╯")
                 return flag_match.group(0), {"flag_captured": flag_match.group(0)}
 
-            print("\n╭─ VERIFIER ───────────────────────────────────────────╮")
-            print("│ Evaluating results...")
-            print("╰──────────────────────────────────────────────────────╯")
+            start_verif = time.time()
 
             verify_res = self.verifier.verify(
                 subtask=subtask,
@@ -655,6 +652,19 @@ class Orchestrator:
             )
 
             verify_data = verify_res["verify_data"]
+            elapsed_verif = time.time() - start_verif
+            
+            # Print verifying output
+            if verify_data.get("result") == "pass":
+                print_node("Verifying...", "[ Pass ]", "green")
+            else:
+                print_node("Verifying...", "[ Fail ]", "red")
+                
+            knowledge = verify_data.get("knowledge", [])
+            if knowledge:
+                print_line(f"└─ {knowledge[0]}")
+            else:
+                print_line(f"└─ Evaluated {len(commands)} command(s)")
 
             refine_tries = 0
 
@@ -662,16 +672,7 @@ class Orchestrator:
                 verify_data.get("result") == "fail"
                 and refine_tries < 2
             ):
-                print(
-                    f"\n╭─ REFINER ────────────────────────────────────────────╮"
-                )
-                print(
-                    f"│ Strategy failed — retry "
-                    f"{refine_tries + 1}/2"
-                )
-                print(
-                    "╰──────────────────────────────────────────────────────╯"
-                )
+                print_node("Refining...", f"Retry {refine_tries + 1} / 2", "yellow")
 
                 retry = 0
                 while retry < 3:
@@ -692,9 +693,8 @@ class Orchestrator:
                     )
                     raw = refine_res.get("raw", "")
                     if "API Error" in raw or "API Exception" in raw:
-                        print(f"  ↻ REFINER : Transient API error, retrying ({retry+1}/3)...")
+                        print_line(f"├─ Transient API error, retrying ({retry+1}/3)...")
                         retry += 1
-                        import time
                         time.sleep(2 * retry)
                         continue
                     break
@@ -717,13 +717,12 @@ class Orchestrator:
                         "Refinement failed to produce "
                         "new commands."
                     )
+                    print_line("└─ Failed to produce new commands")
                     break
 
-                print(
-                    f"  → Sandbox   : "
-                    f"running {len(refined_commands)} "
-                    f"refined command(s)..."
-                )
+                for i, cmd in enumerate(refined_commands):
+                    prefix = "└─ " if i == len(refined_commands) - 1 else "├─ "
+                    print_line(f"{prefix}$ {cmd}")
 
                 commands = refined_commands
                 output = ""
@@ -785,10 +784,7 @@ class Orchestrator:
                         f"{out}\n"
                     )
 
-                print(
-                    "  → Verifier  : "
-                    "evaluating refined results..."
-                )
+                start_verif_retry = time.time()
 
                 verify_res = self.verifier.verify(
                     subtask=subtask,
@@ -809,6 +805,18 @@ class Orchestrator:
                     "verify_data",
                     verify_data
                 )
+                
+                elapsed_verif_retry = time.time() - start_verif_retry
+                if verify_data.get("result") == "pass":
+                    print_node("Verifying...", "[ Pass ]", "green")
+                else:
+                    print_node("Verifying...", "[ Fail ]", "red")
+                
+                knowledge = verify_data.get("knowledge", [])
+                if knowledge:
+                    print_line(f"└─ {knowledge[0]}")
+                else:
+                    print_line(f"└─ Evaluated {len(commands)} command(s)")
 
                 strategy = refine_data.get(
                     "reason",
@@ -852,13 +860,7 @@ class Orchestrator:
             "verification": verify_data
         }
 
-        print(
-            "\n╭─ SUMMARIZER ──────────────────────────────────────────╮"
-        )
-        print("│ Updating Attack Tree and History...")
-        print(
-            "╰──────────────────────────────────────────────────────╯"
-        )
+        start_sum = time.time()
 
         summary_res = self.summarizer.summarize(
             tree=tree,
@@ -882,15 +884,14 @@ class Orchestrator:
         self.absorb(new_data)   
         self.snap(new_tree)    
 
+        elapsed_sum = time.time() - start_sum
+        print_node("Summarizing...", format_time(elapsed_sum), "cyan")
+        print_line("Information updating...")
+
         if self.alerts:
-            print(
-                f"  ⚠ Detector  : "
-                f"{len(self.alerts)} contradiction(s) detected"
-            )
-            for alert in self.alerts:
-                print(f"    → {alert}")
+            print_error(f"Contradiction: {len(self.alerts)} item(s) vanished or changed")
         else:
-            print("  ✓ Detector  : no contradictions")
+            print_line("└─ ✓ No contradictions detected")
 
         step_id = f"step_{len(self.history) + 1}"
 
@@ -941,9 +942,7 @@ class Orchestrator:
             time_used = str(int(3600 - (time_left or 3600)))
             time_total = "3600"
             
-            print("\n╭─ REFLECTOR ───────────────────────────────────────────╮")
-            print("│ Analyzing stuck state and replanning...")
-            print("╰──────────────────────────────────────────────────────╯")
+            start_ref = time.time()
             
             ref_res = self.reflector.review(
                 history=self.history,
@@ -952,6 +951,10 @@ class Orchestrator:
                 time_used=time_used,
                 time_total=time_total
             )
+            
+            elapsed_ref = time.time() - start_ref
+            print_node("Reflecting...", format_time(elapsed_ref), "magenta")
+            print_line("└─ Stuck state analyzed and replanned")
             review_data = ref_res["review_data"]
             advice = review_data.get("advice", "")
             tactic = review_data.get("tactic", "")

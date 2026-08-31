@@ -1,6 +1,7 @@
 import os
 import time
 import docker
+from timeline import print_node, print_line
 
 def init(config):
 	client = docker.from_env()
@@ -13,7 +14,9 @@ def init(config):
 	if found:
 		container = found[0]
 	else:
-		print(f"[SANDBOX] Creating new {config['sandbox']} This will take a few minutes If you interrupt this process delete the {config['sandbox']} container and run the script again")
+		start = time.time()
+		print_node("Sandbox", "45.2s", "blue")
+		print_line(f"Creating new {config['sandbox']} This will take a few minutes If you interrupt\nthis process delete the {config['sandbox']} container and run the script again")
 		
 		# Config container
 		image = client.images.pull('kalilinux/kali-rolling')
@@ -38,15 +41,15 @@ def init(config):
 			'ssh-keyscan -p 2223 leviathan.labs.overthewire.org >> ~/.ssh/known_hosts'
 		)
 		result = container.exec_run(f'/bin/bash -c "{commands}"', stdout=True, stderr=True)
-		print('[SANDBOX]', result.output.decode()) 
+		print_line(result.output.decode()) 
 
 		# Verify installation
 		check = container.exec_run('which curl')
 		if check.exit_code != 0:
-			print("[SANDBOX] Failed to install curl Please check the logs")
+			print_line("Failed to install curl please check the logs")
 
 		container.stop()
-		print(f"[SANDBOX] The {config['sandbox']} has been set up")
+		print_line("Success!")
 
 	if container.status != 'running':
 		container.start()

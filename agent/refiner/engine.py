@@ -91,10 +91,8 @@ class RefinerAgent(PentestAgent):
 
             refine_data = json_repair.loads(json_str)
 
-            print("  ✓ Refiner    : command refined")
 
         except Exception as e:
-            print(f"  ✗ Refiner    : JSON parse failed - {e}")
 
             refine_data = {
                 "reason": {

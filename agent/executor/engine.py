@@ -89,13 +89,8 @@ class ExecutorAgent(PentestAgent):
             exec_data = json_repair.loads(json_str)
 
             commands = exec_data.get("commands", [])
-            print(
-                f"  ✓ Executor   : "
-                f"{len(commands)} command(s) generated"
-            )
 
         except Exception as e:
-            print(f"  ✗ Executor   : JSON parse failed - {e}")
 
             exec_data = {
                 "reason": {

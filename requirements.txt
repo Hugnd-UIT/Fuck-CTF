@@ -5,3 +5,4 @@ chromadb
 sentence-transformers
 ddgs
 json-repair
+rich

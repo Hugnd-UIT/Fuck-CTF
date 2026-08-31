@@ -60,10 +60,8 @@ class ReflectorAgent(PentestAgent):
                 json_str = text.strip()
                 
             review_data = json_repair.loads(json_str)
-            print(f"  ✓ Reflector  : {review_data.get('tactic', 'replan')[:60]}...")
             
         except Exception as e:
-            print(f"  ✗ Reflector  : JSON parse failed - {e}")
             review_data = {
                 "cause": "Failed to parse reflection.",
                 "tactic": "Backtrack and try a different approach.",

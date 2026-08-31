@@ -54,8 +54,8 @@
     "flag": "crypto{FLAG}",
     "target": {
         "category": "crypto",
-        "desc": "Alice and Bob are using legacy codebases and need to negotiate parameters they both support. You've man-in-the-middled this negotiation step, and can passively observe thereafter. How are you going to ruin their day this time?",
-        "dir": "",
+        "desc": "Found this cool script on Github and I've been using it to keep my secrets from anyone listening in on the school wifi!",
+        "dir": "/data",
         "host": "socket.cryptohack.org",
         "port": 13379
     },

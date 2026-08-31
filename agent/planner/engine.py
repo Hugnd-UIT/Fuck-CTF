@@ -164,10 +164,8 @@ class PlannerAgent(PentestAgent):
             plan = plan_data.get("plan", {})
             subtask = plan.get("subtask", "plan generated")
 
-            print(f"  ✓ Planner    : {subtask}")
 
         except Exception as e:
-            print(f"  ✗ Planner    : JSON parse failed - {e}")
 
             plan_data = {
                 "reason": {
