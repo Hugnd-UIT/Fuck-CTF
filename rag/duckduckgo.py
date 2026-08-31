@@ -8,7 +8,6 @@ _search_cache = {}
 
 def search_web(query: str, max_results: int = 5) -> dict:
     if query in _search_cache:
-        print(f"  → DuckDuckGo : {query} (cached)")
         return _search_cache[query]
 
     print(f"  → DuckDuckGo : {query}")
@@ -32,7 +31,7 @@ def search_web(query: str, max_results: int = 5) -> dict:
     doc_ids = []
 
     # Scrape search results
-    def scrape_job(url):
+    def scrape_web(url):
         md_text, err = scrape(url)
 
         if md_text:
@@ -56,7 +55,7 @@ def search_web(query: str, max_results: int = 5) -> dict:
     with concurrent.futures.ThreadPoolExecutor(
         max_workers=max_results
     ) as executor:
-        scrape_results = list(executor.map(scrape_job, urls))
+        scrape_results = list(executor.map(scrape_web, urls))
 
     # Collect scraped documents
     for chunks, ids, md_text in scrape_results:

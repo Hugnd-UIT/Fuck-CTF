@@ -298,7 +298,7 @@ class Orchestrator:
             try:
                 from rag.duckduckgo import search_web
 
-                def task_github():
+                def github():
                     gh_res = search_github(subtask)
                     issues = gh_res.get("github_issues", [])
 
@@ -308,7 +308,7 @@ class Orchestrator:
                     if not issues:
                         return 0, "No GH issues found."
 
-                    def scrape_and_store(issue):
+                    def scrape_store(issue):
                         url = issue.get("url")
                         md_text, err = scrape(url)
 
@@ -337,7 +337,7 @@ class Orchestrator:
                     ) as ex:
                         results = list(
                             ex.map(
-                                scrape_and_store,
+                                scrape_store,
                                 issues
                             )
                         )
@@ -385,7 +385,7 @@ class Orchestrator:
                 with concurrent.futures.ThreadPoolExecutor(
                     max_workers=2
                 ) as main_executor:
-                    future_gh = main_executor.submit(task_github)
+                    future_gh = main_executor.submit(github)
                     future_web = main_executor.submit(task_web)
 
                     gh_chunks, gh_preview = future_gh.result()
