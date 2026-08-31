@@ -4,6 +4,9 @@ import dotenv
 from agent import Orchestrator
 from sandbox import init
 import time
+import re
+
+FLAG_REGEX = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
 
 dotenv.load_dotenv()
 
@@ -48,8 +51,12 @@ print(f"\n  Timeout   : {timeout_minutes} minutes")
 print()
 print("────────────────────────────────────────────────────────────────")
 
+consecutive_crashes = 0
+MAX_CONSECUTIVE_CRASHES = 5
+
 while True:
     elapsed = time.time() - start_time
+    remaining = timeout_seconds - elapsed
 
     if elapsed > timeout_seconds:
         print()
@@ -70,8 +77,10 @@ while True:
     try:
         summary, exec_json = agent.execute(
             target=target,
-            sandbox=container
+            sandbox=container,
+            time_left=remaining
         )
+        consecutive_crashes = 0
 
         if summary == "Goal Achieved":
             elapsed = time.time() - start_time
@@ -97,10 +106,16 @@ while True:
     except Exception:
         import traceback
         traceback.print_exc()
+        consecutive_crashes += 1
+        if consecutive_crashes >= MAX_CONSECUTIVE_CRASHES:
+            print(f"\n  ✗ ABORTED: {consecutive_crashes} consecutive crashes. Check API keys, etc.")
+            break
+        time.sleep(min(2 ** consecutive_crashes, 30))
         continue
 
     # Check for flag
-    if target["flag"] in summary or "CTF{" in summary:
+    found = FLAG_REGEX.search(summary)
+    if found:
         elapsed = time.time() - start_time
 
         print()
@@ -108,7 +123,7 @@ while True:
         print("  ✓ FLAG FOUND")
         print("════════════════════════════════════════════════════════════════")
         print()
-        print(f"  {summary}")
+        print(f"  {found.group(0)}")
         print()
         print(
             f"  Completed in {step} steps"

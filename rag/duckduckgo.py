@@ -4,7 +4,13 @@ from .firecrawl import scrape
 import concurrent.futures
 
 
+_search_cache = {}
+
 def search_web(query: str, max_results: int = 5) -> dict:
+    if query in _search_cache:
+        print(f"  → DuckDuckGo : {query} (cached)")
+        return _search_cache[query]
+
     print(f"  → DuckDuckGo : {query}")
 
     try:
@@ -64,9 +70,11 @@ def search_web(query: str, max_results: int = 5) -> dict:
 
     print(f"  ✓ Web Search  : {total_chunks} chunks collected")
 
-    return {
+    res = {
         "docs": docs,
         "ids": doc_ids,
         "total_chunks": total_chunks,
         "preview": knowledge_preview
     }
+    _search_cache[query] = res
+    return res

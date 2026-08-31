@@ -9,7 +9,7 @@ _schema = json.dumps(
                 "affect the attack tree"
             ),
         },
-        "attack_tree": {
+        "tree": {
             "stage": (
                 "The current stage of the attack "
                 "(e.g. reconnaissance, binary_analysis, "
@@ -21,7 +21,7 @@ _schema = json.dumps(
             "findings": [
                 "List of discovered facts, open ports, vulnerabilities, etc."
             ],
-            "extracted_data": {
+            "data": {
                 "<any_relevant_key>": "<exact_extracted_value>"
             },
             "next": [
@@ -49,7 +49,7 @@ _example = json.dumps(
                 "but there is no canary. I need to add this to findings."
             ),
         },
-        "attack_tree": {
+        "tree": {
             "stage": "binary_analysis",
             "done": [
                 "run file on binary",
@@ -97,7 +97,9 @@ RULES OF SUMMARIZATION
 4. Technical Fact Preservation (CRITICAL)
    - You MUST preserve EXACT technical values (offsets, keys, addresses, port numbers, versions, etc.).
    - Do NOT summarize them away into prose.
-   - Use the `extracted_data` JSON dictionary to store key-value pairs of ANY discovered technical facts.
+   - Use the `data` JSON dictionary to store key-value pairs of ANY discovered technical facts.
+   - ALWAYS extract these binary properties into `data` when `file` or `checksec` is run: "stripped": true/false, "arch": "...", "pie": true/false, "canary": true/false.
+   - If "stripped": true is recorded, add an explicit entry to `findings`: "Binary is stripped - GDB breakpoints by function NAME will not work, must use addresses from objdump instead."
    - Examples of generic keys you can create: "overflow_offset": 44, "web_admin_path": "/secret-admin", "rsa_n": "0x1234...", "architecture": "ELF32", "canary_found": true.
    - These exact facts will be passed to other agents to avoid guessing.
 
@@ -116,10 +118,10 @@ Example [format reference only, not real data]:
 
 USER_PROMPT = """
 CURRENT ATTACK TREE:
-{attack_tree}
+{tree}
 
 LATEST STEP RESULTS:
-{latest_step}
+{step}
 
 Analyze the latest step and output the updated Attack Tree and summary in JSON
 format.

@@ -65,7 +65,9 @@ RULES OF ENGAGEMENT
      prevent the execution from hanging.
 
 2. Bounded Execution
-   - Every command set must have a timeout value.
+   - Every command set must have a timeout value. Choose it based on the task:
+     * Static analysis / local GDB: 10-60s.
+     * A brute-force script over the NETWORK: Can take 200-600s. Set timeout accordingly and make the script print progress (e.g., "byte 1 found...") periodically to stdout so partial progress is visible.
    - Prefer tool-native timeout flags [nmap -T4, curl --max-time].
    - Never run unbounded scans.
 
@@ -97,7 +99,9 @@ RULES OF ENGAGEMENT
      `python3 -c "print('A'*100)" | ./vuln`
 
 8. Output Control
-   - Prefer quiet flags [-q, --quiet, | head] to keep output small.
+   - NEVER redirect primary command output to a file with `>` unless the output is provably too large (>500 lines). For anything reasonably sized, print directly to stdout so it is visible THIS SAME cycle.
+   - If you MUST write to a file, you MUST include a command in the SAME array that extracts the RELEVANT portion (e.g., `grep`, `head`) immediately.
+   - Prefer quiet flags [-q, --quiet, | head] to keep output small, but still print to stdout.
 
 9. Avoid Repeats
    - Check HISTORY SUMMARY.

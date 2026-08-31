@@ -8,7 +8,7 @@ _schema = json.dumps(
                 "Analyze the error output and identify why the original "
                 "payload/command failed"
             ),
-            "fix_strategy": (
+            "strategy": (
                 "Explain exactly what needs to be changed "
                 "[e.g. adjust offset, fix syntax, change port]"
             ),
@@ -29,7 +29,7 @@ _example = json.dumps(
                 "The python script threw a SyntaxError because of a missing "
                 "parenthesis on line 4."
             ),
-            "fix_strategy": (
+            "strategy": (
                 "Add the missing parenthesis to the print statement."
             ),
         },
@@ -74,6 +74,9 @@ RULES OF REFINEMENT
 6. Multi-Step Fixes
    - If fixing the error requires multiple steps (e.g., installing a missing tool before running the script, or creating a necessary directory), you MUST output an array of MULTIPLE commands to accomplish all necessary steps in a single execution step to maximize speed.
 
+7. Resumable Brute-Force
+   - If the failed command was a byte-by-byte brute-force search that timed out, DO NOT restart from byte 0. Modify the script to read partial progress (e.g., from a /tmp/*_progress.txt file) and resume from the last confirmed byte instead of re-searching already-solved bytes.
+
 OUTPUT FORMAT
 
 Return ONLY the JSON object below, filled in - no markdown, no comments,
@@ -98,10 +101,10 @@ INTENDED SUBTASK:
 {subtask}
 
 FAILED COMMAND[S]:
-{failed_command}
+{failed}
 
 ERROR OUTPUT:
-{error_output}
+{error}
 
 HISTORY SUMMARY:
 {history}

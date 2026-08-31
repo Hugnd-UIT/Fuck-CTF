@@ -91,7 +91,7 @@ class Orchestrator:
 
         category = config.get("target", {}).get("category", "default")
 
-        self.active_playbook = {
+        self.playbook = {
             "category": category,
             **self.playbooks.get("playbooks", {}).get(
                 category,
@@ -100,11 +100,11 @@ class Orchestrator:
         }
 
         # Initialize state variables
-        self.history_log = []
+        self.history = []
         self.compressed_history = ""
 
         # Seed attack tree
-        initial_tactics = self.active_playbook.get(
+        initial_tactics = self.playbook.get(
             "tactics",
             ["Reconnaissance"]
         )
@@ -114,15 +114,15 @@ class Orchestrator:
             else "Reconnaissance"
         )
 
-        self.attack_tree = {
+        self.tree = {
             "stage": initial_stage,
             "done": [],
             "findings": ["Initial target mapped"],
-            "next": self.active_playbook.get("procedure", [])[:2],
+            "next": self.playbook.get("procedure", [])[:2],
             "failed": []
         }
 
-        self.tool_list = self.playbooks.get(
+        self.tools = self.playbooks.get(
             "tools",
             config.get(
                 "tools",
@@ -130,34 +130,34 @@ class Orchestrator:
             )
         )
 
-        self.command_hashes = set()
-        self.fail_streak = {}
-        self.subtask_attempts = {}
+        self.hashes = set()
+        self.fails = {}
+        self.attempts = {}
 
     def normalize(self, text: str) -> str:
         norm = re.sub(r"'[^']*'|\"[^\"]*\"", "<STR>", text)
         norm = re.sub(r"\b\d+\b", "<NUM>", norm)
         return norm.strip().lower()
 
-    def execute(self, target, sandbox):
+    def execute(self, target, sandbox, time_left=None):
         print("\n╭─ PLANNER ────────────────────────────────────────────╮")
         print("│ Thinking...")
         print("╰──────────────────────────────────────────────────────╯")
 
-        target_str = (
+        target = (
             json.dumps(target, indent=2)
             if isinstance(target, dict)
             else target
         )
 
-        tree_str = (
-            json.dumps(self.attack_tree, indent=2)
-            if isinstance(self.attack_tree, dict)
-            else self.attack_tree
+        tree = (
+            json.dumps(self.tree, indent=2)
+            if isinstance(self.tree, dict)
+            else self.tree
         )
 
         # Memory retrieval
-        retrieved_memory = []
+        memories = []
 
         try:
             target_desc = (
@@ -167,39 +167,39 @@ class Orchestrator:
             )
 
             # Extract current stage and next tasks
-            current_stage = self.attack_tree.get("stage", "")
+            current_stage = self.tree.get("stage", "")
 
-            next_tasks = self.attack_tree.get("next", [])
+            next_tasks = self.tree.get("next", [])
             if isinstance(next_tasks, list):
                 next_tasks_str = " ".join(next_tasks)
             else:
                 next_tasks_str = str(next_tasks)
 
             # Extract findings
-            findings = self.attack_tree.get("findings", [])
+            findings = self.tree.get("findings", [])
             if isinstance(findings, list):
                 findings_str = " ".join(findings)
             else:
                 findings_str = str(findings)
 
-            extracted = self.attack_tree.get("extracted_data", {})
+            extracted = self.tree.get("data", {})
             findings_str += " " + str(extracted)
 
             # Combine query
-            query_parts = [
+            parts = [
                 target_desc[:200],
                 current_stage,
                 findings_str[:150],
                 next_tasks_str[:200]
             ]
-            query_text = (
-                " ".join(filter(None, query_parts))
+            query = (
+                " ".join(filter(None, parts))
                 or "vulnerability exploitation"
             )
 
             # Query memory collection
             mem_res = self.memory.query(
-                query_texts=[query_text],
+                query_texts=[query],
                 n_results=3
             )
 
@@ -210,13 +210,13 @@ class Orchestrator:
                 and mem_res["documents"][0]
             ):
                 for doc in mem_res["documents"][0]:
-                    retrieved_memory.append(
+                    memories.append(
                         f"[PAST_MEMORY] {doc}"
                     )
 
             # Query knowledge collection
             know_res = self.knowledge.query(
-                query_texts=[query_text],
+                query_texts=[query],
                 n_results=50
             )
 
@@ -231,48 +231,49 @@ class Orchestrator:
                     know_res["distances"][0]
                 ):
                     if dist < 1.5:  # Similarity threshold
-                        retrieved_memory.append(
+                        memories.append(
                             f"[EXTERNAL_KNOWLEDGE] {doc}"
                         )
 
         except Exception as e:
             print(f"  ✗ Memory DB : {e}")
 
-        memory_context = (
-            "\n".join(retrieved_memory)
-            if retrieved_memory
+        memory = (
+            "\n".join(memories)
+            if memories
             else "No relevant memories found."
         )
 
         print(
             f"  ✓ Memory    : "
-            f"{len(retrieved_memory)} chunks injected"
+            f"{len(memories)} chunks injected"
         )
 
         last_raw = ""
-        if self.history_log:
-            last_raw = self.history_log[-1].get("raw_output", "")
+        if self.history:
+            last_raw = self.history[-1].get("raw", "")
 
-        plan_result = self.planner.plan(
-            history_log=self.history_log,
-            fail_streak=self.fail_streak,
-            target=target_str,
-            attack_tree=tree_str,
-            tool_list=self.tool_list,
-            playbook=self.active_playbook,
-            memory_context=memory_context
+        plan_res = self.planner.plan(
+            history=self.history,
+            fails=self.fails,
+            target=target,
+            tree=tree,
+            tools=self.tools,
+            playbook=self.playbook,
+            memory=memory,
+            time_left=time_left
         )
 
-        plan_json = plan_result["parsed_plan"]
+        plan_data = plan_res["plan_data"]
 
-        if plan_json.get("plan", {}).get("finished", False):
+        if plan_data.get("plan", {}).get("finished", False):
             print("  ✓ Planner   : goal achieved")
-            return "Goal Achieved", plan_json
+            return "Goal Achieved", plan_data
 
-        subtask = plan_json.get("plan", {}).get("subtask", "")
-        tool_hint = plan_json.get("plan", {}).get("tool", "")
+        subtask = plan_data.get("plan", {}).get("subtask", "")
+        tool_hint = plan_data.get("plan", {}).get("tool", "")
 
-        tactic = plan_json.get(
+        tactic = plan_data.get(
             "reason",
             {}
         ).get(
@@ -399,9 +400,9 @@ class Orchestrator:
 
                 print(f"  ✓ RAG       : {knowledge_gathered}")
 
-                step_id = f"step_{len(self.history_log) + 1}"
+                step_id = f"step_{len(self.history) + 1}"
 
-                self.history_log.append(
+                self.history.append(
                     {
                         "step_id": step_id,
                         "tactic": tactic,
@@ -430,15 +431,15 @@ class Orchestrator:
 
         norm_subtask = self.normalize(subtask)
 
-        self.subtask_attempts[norm_subtask] = (
-            self.subtask_attempts.get(norm_subtask, 0) + 1
+        self.attempts[norm_subtask] = (
+            self.attempts.get(norm_subtask, 0) + 1
         )
 
-        if self.subtask_attempts[norm_subtask] > 3:
+        if self.attempts[norm_subtask] > 3:
             print(
                 f"  ⚠ Guard     : "
                 f"subtask repeated "
-                f"{self.subtask_attempts[norm_subtask]}x — skipped"
+                f"{self.attempts[norm_subtask]}x — skipped"
             )
 
             exec_json = {
@@ -446,7 +447,7 @@ class Orchestrator:
                 "success": "none"
             }
 
-            verify_json = {
+            verify_data = {
                 "result": "fail",
                 "knowledge": [
                     "Circuit breaker: "
@@ -454,7 +455,7 @@ class Orchestrator:
                 ]
             }
 
-            tactic = plan_json.get(
+            tactic = plan_data.get(
                 "reason",
                 {}
             ).get(
@@ -465,11 +466,11 @@ class Orchestrator:
                 "Unknown"
             )
 
-            self.fail_streak[tactic] = (
-                self.fail_streak.get(tactic, 0) + 1
+            self.fails[tactic] = (
+                self.fails.get(tactic, 0) + 1
             )
 
-            full_output = "[SKIPPED - circuit breaker]"
+            output = "[SKIPPED - circuit breaker]"
             commands = []
 
         else:
@@ -478,22 +479,22 @@ class Orchestrator:
             print("╰──────────────────────────────────────────────────────╯")
 
             exec_result = self.executor.execute_plan(
-                target=target_str,
+                target=target,
                 subtask=subtask,
                 tool_hint=tool_hint,
-                history=self.history_log
+                history=self.history
             )
 
-            exec_json = exec_result["parsed_exec"]
+            exec_json = exec_result["exec_data"]
             commands = exec_json.get("commands", [])
-            success_indicator = exec_json.get("success", "")
+            indicator = exec_json.get("success", "")
 
             print(
                 f"  → Sandbox   : "
                 f"running {len(commands)} command(s)..."
             )
 
-            full_output = ""
+            output = ""
 
             for cmd in commands:
 
@@ -543,21 +544,30 @@ class Orchestrator:
                         f"{e}"
                     )
 
-                full_output += (
+                output += (
                     f"--- Output of '{cmd}' ---\n"
                     f"{out}\n"
                 )
+
+            import re
+            FLAG_REGEX = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
+            flag_match = FLAG_REGEX.search(output)
+            if flag_match:
+                print(f"\n╭─ ORCHESTRATOR ───────────────────────────────────────╮")
+                print("│ Flag Detected in Output!")
+                print("╰──────────────────────────────────────────────────────╯")
+                return flag_match.group(0), {"flag_captured": flag_match.group(0)}
 
             print("\n╭─ VERIFIER ───────────────────────────────────────────╮")
             print("│ Evaluating results...")
             print("╰──────────────────────────────────────────────────────╯")
 
-            verify_result = self.verifier.verify(
+            verify_res = self.verifier.verify(
                 subtask=subtask,
                 commands=commands,
-                success_indicator=success_indicator,
-                output=full_output,
-                hypothesis=plan_json.get(
+                indicator=indicator,
+                output=output,
+                hypothesis=plan_data.get(
                     "reason",
                     {}
                 ).get(
@@ -566,55 +576,68 @@ class Orchestrator:
                 )
             )
 
-            verify_json = verify_result["parsed_verify"]
+            verify_data = verify_res["verify_data"]
 
             MAX_RETRIES = 2
-            refine_attempts = 0
+            refine_tries = 0
 
             while (
-                verify_json.get("result") == "fail"
-                and refine_attempts < MAX_RETRIES
+                verify_data.get("result") == "fail"
+                and refine_tries < MAX_RETRIES
             ):
                 print(
                     f"\n╭─ REFINER ────────────────────────────────────────────╮"
                 )
                 print(
                     f"│ Strategy failed — retry "
-                    f"{refine_attempts + 1}/"
+                    f"{refine_tries + 1}/"
                     f"{MAX_RETRIES}"
                 )
                 print(
                     "╰──────────────────────────────────────────────────────╯"
                 )
 
-                refine_result = self.refiner.refine(
-                    target=target_str,
-                    subtask=subtask,
-                    failed_command=commands,
-                    error_output=full_output,
-                    history=self.compressed_history,
-                    discovered="Findings:\n" + "\n".join(
-                        self.attack_tree.get("findings", [])
-                    ) + "\nExtracted Data:\n" + str(
-                        self.attack_tree.get(
-                            "extracted_data",
-                            {}
+                retry = 0
+                MAX_RETRIES = 3
+                while retry < MAX_RETRIES:
+                    refine_res = self.refiner.refine(
+                        target=target,
+                        subtask=subtask,
+                        failed=commands,
+                        error=output,
+                        history=self.compressed_history,
+                        discovered="Findings:\n" + "\n".join(
+                            self.tree.get("findings", [])
+                        ) + "\nExtracted Data:\n" + str(
+                            self.tree.get(
+                                "data",
+                                {}
+                            )
                         )
                     )
-                )
+                    raw = refine_res.get("raw", "")
+                    if "API Error" in raw or "API Exception" in raw:
+                        print(f"  ↻ REFINER : Transient API error, retrying ({retry+1}/{MAX_RETRIES})...")
+                        retry += 1
+                        import time
+                        time.sleep(2 * retry)
+                        continue
+                    break
 
-                parsed_refine = refine_result.get(
-                    "parsed_refine",
+                refine_tries += 1
+
+                refine_data = refine_res.get(
+                    "refine_data",
                     {}
                 )
 
-                refined_commands = parsed_refine.get(
+                refined_commands = refine_data.get(
                     "commands",
                     []
                 )
 
                 if not refined_commands:
-                    verify_json.setdefault(
+                    verify_data.setdefault(
                         "knowledge",
                         []
                     ).append(
@@ -630,7 +653,7 @@ class Orchestrator:
                 )
 
                 commands = refined_commands
-                full_output = ""
+                output = ""
 
                 for cmd in commands:
 
@@ -683,7 +706,7 @@ class Orchestrator:
                             f"failed: {e}"
                         )
 
-                    full_output += (
+                    output += (
                         f"--- Output of '{cmd}' ---\n"
                         f"{out}\n"
                     )
@@ -693,12 +716,12 @@ class Orchestrator:
                     "evaluating refined results..."
                 )
 
-                verify_result = self.verifier.verify(
+                verify_res = self.verifier.verify(
                     subtask=subtask,
                     commands=commands,
-                    success_indicator=success_indicator,
-                    output=full_output,
-                    hypothesis=plan_json.get(
+                    indicator=indicator,
+                    output=output,
+                    hypothesis=plan_data.get(
                         "reason",
                         {}
                     ).get(
@@ -707,29 +730,29 @@ class Orchestrator:
                     )
                 )
 
-                verify_json = verify_result.get(
-                    "parsed_verify",
-                    verify_json
+                verify_data = verify_res.get(
+                    "verify_data",
+                    verify_data
                 )
 
-                fix_strategy = parsed_refine.get(
+                strategy = refine_data.get(
                     "reason",
                     {}
                 ).get(
-                    "fix_strategy",
-                    "Unknown"
+                    "strategy",
+                    "No strategy provided."
                 )
 
-                verify_json.setdefault(
+                verify_data.setdefault(
                     "knowledge",
                     []
                 ).append(
-                    f"Refinement applied: {fix_strategy}"
+                    f"Refinement applied: {strategy}"
                 )
 
-                refine_attempts += 1
+                refine_tries += 1
 
-            tactic = plan_json.get(
+            tactic = plan_data.get(
                 "reason",
                 {}
             ).get(
@@ -740,18 +763,18 @@ class Orchestrator:
                 "Unknown"
             )
 
-            if verify_json.get("result") == "fail":
-                self.fail_streak[tactic] = (
-                    self.fail_streak.get(tactic, 0) + 1
+            if verify_data.get("result") == "fail":
+                self.fails[tactic] = (
+                    self.fails.get(tactic, 0) + 1
                 )
             else:
-                self.fail_streak[tactic] = 0
+                self.fails[tactic] = 0
 
-        latest_step = {
+        step = {
             "subtask": subtask,
             "commands": commands,
-            "output_summary": full_output[:500],
-            "verification": verify_json
+            "output_summary": output[:500],
+            "verification": verify_data
         }
 
         print(
@@ -762,24 +785,24 @@ class Orchestrator:
             "╰──────────────────────────────────────────────────────╯"
         )
 
-        summary_result = self.summarizer.summarize(
-            attack_tree=tree_str,
-            latest_step=latest_step
+        summary_res = self.summarizer.summarize(
+            tree=tree,
+            step=step
         )
 
-        summary_json = summary_result["parsed_summary"]
+        summary_data = summary_res["summary_data"]
 
-        self.attack_tree = summary_json.get(
-            "attack_tree",
-            self.attack_tree
+        self.tree = summary_data.get(
+            "tree",
+            self.tree
         )
 
-        step_id = f"step_{len(self.history_log) + 1}"
+        step_id = f"step_{len(self.history) + 1}"
 
-        self.history_log.append(
+        self.history.append(
             {
                 "step_id": step_id,
-                "tactic": plan_json.get(
+                "tactic": plan_data.get(
                     "reason",
                     {}
                 ).get(
@@ -790,19 +813,19 @@ class Orchestrator:
                     "Unknown"
                 ),
                 "plan": subtask,
-                "observation": summary_json.get(
+                "observation": summary_data.get(
                     "summary",
                     ""
                 ),
-                "result": verify_json.get(
+                "result": verify_data.get(
                     "result",
                     "unknown"
                 ),
-                "raw_output_preview": full_output[:1500]
+                "raw": output[:3000]
             }
         )
 
-        new_obs = summary_json.get(
+        new_obs = summary_data.get(
             "summary",
             ""
         )
@@ -818,6 +841,6 @@ class Orchestrator:
             )
 
         return (
-            summary_json.get("summary", ""),
+            summary_data.get("summary", ""),
             exec_json
         )

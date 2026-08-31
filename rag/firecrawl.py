@@ -8,6 +8,10 @@ URL = "https://api.firecrawl.dev/v1/scrape"
 
 # Scrape URL via Firecrawl
 def scrape(target: str) -> tuple[Optional[str], Optional[str]]:
+    api_key = os.environ.get('FIRECRAWL_API_KEY')
+    if not api_key:
+        return None, "MISSING_API_KEY"
+
     payload = json.dumps({
         "url": target,
         "formats": ["markdown"]
@@ -22,7 +26,7 @@ def scrape(target: str) -> tuple[Optional[str], Optional[str]]:
             data=payload,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {os.environ['FIRECRAWL_API_KEY']}",
+                "Authorization": f"Bearer {api_key}",
                 "User-Agent": "Mozilla/5.0"
             },
         )

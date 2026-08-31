@@ -25,10 +25,10 @@ class PlannerAgent(PentestAgent):
             tokens=tokens
         )
 
-    def build_history(self, history_log, fail_streak):
+    def build_history(self, history, fails):
         notices = []
 
-        for tactic, streak in fail_streak.items():
+        for tactic, streak in fails.items():
             if streak >= 3:
                 notices.append(
                     {
@@ -45,23 +45,24 @@ class PlannerAgent(PentestAgent):
                     }
                 )
 
-        return notices + history_log[-15:]
+        return notices + history[-15:]
 
     def plan(
         self,
-        history_log,
-        fail_streak,
+        history,
+        fails,
         target,
-        attack_tree,
-        tool_list,
+        tree,
+        tools,
         playbook=None,
-        memory_context="None"
+        memory="None",
+        time_left=None
     ):
         if playbook is None:
             playbook = {}
 
-        history = self.build_history(history_log, fail_streak)
-        last_output = history_log[-1].get("raw_output", "") if history_log else ""
+        history = self.build_history(history, fails)
+        last_output = history[-1].get("raw", "") if history else ""
 
 
         # Format history
@@ -81,7 +82,7 @@ class PlannerAgent(PentestAgent):
         # Format system prompts
         system_content = (
             SYSTEM_PROMPT
-            .replace("<TOOL_LIST>", tool_list)
+            .replace("<TOOL_LIST>", tools)
             .replace(
                 "<CATEGORY>",
                 playbook.get("category", "default")
@@ -93,10 +94,11 @@ class PlannerAgent(PentestAgent):
 
         user_content = USER_PROMPT.format(
             target=target,
-            tool_list=tool_list,
-            attack_tree=attack_tree,
+            tools=tools,
+            tree=tree,
             last_output=last_output or "No previous command output.",
-            memory=memory_context,
+            memory=memory,
+            time_left=time_left if time_left is not None else "Unknown",
             history=history_str
         )
 
@@ -131,9 +133,9 @@ class PlannerAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            parsed_plan = json.loads(json_str)
+            plan_data = json.loads(json_str)
 
-            plan = parsed_plan.get("plan", {})
+            plan = plan_data.get("plan", {})
             subtask = plan.get("subtask", "plan generated")
 
             print(f"  ✓ Planner    : {subtask}")
@@ -141,7 +143,7 @@ class PlannerAgent(PentestAgent):
         except json.JSONDecodeError as e:
             print(f"  ✗ Planner    : JSON parse failed - {e}")
 
-            parsed_plan = {
+            plan_data = {
                 "reason": {
                     "error": "Failed to parse JSON"
                 },
@@ -152,8 +154,8 @@ class PlannerAgent(PentestAgent):
             }
 
         return {
-            "parsed_plan": parsed_plan,
+            "plan_data": plan_data,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
-            "raw_output": text
+            "raw": text
         }

@@ -29,8 +29,8 @@ class RefinerAgent(PentestAgent):
         self,
         target,
         subtask,
-        failed_command,
-        error_output,
+        failed,
+        error,
         history,
         discovered=""
     ):
@@ -42,18 +42,18 @@ class RefinerAgent(PentestAgent):
             history_str = str(history)
 
         # Format commands
-        if isinstance(failed_command, list):
-            failed_command_str = json.dumps(failed_command)
+        if isinstance(failed, list):
+            failed_command_str = json.dumps(failed)
         else:
-            failed_command_str = str(failed_command)
+            failed_command_str = str(failed)
 
         # Format user prompt
         user_content = USER_PROMPT.format(
             target=target,
             discovered=discovered or "Not yet collected.",
             subtask=subtask,
-            failed_command=failed_command_str,
-            error_output=error_output,
+            failed=failed_command_str,
+            error=error,
             history=history_str
         )
 
@@ -88,14 +88,14 @@ class RefinerAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            parsed_refine = json.loads(json_str)
+            refine_data = json.loads(json_str)
 
             print("  ✓ Refiner    : command refined")
 
         except json.JSONDecodeError as e:
             print(f"  ✗ Refiner    : JSON parse failed - {e}")
 
-            parsed_refine = {
+            refine_data = {
                 "reason": {
                     "error": "Failed to parse JSON"
                 },
@@ -103,8 +103,8 @@ class RefinerAgent(PentestAgent):
             }
 
         return {
-            "parsed_refine": parsed_refine,
+            "refine_data": refine_data,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
-            "raw_output": text
+            "raw": text
         }

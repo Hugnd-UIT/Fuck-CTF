@@ -20,7 +20,7 @@ def search_github(word: str) -> dict:
 
         for item in items:
             title = item.get("title", "")
-            body = item.get("body", "")
+            body = item.get("body") or ""
 
             try:
                 from agent.pentest import PentestAgent
@@ -28,7 +28,7 @@ def search_github(word: str) -> dict:
 
                 # Initialize issue scorer
                 scorer = PentestAgent(
-                    model="deepseek/deepseek-v4-flash",
+                    model=os.getenv("GITHUB_MODEL", "deepseek/deepseek-v4-flash"),
                     temperature=0.1,
                     tokens=50
                 )
@@ -77,16 +77,16 @@ def search_github(word: str) -> dict:
                 if isinstance(score, (int, float)) and score < 70:
                     continue
 
+                results.append({
+                    "title": title,
+                    "url": item.get("html_url"),
+                    "state": item.get("state"),
+                    "body": body
+                })
+
             except Exception as e:
                 print(f"  ✗ GitHub error: {e}")
                 pass
-
-            results.append({
-                "title": title,
-                "url": item.get("html_url"),
-                "state": item.get("state"),
-                "body": body
-            })
 
             if len(results) >= 5:
                 break

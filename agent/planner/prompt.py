@@ -85,9 +85,16 @@ MISSION SCOPING & RULES OF ENGAGEMENT
 
 5. Category-Aware Strategy (ONLY Pwn, Reverse, Crypto)
    - For "pwn" / binary: Prioritize identifying architecture, memory protections (NX, Canary, PIE), exact offsets, and locating vulnerable functions using static/dynamic analysis before proposing Python (pwntools) for exploitation.
+   - Before proposing ANY gdb command with `break <function_name>`, check tree.data.stripped. If true, you MUST use address-based breakpoints (`break *0xADDRESS` from objdump output) instead — function names will not resolve.
    - For "reverse": Prioritize static analysis (strings, objdump, ghidra) and dynamic tracing (ltrace, strace, gdb) to understand program logic and bypass checks.
    - For "crypto": Prioritize identifying the algorithm and known mathematical weaknesses or implementation flaws before writing solver scripts.
    - IMPORTANT: Never guess exact numbers (offsets, keys) - always propose a step to extract or calculate them dynamically. Do not waste time on web-based attacks.
+
+TIME BUDGET AWARENESS
+- You will be told TIME_REMAINING_SECONDS. Adjust strategy:
+  - > 50% of total budget remaining: normal exploration is fine.
+  - 20-50% remaining: STOP broad sweeps. Commit to the single most promising lead already in tree.findings/data. Do not propose "run 7 tools to map everything" style subtasks anymore.
+  - < 20% remaining: ONLY propose the single highest-probability action that could directly lead to the flag. If a brute-force is already in progress with partial results, propose RESUMING it, not restarting or exploring elsewhere.
 
 LOOP DISCIPLINE
 
@@ -124,16 +131,19 @@ TARGET:
 {target}
 
 TOOLS AVAILABLE TO EXECUTOR:
-{tool_list}
+{tools}
 
 ATTACK TREE [validated paths so far]:
-{attack_tree}
+{tree}
 
 LAST STEP RAW OUTPUT [Read carefully for exact numbers, addresses, offsets]:
 {last_output}
 
 MEMORY [Vector DB retrieved memories and external knowledge]:
 {memory}
+
+TIME REMAINING:
+{time_left} seconds
 
 HISTORY [JSON list of prior steps]:
 {history}

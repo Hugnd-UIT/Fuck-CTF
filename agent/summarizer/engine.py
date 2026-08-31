@@ -25,15 +25,15 @@ class SummarizerAgent(PentestAgent):
             tokens=tokens
         )
 
-    def summarize(self, attack_tree, latest_step):
+    def summarize(self, tree, step):
 
         # Format prompts
         user_content = USER_PROMPT.format(
-            attack_tree=attack_tree,
-            latest_step=(
-                latest_step
-                if isinstance(latest_step, str)
-                else json.dumps(latest_step, indent=2)
+            tree=tree,
+            step=(
+                step
+                if isinstance(step, str)
+                else json.dumps(step, indent=2)
             )
         )
 
@@ -68,27 +68,27 @@ class SummarizerAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            parsed_summary = json.loads(json_str)
+            summary_data = json.loads(json_str)
 
             print(
                 f"  ✓ Summarizer : "
-                f"{parsed_summary.get('summary', 'completed')}"
+                f"{summary_data.get('summary', 'completed')}"
             )
 
         except json.JSONDecodeError as e:
             print(f"  ✗ Summarizer : JSON parse failed - {e}")
 
-            parsed_summary = {
+            summary_data = {
                 "reason": {
                     "error": "Failed to parse JSON"
                 },
-                "attack_tree": attack_tree,
+                "tree": tree,
                 "summary": "Error parsing summary"
             }
 
         return {
-            "parsed_summary": parsed_summary,
+            "summary_data": summary_data,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
-            "raw_output": text
+            "raw": text
         }

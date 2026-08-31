@@ -29,7 +29,7 @@ class VerifierAgent(PentestAgent):
         self,
         subtask,
         commands,
-        success_indicator,
+        indicator,
         output,
         hypothesis=None
     ):
@@ -44,7 +44,7 @@ class VerifierAgent(PentestAgent):
             hypothesis=hypothesis_str,
             subtask=subtask,
             commands=json.dumps(commands),
-            success_indicator=success_indicator,
+            indicator=indicator,
             output=output
         )
 
@@ -79,12 +79,12 @@ class VerifierAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            parsed_verify = json.loads(json_str)
+            verify_data = json.loads(json_str)
 
         except json.JSONDecodeError as e:
             print(f"  ✗ Verifier   : JSON parse failed - {e}")
 
-            parsed_verify = {
+            verify_data = {
                 "reason": {
                     "error": "Failed to parse JSON"
                 },
@@ -96,12 +96,12 @@ class VerifierAgent(PentestAgent):
         else:
             print(
                 f"  ✓ Verifier   : "
-                f"{parsed_verify.get('result', 'unknown')}"
+                f"{verify_data.get('result', 'unknown')}"
             )
 
         return {
-            "parsed_verify": parsed_verify,
+            "verify_data": verify_data,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
-            "raw_output": text
+            "raw": text
         }

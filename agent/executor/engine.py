@@ -78,9 +78,9 @@ class ExecutorAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            parsed_exec = json.loads(json_str)
+            exec_data = json.loads(json_str)
 
-            commands = parsed_exec.get("commands", [])
+            commands = exec_data.get("commands", [])
             print(
                 f"  ✓ Executor   : "
                 f"{len(commands)} command(s) generated"
@@ -89,7 +89,7 @@ class ExecutorAgent(PentestAgent):
         except json.JSONDecodeError as e:
             print(f"  ✗ Executor   : JSON parse failed - {e}")
 
-            parsed_exec = {
+            exec_data = {
                 "reason": {
                     "error": "Failed to parse JSON"
                 },
@@ -101,8 +101,8 @@ class ExecutorAgent(PentestAgent):
             }
 
         return {
-            "parsed_exec": parsed_exec,
+            "exec_data": exec_data,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
-            "raw_output": text
+            "raw": text
         }

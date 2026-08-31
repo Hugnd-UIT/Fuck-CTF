@@ -5,7 +5,7 @@ _schema = json.dumps(
     {
         "reason": {
             "analysis": (
-                "Compare actual output against success_indicator. "
+                "Compare actual output against indicator. "
                 "Did the command do what it intended?"
             ),
             "discovery": (
@@ -28,7 +28,7 @@ _example = json.dumps(
     {
         "reason": {
             "analysis": (
-                "The success_indicator was 'Arch:'. "
+                "The indicator was 'Arch:'. "
                 "The output shows 'Arch: i386-32-little' and "
                 "'NX: NX enabled'."
             ),
@@ -61,7 +61,7 @@ RULES OF EVALUATION
 
 2. Result Categorization
    - "success": The command executed perfectly, found what it was looking
-     for, AND confirmed the hypothesis [matched success_indicator].
+     for, AND confirmed the hypothesis [matched indicator].
    - "fail": The command errored out, found nothing, OR explicitly disproved
      the hypothesis.
    - "partial": The command ran successfully but didn't fully achieve the
@@ -115,7 +115,7 @@ COMMAND[S] RUN:
 {commands}
 
 EXPECTED SUCCESS INDICATOR:
-{success_indicator}
+{indicator}
 
 ACTUAL OUTPUT [STDOUT/STDERR]:
 {output}
