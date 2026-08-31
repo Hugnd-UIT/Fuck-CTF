@@ -9,160 +9,220 @@ from .verifier.engine import VerifierAgent
 from .refiner.engine import RefinerAgent
 from .summarizer.engine import SummarizerAgent
 from .reflector.engine import ReflectorAgent
+
 from timeline import print_node, print_line, print_error, format_time
 
-from .core.state import StateManager
-from .core.memory import MemoryManager
-from .core.sandbox import run_commands
+from .core import state
+from .core import memory
+from .core import sandbox as sb
 
 class Orchestrator:
     def __init__(self, config, container=None):
-        # Load agent-specific configs
-        p_cfg = config.get("planner", {})
-        e_cfg = config.get("executor", {})
-        v_cfg = config.get("verifier", {})
-        r_cfg = config.get("refiner", {})
-        s_cfg = config.get("summarizer", {})
-        ref_cfg = config.get("reflector", {})
+        
+        p = config.get("planner", {})
+        e = config.get("executor", {})
+        v = config.get("verifier", {})
+        r = config.get("refiner", {})
+        s = config.get("summarizer", {})
+        ref = config.get("reflector", {})
 
-        # Initialize agents
-        self.planner = PlannerAgent(model=p_cfg.get("model"), local=p_cfg.get("local", False), temperature=p_cfg.get("temperature", 0.7), top=p_cfg.get("top", 1.0), sample=p_cfg.get("sample", False), tokens=p_cfg.get("tokens", 1024))
-        self.executor = ExecutorAgent(model=e_cfg.get("model"), local=e_cfg.get("local", False), temperature=e_cfg.get("temperature", 0.2), top=e_cfg.get("top", 1.0), sample=e_cfg.get("sample", False), tokens=e_cfg.get("tokens", 1024))
-        self.verifier = VerifierAgent(model=v_cfg.get("model"), local=v_cfg.get("local", False), temperature=v_cfg.get("temperature", 0.1), top=v_cfg.get("top", 1.0), sample=v_cfg.get("sample", False), tokens=v_cfg.get("tokens", 1024))
-        self.refiner = RefinerAgent(model=r_cfg.get("model"), local=r_cfg.get("local", False), temperature=r_cfg.get("temperature", 0.2), top=r_cfg.get("top", 1.0), sample=r_cfg.get("sample", False), tokens=r_cfg.get("tokens", 1024))
-        self.summarizer = SummarizerAgent(model=s_cfg.get("model"), local=s_cfg.get("local", False), temperature=s_cfg.get("temperature", 0.3), top=s_cfg.get("top", 1.0), sample=s_cfg.get("sample", False), tokens=s_cfg.get("tokens", 1024))
-        self.reflector = ReflectorAgent(model=ref_cfg.get("model"), local=ref_cfg.get("local", False), temperature=ref_cfg.get("temperature", 0.7), top=ref_cfg.get("top", 1.0), sample=ref_cfg.get("sample", False), tokens=ref_cfg.get("tokens", 4096))
+        self.planner = PlannerAgent(
+            model=p.get("model"), 
+            local=p.get("local", False), 
+            temperature=p.get("temperature", 0.7), 
+            top=p.get("top", 1.0), 
+            sample=p.get("sample", False), 
+            tokens=p.get("tokens", 1024)
+        )
+        
+        self.executor = ExecutorAgent(
+            model=e.get("model"), 
+            local=e.get("local", False), 
+            temperature=e.get("temperature", 0.2), 
+            top=e.get("top", 1.0), 
+            sample=e.get("sample", False), 
+            tokens=e.get("tokens", 1024)
+        )
+        
+        self.verifier = VerifierAgent(
+            model=v.get("model"), 
+            local=v.get("local", False), 
+            temperature=v.get("temperature", 0.1), 
+            top=v.get("top", 1.0), 
+            sample=v.get("sample", False), 
+            tokens=v.get("tokens", 1024)
+        )
+        
+        self.refiner = RefinerAgent(
+            model=r.get("model"), 
+            local=r.get("local", False), 
+            temperature=r.get("temperature", 0.2), 
+            top=r.get("top", 1.0), 
+            sample=r.get("sample", False), 
+            tokens=r.get("tokens", 1024)
+        )
+        
+        self.summarizer = SummarizerAgent(
+            model=s.get("model"), 
+            local=s.get("local", False), 
+            temperature=s.get("temperature", 0.3), 
+            top=s.get("top", 1.0), 
+            sample=s.get("sample", False), 
+            tokens=s.get("tokens", 1024)
+        )
+        
+        self.reflector = ReflectorAgent(
+            model=ref.get("model"), 
+            local=ref.get("local", False), 
+            temperature=ref.get("temperature", 0.7), 
+            top=ref.get("top", 1.0), 
+            sample=ref.get("sample", False), 
+            tokens=ref.get("tokens", 4096)
+        )
 
-        # Load playbook
         try:
             with open("playbooks.json", "r") as f:
-                self.playbooks = json.load(f)
+                self.books = json.load(f)
         except:
-            self.playbooks = {}
+            self.books = {}
 
         category = config.get("target", {}).get("category", "default")
-        self.playbook = {
+        
+        self.book = {
             "category": category,
-            **self.playbooks.get("playbooks", {}).get(category, self.playbooks.get("playbooks", {}).get("default", {}))
+            **self.books.get("playbooks", {}).get(category, self.books.get("playbooks", {}).get("default", {}))
         }
 
-        self.tools = self.playbooks.get("tools", config.get("tools", "nmap, gobuster, curl, nc, python3, gdb"))
+        self.tools = self.books.get("tools", config.get("tools", "nmap, gobuster, curl, nc, python3, gdb"))
 
-        self.state = StateManager(self.playbook)
-        self.memory_manager = MemoryManager()
+        state.init(self.book)
+        memory.init()
 
     def execute(self, target, sandbox, time_left=None):
-        start_plan = time.time()
+        start = time.time()
+        
         category = target.get("category", "") if isinstance(target, dict) else ""
+        
         target_str = json.dumps(target, indent=2) if isinstance(target, dict) else target
-        target_desc = target.get("description", "") if isinstance(target, dict) else str(target)
+        
+        desc = target.get("description", "") if isinstance(target, dict) else str(target)
 
-        # Check workspace empty
         workspace = os.path.join(os.getcwd(), 'workspace')
         if os.path.exists(workspace):
             files = os.listdir(workspace)
             if not files:
-                self.state.absorb({"Environment": "Directory /data is EMPTY. This is a black-box challenge. DO NOT try to read files."})
+                state.absorb({"Environment": "Directory /data is EMPTY. This is a black-box challenge. DO NOT try to read files."})
             else:
-                self.state.absorb({"Environment": f"Directory /data contains: {files}."})
+                state.absorb({"Environment": f"Directory /data contains: {files}."})
 
-        # Memory retrieval
-        next_tasks_str = " ".join(self.state.tree.get("next", [])) if isinstance(self.state.tree.get("next"), list) else str(self.state.tree.get("next", ""))
-        findings_str = " ".join(self.state.tree.get("findings", [])) if isinstance(self.state.tree.get("findings"), list) else str(self.state.tree.get("findings", ""))
-        findings_str += " " + str(self.state.tree.get("data", {}))
+        next_str = " ".join(state.tree.get("next", [])) if isinstance(state.tree.get("next"), list) else str(state.tree.get("next", ""))
         
-        memories = self.memory_manager.query_context(target_desc, self.state.tree.get("stage", ""), findings_str, next_tasks_str)
-        memory_str = "\n".join(memories) if memories else "No relevant memories found."
+        findings = " ".join(state.tree.get("findings", [])) if isinstance(state.tree.get("findings"), list) else str(state.tree.get("findings", ""))
+        findings += " " + str(state.tree.get("data", {}))
+        
+        memories = memory.query(desc, state.tree.get("stage", ""), findings, next_str)
+        mem_str = "\n".join(memories) if memories else "No relevant memories found."
 
-        # Planning
         plan_res = self.planner.plan(
-            history=self.state.history, fails=self.state.fails, target=target_str, tree=self.state.tree,
-            tools=self.tools, playbook=self.playbook, memory=memory_str, time_left=time_left,
-            facts=self.state.store, warns=self.state.alerts
+            history=state.history, fails=state.fails, target=target_str, tree=state.tree,
+            tools=self.tools, playbook=self.book, memory=mem_str, time_left=time_left,
+            facts=state.store, warns=state.alerts
         )
-        plan_data = plan_res["plan_data"]
-        elapsed_plan = time.time() - start_plan
+        
+        plan = plan_res["plan_data"]
+        elapsed = time.time() - start
 
-        if plan_data.get("plan", {}).get("finished", False):
-            print_node("Planning...", format_time(elapsed_plan), "cyan")
+        if plan.get("plan", {}).get("finished", False):
+            print_node("Planning...", format_time(elapsed), "cyan")
             print_line("└─ Goal achieved")
-            return "Goal Achieved", plan_data
+            return "Goal Achieved", plan
 
-        subtask = plan_data.get("plan", {}).get("subtask", "")
-        print_node("Planning...", format_time(elapsed_plan), "cyan")
+        sub = plan.get("plan", {}).get("subtask", "")
+        
+        print_node("Planning...", format_time(elapsed), "cyan")
+        
         if memories:
             print_line("├─ Thinking...")
-        print_line(f"└─ {subtask}")
+            
+        print_line(f"└─ {sub}")
 
-        tactic = plan_data.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
+        tactic = plan.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
 
-        # RAG
         if tactic == "Retrieval-Augmented-Generation":
-            rag_result = self.memory_manager.execute_rag(subtask, len(self.state.history))
-            if rag_result:
-                self.state.history.append(rag_result)
+            rag = memory.execute(sub, len(state.history))
+            if rag:
+                state.history.append(rag)
             return "Knowledge Retrieval Completed", {"commands": [], "success": "none"}
 
-        # Circuit Breaker
-        norm_subtask = self.state.normalize(subtask)
-        self.state.attempts[norm_subtask] = self.state.attempts.get(norm_subtask, 0) + 1
-        if self.state.attempts[norm_subtask] > 3:
-            print_error(f"Guard: subtask repeated {self.state.attempts[norm_subtask]}x — skipped")
-            self.state.fails[tactic] = self.state.fails.get(tactic, 0) + 1
-            exec_json = {"commands": [], "success": "none"}
-            verify_data = {"result": "fail", "knowledge": ["Circuit breaker: subtask repeated too many times."]}
-            output = "[SKIPPED - circuit breaker]"
-            commands = []
-        else:
-            # Execution
-            start_exec = time.time()
-            exec_result = self.executor.execute_plan(target=target_str, subtask=subtask, tool_hint=plan_data.get("plan", {}).get("tool", ""), history=self.state.history)
-            exec_json = exec_result["exec_data"]
-            commands = exec_json.get("commands", [])
-            indicator = exec_json.get("success", "")
-
-            elapsed_exec = time.time() - start_exec
-            print_node("Executing...", format_time(elapsed_exec), "magenta")
+        norm = state.normalize(sub)
+        state.attempts[norm] = state.attempts.get(norm, 0) + 1
+        
+        if state.attempts[norm] > 3:
+            print_error(f"Guard: subtask repeated {state.attempts[norm]}x — skipped")
             
-            for i, cmd in enumerate(commands):
-                prefix = "└─ " if i == len(commands) - 1 else "├─ "
+            state.fails[tactic] = state.fails.get(tactic, 0) + 1
+            exec_json = {"commands": [], "success": "none"}
+            verif = {"result": "fail", "knowledge": ["Circuit breaker: subtask repeated too many times."]}
+            out = "[SKIPPED - circuit breaker]"
+            cmds = []
+            
+        else:
+            exec_start = time.time()
+            
+            exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=plan.get("plan", {}).get("tool", ""), history=state.history)
+            
+            exec_json = exec_res["exec_data"]
+            cmds = exec_json.get("commands", [])
+            ind = exec_json.get("success", "")
+
+            exec_time = time.time() - exec_start
+            print_node("Executing...", format_time(exec_time), "magenta")
+            
+            for i, cmd in enumerate(cmds):
+                prefix = "└─ " if i == len(cmds) - 1 else "├─ "
                 print_line(f"{prefix}$ {cmd}")
 
-            output = run_commands(sandbox, commands, category, exec_json.get("timeout", 30))
+            out = sb.run(sandbox, cmds, category, exec_json.get("timeout", 30))
 
             FLAG = re.compile(r"(?:[a-zA-Z0-9_]{0,10}CTF|crypto|flag|HTB)\{[^}\s]{1,200}\}", re.IGNORECASE)
-            flag_match = FLAG.search(output)
-            if flag_match:
-                return flag_match.group(0), {"flag_captured": flag_match.group(0)}
-
-            # Verification
-            start_verif = time.time()
-            verify_res = self.verifier.verify(subtask=subtask, commands=commands, indicator=indicator, output=output, hypothesis=plan_data.get("reason", {}).get("hypothesis", {}), facts=self.state.store)
-            verify_data = verify_res["verify_data"]
-            elapsed_verif = time.time() - start_verif
+            match = FLAG.search(out)
             
-            if verify_data.get("result") == "pass":
+            if match:
+                return match.group(0), {"flag_captured": match.group(0)}
+
+            v_start = time.time()
+            
+            v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
+            verif = v_res["verify_data"]
+            
+            v_time = time.time() - v_start
+            
+            if verif.get("result") == "pass":
                 print_node("Verifying...", "[ Pass ]", "green")
             else:
                 print_node("Verifying...", "[ Fail ]", "red")
                 
-            knowledge = verify_data.get("knowledge", [])
-            if knowledge:
-                print_line(f"└─ {knowledge[0]}")
+            know = verif.get("knowledge", [])
+            
+            if know:
+                print_line(f"└─ {know[0]}")
             else:
-                print_line(f"└─ Evaluated {len(commands)} command(s)")
+                print_line(f"└─ Evaluated {len(cmds)} command(s)")
 
-            # Refinement
-            refine_tries = 0
-            while verify_data.get("result") == "fail" and refine_tries < 2:
-                print_node("Refining...", f"Retry {refine_tries + 1} / 2", "yellow")
+            tries = 0
+            
+            while verif.get("result") == "fail" and tries < 2:
+                print_node("Refining...", f"Retry {tries + 1} / 2", "yellow")
+                
                 retry = 0
                 while retry < 3:
-                    refine_res = self.refiner.refine(
-                        target=target_str, subtask=subtask, failed=commands, error=output, history=self.state.compressed_history,
-                        discovered="Findings:\n" + "\n".join(self.state.tree.get("findings", [])) + "\nExtracted Data:\n" + str(self.state.tree.get("data", {}))
+                    r_res = self.refiner.refine(
+                        target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
+                        discovered="Findings:\n" + "\n".join(state.tree.get("findings", [])) + "\nExtracted Data:\n" + str(state.tree.get("data", {}))
                     )
-                    raw = refine_res.get("raw", "")
+                    
+                    raw = r_res.get("raw", "")
+                    
                     if "API Error" in raw or "API Exception" in raw:
                         print_line(f"├─ Transient API error, retrying ({retry+1}/3)...")
                         retry += 1
@@ -170,99 +230,108 @@ class Orchestrator:
                         continue
                     break
 
-                refine_data = refine_res.get("refine_data", {})
-                refined_commands = refine_data.get("commands", [])
-                if not refined_commands:
-                    verify_data.setdefault("knowledge", []).append("Refinement failed to produce new commands.")
+                r_data = r_res.get("refine_data", {})
+                r_cmds = r_data.get("commands", [])
+                
+                if not r_cmds:
+                    verif.setdefault("knowledge", []).append("Refinement failed to produce new commands.")
                     print_line("└─ Failed to produce new commands")
                     break
 
-                for i, cmd in enumerate(refined_commands):
-                    prefix = "└─ " if i == len(refined_commands) - 1 else "├─ "
+                for i, cmd in enumerate(r_cmds):
+                    prefix = "└─ " if i == len(r_cmds) - 1 else "├─ "
                     print_line(f"{prefix}$ {cmd}")
 
-                commands = refined_commands
-                output = run_commands(sandbox, commands, category, refine_data.get("timeout", exec_json.get("timeout", 30)))
-
-                start_verif_retry = time.time()
-                verify_res = self.verifier.verify(subtask=subtask, commands=commands, indicator=indicator, output=output, hypothesis=plan_data.get("reason", {}).get("hypothesis", {}), facts=self.state.store)
-                verify_data = verify_res.get("verify_data", verify_data)
+                cmds = r_cmds
                 
-                if verify_data.get("result") == "pass":
+                out = sb.run(sandbox, cmds, category, r_data.get("timeout", exec_json.get("timeout", 30)))
+
+                v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
+                verif = v_res.get("verify_data", verif)
+                
+                if verif.get("result") == "pass":
                     print_node("Verifying...", "[ Pass ]", "green")
                 else:
                     print_node("Verifying...", "[ Fail ]", "red")
                 
-                knowledge = verify_data.get("knowledge", [])
-                if knowledge:
-                    print_line(f"└─ {knowledge[0]}")
+                know = verif.get("knowledge", [])
+                if know:
+                    print_line(f"└─ {know[0]}")
                 else:
-                    print_line(f"└─ Evaluated {len(commands)} command(s)")
+                    print_line(f"└─ Evaluated {len(cmds)} command(s)")
 
-                strategy = refine_data.get("reason", {}).get("strategy", "No strategy provided.")
-                verify_data.setdefault("knowledge", []).append(f"Refinement applied: {strategy}")
-                refine_tries += 1
+                strat = r_data.get("reason", {}).get("strategy", "No strategy provided.")
+                verif.setdefault("knowledge", []).append(f"Refinement applied: {strat}")
+                
+                tries += 1
 
-            if verify_data.get("result") == "fail":
-                self.state.fails[tactic] = self.state.fails.get(tactic, 0) + 1
+            if verif.get("result") == "fail":
+                state.fails[tactic] = state.fails.get(tactic, 0) + 1
             else:
-                self.state.fails[tactic] = 0
+                state.fails[tactic] = 0
 
-        # Summarizing
-        start_sum = time.time()
-        step = {"subtask": subtask, "commands": commands, "output_summary": output[-8000:], "verification": verify_data}
-        summary_res = self.summarizer.summarize(tree=self.state.tree, step=step)
-        summary_data = summary_res["summary_data"]
+        sum_start = time.time()
+        
+        step = {"subtask": sub, "commands": cmds, "output_summary": out[-8000:], "verification": verif}
+        sum_res = self.summarizer.summarize(tree=state.tree, step=step)
+        sum_data = sum_res["summary_data"]
 
-        self.state.tree = summary_data.get("tree", self.state.tree)
-        new_tree = summary_data.get("tree", {})
+        state.tree = sum_data.get("tree", state.tree)
+        new_tree = sum_data.get("tree", {})
         new_data = new_tree.get("data", {})
 
-        data_alerts = self.state.diff(new_data)    
-        tree_alerts = self.state.guard()
-        self.state.alerts = data_alerts + tree_alerts
+        alerts_d = state.diff(new_data)    
+        alerts_t = state.guard()
+        state.alerts = alerts_d + alerts_t
 
-        self.state.absorb(new_data)   
-        self.state.snap()
+        state.absorb(new_data)   
+        state.snap()
 
-        elapsed_sum = time.time() - start_sum
-        print_node("Summarizing...", format_time(elapsed_sum), "cyan")
+        sum_time = time.time() - sum_start
+        print_node("Summarizing...", format_time(sum_time), "cyan")
         print_line("Information updating...")
 
-        if self.state.alerts:
-            print_error(f"Contradiction: {len(self.state.alerts)} item(s) vanished or changed")
+        if state.alerts:
+            print_error(f"Contradiction: {len(state.alerts)} item(s) vanished or changed")
         else:
             print_line("└─ ✓ No contradictions detected")
 
-        step_id = f"step_{len(self.state.history) + 1}"
-        self.state.history.append({
-            "step_id": step_id,
+        id = f"step_{len(state.history) + 1}"
+        
+        state.history.append({
+            "step_id": id,
             "tactic": tactic,
-            "plan": subtask,
-            "observation": summary_data.get("summary", ""),
-            "result": verify_data.get("result", "unknown"),
-            "raw": output[:3000]
+            "plan": sub,
+            "observation": sum_data.get("summary", ""),
+            "result": verif.get("result", "unknown"),
+            "raw": out[:3000]
         })
 
-        new_obs = summary_data.get("summary", "")
-        self.state.compressed_history += f"\n[{step_id}] {new_obs}"
-        if len(self.state.compressed_history) > 3000:
-            self.state.compressed_history = "...[truncated]\n" + self.state.compressed_history[-3000:]
+        obs = sum_data.get("summary", "")
+        state.compressed += f"\n[{id}] {obs}"
+        
+        if len(state.compressed) > 3000:
+            state.compressed = "...[truncated]\n" + state.compressed[-3000:]
 
-        # Reflecting
-        step_count = len(self.state.history)
-        consecutive_fails = max(self.state.fails.values()) if self.state.fails else 0
-        if step_count in [3, 6, 9] and consecutive_fails >= 2:
-            time_used = str(int(3600 - (time_left or 3600)))
-            start_ref = time.time()
-            ref_res = self.reflector.review(history=self.state.history, facts=self.state.store, target=target_str, time_used=time_used, time_total="3600")
-            elapsed_ref = time.time() - start_ref
-            print_node("Reflecting...", format_time(elapsed_ref), "magenta")
+        count = len(state.history)
+        fails = max(state.fails.values()) if state.fails else 0
+        
+        if count in [3, 6, 9] and fails >= 2:
+            used = str(int(3600 - (time_left or 3600)))
+            ref_start = time.time()
+            
+            ref_res = self.reflector.review(history=state.history, facts=state.store, target=target_str, time_used=used, time_total="3600")
+            
+            ref_time = time.time() - ref_start
+            
+            print_node("Reflecting...", format_time(ref_time), "magenta")
             print_line("└─ Stuck state analyzed and replanned")
-            review_data = ref_res["review_data"]
-            advice = review_data.get("advice", "")
-            tactic_ref = review_data.get("tactic", "")
-            if advice or tactic_ref:
-                self.state.alerts.append(f"[REFLECTOR ADVICE] {tactic_ref} - {advice}")
+            
+            review = ref_res["review_data"]
+            adv = review.get("advice", "")
+            tac = review.get("tactic", "")
+            
+            if adv or tac:
+                state.alerts.append(f"[REFLECTOR ADVICE] {tac} - {adv}")
 
-        return summary_data.get("summary", ""), exec_json
+        return sum_data.get("summary", ""), exec_json
