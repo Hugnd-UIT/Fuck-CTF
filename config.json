@@ -41,7 +41,7 @@
     },
     "tools": "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, john, hashcat, binwalk, exiftool, steghide, linpeas",
     "sandbox": "ctf",
-    "timeout": 30,
+    "timeout": 120,
     "limit": 2000,
     "flag": "crypto{FLAG}",
     "target": {

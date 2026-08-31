@@ -84,7 +84,7 @@ MISSION SCOPING & RULES OF ENGAGEMENT
      (e.g., via `apt-get update && apt-get install -y <package>`).
 
 5. Category-Aware Strategy (ONLY Pwn, Reverse, Crypto)
-   - ALWAYS run `ls -la /data` as your FIRST step to check for provided source code (.py, .c) or binaries. Never do blind black-box testing if source code is available. If source code exists, `cat` it to understand the exact expected inputs and logic.
+   - ALWAYS run `ls -la /data` as your FIRST step to check for provided source code (.py, .c) or binaries. Never do blind black-box testing if source code is available. If source code exists, your NEXT step MUST BE ONLY to `cat` it. Do NOT combine `cat` with any other actions (like writing scripts or connecting to the server) in the same step.
    - For "pwn" / binary: Prioritize identifying architecture, memory protections (NX, Canary, PIE), exact offsets, and locating vulnerable functions using static/dynamic analysis before proposing Python (pwntools) for exploitation.
    - Before proposing ANY gdb command with `break <function_name>`, check tree.data.stripped. If true, you MUST use address-based breakpoints (`break *0xADDRESS` from objdump output) instead — function names will not resolve.
    - For "reverse": Prioritize static analysis (strings, objdump, ghidra) and dynamic tracing (ltrace, strace, gdb) to understand program logic and bypass checks.

@@ -578,28 +578,25 @@ class Orchestrator:
 
             verify_data = verify_res["verify_data"]
 
-            MAX_RETRIES = 2
             refine_tries = 0
 
             while (
                 verify_data.get("result") == "fail"
-                and refine_tries < MAX_RETRIES
+                and refine_tries < 2
             ):
                 print(
                     f"\n╭─ REFINER ────────────────────────────────────────────╮"
                 )
                 print(
                     f"│ Strategy failed — retry "
-                    f"{refine_tries + 1}/"
-                    f"{MAX_RETRIES}"
+                    f"{refine_tries + 1}/2"
                 )
                 print(
                     "╰──────────────────────────────────────────────────────╯"
                 )
 
                 retry = 0
-                MAX_RETRIES = 3
-                while retry < MAX_RETRIES:
+                while retry < 3:
                     refine_res = self.refiner.refine(
                         target=target,
                         subtask=subtask,
@@ -617,7 +614,7 @@ class Orchestrator:
                     )
                     raw = refine_res.get("raw", "")
                     if "API Error" in raw or "API Exception" in raw:
-                        print(f"  ↻ REFINER : Transient API error, retrying ({retry+1}/{MAX_RETRIES})...")
+                        print(f"  ↻ REFINER : Transient API error, retrying ({retry+1}/3)...")
                         retry += 1
                         import time
                         time.sleep(2 * retry)
