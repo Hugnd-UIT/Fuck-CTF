@@ -28,7 +28,7 @@ def search_github(word: str) -> dict:
 
                 # Initialize issue scorer
                 scorer = PentestAgent(
-                    model=os.getenv("GITHUB_MODEL", "deepseek/deepseek-v4-flash"),
+                    model=os.getenv("MODEL", "deepseek/deepseek-v4-flash"),
                     temperature=0.1,
                     tokens=50
                 )

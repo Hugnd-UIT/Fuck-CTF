@@ -43,13 +43,13 @@
     "sandbox": "ctf",
     "timeout": 30,
     "limit": 2000,
-    "flag": "247CTF{32-hex}",
+    "flag": "crypto{FLAG}",
     "target": {
-        "category": "pwn",
-        "desc": "We might not be able to write secure code, but at least we are starting to learn about secure compilation flags. Can you beat the cookie monster?",
+        "category": "crypto",
+        "desc": "This oracle lies! Can you still recover the message XOR are you going to have to give up?",
         "dir": "/data",
-        "host": "6819145ba4f17aac.247ctf.com",
-        "port": 50456
+        "host": "socket.cryptohack.org",
+        "port": 13423
     },
     "cmd_time": 30,
     "max_time": 600

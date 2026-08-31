@@ -550,8 +550,8 @@ class Orchestrator:
                 )
 
             import re
-            FLAG_REGEX = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
-            flag_match = FLAG_REGEX.search(output)
+            FLAG = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
+            flag_match = FLAG.search(output)
             if flag_match:
                 print(f"\n╭─ ORCHESTRATOR ───────────────────────────────────────╮")
                 print("│ Flag Detected in Output!")
