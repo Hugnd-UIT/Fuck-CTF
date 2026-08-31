@@ -1,0 +1,77 @@
+import json
+from agent.pentest import PentestAgent
+from .prompt import SYSTEM_PROMPT, USER_PROMPT
+
+class ReflectorAgent(PentestAgent):
+    def __init__(
+        self,
+        model,
+        local=False,
+        temperature=0.7,
+        top=1.0,
+        sample=True,
+        tokens=4096
+    ):
+        super().__init__(
+            model=model,
+            local=local,
+            temperature=temperature,
+            top=top,
+            sample=sample,
+            tokens=tokens
+        )
+
+    def review(
+        self,
+        history,
+        facts,
+        target,
+        time_used,
+        time_total
+    ):
+        
+        recent = history[-10:] if len(history) > 10 else history
+        history_str = json.dumps(recent, indent=2)
+        facts_str = json.dumps(facts, indent=2) if facts else "None"
+        target_str = json.dumps(target, indent=2) if isinstance(target, dict) else str(target)
+        
+        user_content = USER_PROMPT.format(
+            target=target_str,
+            facts=facts_str,
+            history=history_str,
+            time_used=time_used,
+            time_total=time_total
+        )
+        
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_content}
+        ]
+        
+        text, in_tokens, out_tokens = self.call(messages)
+        
+        try:
+            if "```json" in text:
+                json_str = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                json_str = text.split("```")[1].split("```")[0].strip()
+            else:
+                json_str = text.strip()
+                
+            review_data = json.loads(json_str)
+            print(f"  ✓ Reflector  : {review_data.get('tactic', 'replan')[:60]}...")
+            
+        except json.JSONDecodeError as e:
+            print(f"  ✗ Reflector  : JSON parse failed - {e}")
+            review_data = {
+                "cause": "Failed to parse reflection.",
+                "tactic": "Backtrack and try a different approach.",
+                "advice": "Review the last outputs carefully."
+            }
+            
+        return {
+            "review_data": review_data,
+            "in_tokens": in_tokens,
+            "out_tokens": out_tokens,
+            "raw": text
+        }

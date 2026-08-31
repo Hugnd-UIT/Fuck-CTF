@@ -31,7 +31,8 @@ class VerifierAgent(PentestAgent):
         commands,
         indicator,
         output,
-        hypothesis=None
+        hypothesis=None,
+        facts=None
     ):
         hypothesis_str = (
             json.dumps(hypothesis, indent=2)
@@ -39,8 +40,11 @@ class VerifierAgent(PentestAgent):
             else "None"
         )
 
+        facts_str = json.dumps(facts, indent=2) if facts else "None"
+
         # Format user prompt
         user_content = USER_PROMPT.format(
+            previous_facts=facts_str,
             hypothesis=hypothesis_str,
             subtask=subtask,
             commands=json.dumps(commands),

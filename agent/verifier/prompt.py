@@ -18,6 +18,7 @@ _schema = json.dumps(
             "list of concise facts to add to history "
             "[e.g. 'Found /admin path']"
         ],
+        "contradiction": False,
         "flag": False,
     },
     indent=2,
@@ -41,6 +42,7 @@ _example = json.dumps(
             "Binary is 32-bit ELF",
             "NX is enabled, preventing execution on stack",
         ],
+        "contradiction": False,
         "flag": False,
     },
     indent=2,
@@ -75,7 +77,12 @@ RULES OF EVALUATION
    - If the output contains a CTF flag [e.g., CTF{{...}}, flag{{...}}],
      set flag to true.
 
-5. Intermediate Success Recognition
+5. Cross-Step Fact Comparison
+   - Compare new findings with PREVIOUS CONFIRMED FACTS.
+   - If the new output contradicts an established fact (e.g. the oracle behaves differently, a previously known byte changed), set "contradiction" to true.
+   - Otherwise, set "contradiction" to false.
+
+6. Intermediate Success Recognition
    - Do NOT require a flag to mark intermediate steps as "success".
    - A subtask is a "success" if it successfully completes its specific goal:
      * Recon/Scanning: Found open ports, directories, or endpoints.
@@ -105,6 +112,9 @@ Example [format reference only, not real data]:
 
 
 USER_PROMPT = """
+PREVIOUS CONFIRMED FACTS:
+{previous_facts}
+
 PLANNER HYPOTHESIS:
 {hypothesis}
 

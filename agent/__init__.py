@@ -11,6 +11,7 @@ from .executor.engine import ExecutorAgent
 from .verifier.engine import VerifierAgent
 from .refiner.engine import RefinerAgent
 from .summarizer.engine import SummarizerAgent
+from .reflector.engine import ReflectorAgent
 from rag.github import search_github
 from rag.firecrawl import scrape
 
@@ -35,6 +36,7 @@ class Orchestrator:
         v_cfg = config.get("verifier", {})
         r_cfg = config.get("refiner", {})
         s_cfg = config.get("summarizer", {})
+        ref_cfg = config.get("reflector", {})
 
         # Initialize agents
         self.planner = PlannerAgent(
@@ -80,6 +82,15 @@ class Orchestrator:
             top=s_cfg.get("top", 1.0),
             sample=s_cfg.get("sample", False),
             tokens=s_cfg.get("tokens", 1024)
+        )
+
+        self.reflector = ReflectorAgent(
+            model=ref_cfg.get("model"),
+            local=ref_cfg.get("local", False),
+            temperature=ref_cfg.get("temperature", 0.7),
+            top=ref_cfg.get("top", 1.0),
+            sample=ref_cfg.get("sample", False),
+            tokens=ref_cfg.get("tokens", 4096)
         )
 
         # Load playbook
@@ -135,6 +146,9 @@ class Orchestrator:
         self.attempts = {}
         self.store = {}
         self.alerts = []
+        self.locked = set()
+        self.seen = {}
+        self.snap_done = []
 
     def normalize(self, text: str) -> str:
         norm = re.sub(r"'[^']*'|\"[^\"]*\"", "<STR>", text)
@@ -145,26 +159,58 @@ class Orchestrator:
         if not isinstance(data, dict):
             return
         for k, v in data.items():
-            if k not in self.store or self.store[k] is None:
+            if str(v).startswith("OVERRIDE:"):
+                
+                # Explicit override
+                real = v[len("OVERRIDE:"):]
+                self.store[k] = real
+                self.locked.discard(k)
+                self.seen[k] = 1
+            elif k not in self.store or self.store[k] is None:
                 self.store[k] = v
+                self.seen[k] = 1
+            elif self.store[k] == v:
+
+                # Same value confirmed again
+                count = self.seen.get(k, 1) + 1
+                self.seen[k] = count
+                if count >= 2:
+                    self.locked.add(k)
 
     def diff(self, data: dict) -> list:
         out = []
         if not isinstance(data, dict):
             return out
         for k, v in data.items():
-            old = self.store.get(k)
-            if old is None:
-                continue
-            if old == v:
-                continue
             if str(v).startswith("OVERRIDE:"):
+                continue 
+            old = self.store.get(k)
+            if old is None or old == v:
                 continue
+            level = "CRITICAL" if k in self.locked else "WARNING"
             out.append(
-                f"CONTRADICTION: key='{k}' was '{old}', "
-                f"new='{v}'. Possible session-state change!"
+                f"[{level}] CONTRADICTION: '{k}' was '{old}', "
+                f"now '{v}'. Session-state may have changed!"
             )
         return out
+
+    def guard(self, tree: dict) -> list:
+        out = []
+        done = tree.get("done", [])
+        if isinstance(done, list) and self.snap_done:
+            missing = set(self.snap_done) - set(done)
+            if missing:
+                out.append(
+                    f"[WARNING] DONE LIST SHRANK: {len(missing)} item(s) "
+                    f"vanished: {list(missing)[:3]}. "
+                    "Likely a new server connection reset state!"
+                )
+        return out
+
+    def snap(self, tree: dict):
+        done = tree.get("done", [])
+        if isinstance(done, list):
+            self.snap_done = list(set(self.snap_done) | set(done))
 
     def execute(self, target, sandbox, time_left=None):
         print("\n╭─ PLANNER ────────────────────────────────────────────╮")
@@ -526,9 +572,11 @@ class Orchestrator:
                 raw_timeout = exec_json.get("timeout", 30)
 
                 try:
+                    category = target.get("category", "")
+                    max_timeout = 600 if category == "crypto" else 120
                     cmd_timeout = min(
                         int(raw_timeout),
-                        120
+                        max_timeout
                     )
                 except:
                     cmd_timeout = 30
@@ -591,14 +639,14 @@ class Orchestrator:
                 subtask=subtask,
                 commands=commands,
                 indicator=indicator,
-                output=output,
                 hypothesis=plan_data.get(
                     "reason",
                     {}
                 ).get(
                     "hypothesis",
                     {}
-                )
+                ),
+                facts=self.store
             )
 
             verify_data = verify_res["verify_data"]
@@ -685,9 +733,11 @@ class Orchestrator:
                     )
 
                     try:
+                        category = target.get("category", "")
+                        max_timeout = 600 if category == "crypto" else 120
                         cmd_timeout = min(
                             int(raw_timeout),
-                            120
+                            max_timeout
                         )
                     except:
                         cmd_timeout = 30
@@ -749,7 +799,8 @@ class Orchestrator:
                     ).get(
                         "hypothesis",
                         {}
-                    )
+                    ),
+                    facts=self.store
                 )
 
                 verify_data = verify_res.get(
@@ -819,18 +870,25 @@ class Orchestrator:
             self.tree
         )
 
-        # --- Structured Fact Store update ---
-        new_data = summary_data.get("tree", {}).get("data", {})
-        self.alerts = self.diff(new_data)   # detect contradictions first
-        self.absorb(new_data)               # then absorb non-conflicting facts
+        new_tree = summary_data.get("tree", {})
+        new_data = new_tree.get("data", {})
+
+        data_alerts = self.diff(new_data)    
+        tree_alerts = self.guard(new_tree)  
+        self.alerts = data_alerts + tree_alerts
+
+        self.absorb(new_data)   
+        self.snap(new_tree)    
 
         if self.alerts:
             print(
-                f"  ⚠ SFS       : "
+                f"  ⚠ Detector  : "
                 f"{len(self.alerts)} contradiction(s) detected"
             )
             for alert in self.alerts:
                 print(f"    → {alert}")
+        else:
+            print("  ✓ Detector  : no contradictions")
 
         step_id = f"step_{len(self.history) + 1}"
 
@@ -874,6 +932,29 @@ class Orchestrator:
                 "...[truncated]\n"
                 + self.compressed_history[-3000:]
             )
+
+        step_count = len(self.history)
+        if step_count in [3, 6, 9]:
+            # Invoke reflector
+            time_used = "Unknown" 
+            time_total = "Unknown"
+            
+            print("\n╭─ REFLECTOR ───────────────────────────────────────────╮")
+            print("│ Analyzing stuck state and replanning...")
+            print("╰──────────────────────────────────────────────────────╯")
+            
+            ref_res = self.reflector.review(
+                history=self.history,
+                facts=self.store,
+                target=target,
+                time_used=time_used,
+                time_total=time_total
+            )
+            review_data = ref_res["review_data"]
+            advice = review_data.get("advice", "")
+            tactic = review_data.get("tactic", "")
+            if advice or tactic:
+                self.alerts.append(f"[REFLECTOR ADVICE] {tactic} - {advice}")
 
         return (
             summary_data.get("summary", ""),

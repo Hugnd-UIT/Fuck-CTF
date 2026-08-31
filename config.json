@@ -5,7 +5,7 @@
         "temperature": 0.7,
         "top": 0.9,
         "sample": true,
-        "tokens": 2048
+        "tokens": 4096
     },
     "executor": {
         "model": "deepseek/deepseek-v4-flash",
@@ -13,7 +13,7 @@
         "temperature": 0.2,
         "top": 1.0,
         "sample": false,
-        "tokens": 4096
+        "tokens": 1024
     },
     "verifier": {
         "model": "deepseek/deepseek-v4-flash",
@@ -21,27 +21,35 @@
         "temperature": 0.1,
         "top": 1.0,
         "sample": false,
-        "tokens": 4096
+        "tokens": 512
     },
     "refiner": {
-        "model": "deepseek/deepseek-v4-pro",
+        "model": "deepseek/deepseek-v4-flash",
         "local": false,
         "temperature": 0.2,
         "top": 1.0,
         "sample": false,
-        "tokens": 4096
+        "tokens": 1024
     },
     "summarizer": {
-        "model": "deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-pro",
         "local": false,
         "temperature": 0.3,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 2048
+    },
+    "reflector": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
         "top": 1.0,
         "sample": false,
         "tokens": 4096
     },
     "tools": "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, john, hashcat, binwalk, exiftool, steghide, linpeas",
     "sandbox": "ctf",
-    "timeout": 120,
+    "timeout": 60,
     "limit": 2000,
     "flag": "crypto{FLAG}",
     "target": {
