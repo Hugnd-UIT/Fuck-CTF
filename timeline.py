@@ -52,7 +52,14 @@ def print_header(target, minutes):
     )
     console.print(panel)
 
+_first_node = True
+
 def print_node(title, right, color="blue"):
+    global _first_node
+    if not _first_node:
+        console.print(Text("│", style=f"bold {color}"))
+    _first_node = False
+    
     left_part = Text(f"● {title}", style=f"bold {color}")
     right_part = Text(right, style="dim white")
     

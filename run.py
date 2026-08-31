@@ -51,9 +51,7 @@ while True:
     if elapsed > timeout_seconds:
         print_line(f"└─ 🛑 TIMEOUT: Reached {timeout_minutes} minutes.", color="red")
         break
-
-    # Remove STEP separators entirely
-
+    
     try:
         summary, exec_json = agent.execute(
             target=target,
@@ -64,7 +62,6 @@ while True:
 
         if summary == "Goal Achieved":
             elapsed = time.time() - start_time
-            # Keep line empty for continuity if we want, or just break
             break
 
     except KeyboardInterrupt:
