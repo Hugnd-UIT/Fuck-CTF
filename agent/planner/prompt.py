@@ -132,6 +132,12 @@ Example [format reference only, not real data]:
 
 
 USER_PROMPT = """
+IMMUTABLE FACTS [Session-invariant. Trust absolutely. Never contradict]:
+{facts}
+
+CONTRADICTION WARNINGS [Address before planning. These mean state changed]:
+{warns}
+
 TARGET:
 {target}
 

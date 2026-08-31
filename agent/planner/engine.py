@@ -56,10 +56,16 @@ class PlannerAgent(PentestAgent):
         tools,
         playbook=None,
         memory="None",
-        time_left=None
+        time_left=None,
+        facts=None,
+        warns=None
     ):
         if playbook is None:
             playbook = {}
+        if facts is None:
+            facts = {}
+        if warns is None:
+            warns = []
 
         history = self.build_history(history, fails)
         last_output = history[-1].get("raw", "") if history else ""
@@ -70,6 +76,18 @@ class PlannerAgent(PentestAgent):
             history_str = json.dumps(history, indent=2)
         else:
             history_str = str(history)
+
+        # Format facts + warns
+        facts_str = (
+            json.dumps(facts, indent=2)
+            if facts
+            else "No facts collected yet."
+        )
+        warns_str = (
+            "\n".join(f"- {w}" for w in warns)
+            if warns
+            else "None."
+        )
 
         # Build playbook parts
         tactics_str = ", ".join(playbook.get("tactics", []))
@@ -99,7 +117,9 @@ class PlannerAgent(PentestAgent):
             last_output=last_output or "No previous command output.",
             memory=memory,
             time_left=time_left if time_left is not None else "Unknown",
-            history=history_str
+            history=history_str,
+            facts=facts_str,
+            warns=warns_str
         )
 
         messages = [

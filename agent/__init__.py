@@ -133,11 +133,38 @@ class Orchestrator:
         self.hashes = set()
         self.fails = {}
         self.attempts = {}
+        self.store = {}
+        self.alerts = []
 
     def normalize(self, text: str) -> str:
         norm = re.sub(r"'[^']*'|\"[^\"]*\"", "<STR>", text)
         norm = re.sub(r"\b\d+\b", "<NUM>", norm)
         return norm.strip().lower()
+
+    def absorb(self, data: dict):
+        if not isinstance(data, dict):
+            return
+        for k, v in data.items():
+            if k not in self.store or self.store[k] is None:
+                self.store[k] = v
+
+    def diff(self, data: dict) -> list:
+        out = []
+        if not isinstance(data, dict):
+            return out
+        for k, v in data.items():
+            old = self.store.get(k)
+            if old is None:
+                continue
+            if old == v:
+                continue
+            if str(v).startswith("OVERRIDE:"):
+                continue
+            out.append(
+                f"CONTRADICTION: key='{k}' was '{old}', "
+                f"new='{v}'. Possible session-state change!"
+            )
+        return out
 
     def execute(self, target, sandbox, time_left=None):
         print("\n╭─ PLANNER ────────────────────────────────────────────╮")
@@ -257,7 +284,9 @@ class Orchestrator:
             tools=self.tools,
             playbook=self.playbook,
             memory=memory,
-            time_left=time_left
+            time_left=time_left,
+            facts=self.store,
+            warns=self.alerts
         )
 
         plan_data = plan_res["plan_data"]
@@ -789,6 +818,19 @@ class Orchestrator:
             "tree",
             self.tree
         )
+
+        # --- Structured Fact Store update ---
+        new_data = summary_data.get("tree", {}).get("data", {})
+        self.alerts = self.diff(new_data)   # detect contradictions first
+        self.absorb(new_data)               # then absorb non-conflicting facts
+
+        if self.alerts:
+            print(
+                f"  ⚠ SFS       : "
+                f"{len(self.alerts)} contradiction(s) detected"
+            )
+            for alert in self.alerts:
+                print(f"    → {alert}")
 
         step_id = f"step_{len(self.history) + 1}"
 
