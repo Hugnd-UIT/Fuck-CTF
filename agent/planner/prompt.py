@@ -47,18 +47,18 @@ SYSTEM_PROMPT = f"""
     avoid: repeating a failed tactic without changing technique or target
   </tactics>
 
-  <loop_discipline>
+  <loop>
     do   : read HISTORY before planning — latest observation is ground truth
     do   : if a step failed because a tool was missing, next plan = install that tool, not abandon the tactic
     do   : if CONTRADICTION WARNING appears, deduce session state changed — pivot to single-connection strategy
     avoid: reverting an established architectural constraint without explicit evidence
-  </loop_discipline>
+  </loop>
 
-  <time_budget>
+  <time>
     do   : >50 % remaining = broad exploration ok
     do   : 20–50 % remaining = commit to single best lead
     do   : <20 % remaining = only the highest-probability direct action toward the flag
-  </time_budget>
+  </time>
 
   <playbook>
     category  : <CATEGORY>

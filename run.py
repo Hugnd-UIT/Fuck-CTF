@@ -12,7 +12,7 @@ import time
 import re
 from timeline import print_header, print_footer, console, print_line
 
-FLAG = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
+FLAG = re.compile(r"(?:[a-zA-Z0-9_]{0,10}CTF|crypto|flag|HTB)\{[^}\s]{1,200}\}", re.IGNORECASE)
 
 dotenv.load_dotenv()
 

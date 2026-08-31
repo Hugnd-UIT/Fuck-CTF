@@ -28,18 +28,18 @@ SYSTEM_PROMPT = f"""
 
 <rules>
 
-  <tree_integrity>
+  <integrity>
     do   : keep findings concise and actionable
     do   : update done and failed lists so the Planner never repeats mistakes
     avoid: adding anything not confirmed by the latest step or existing tree
-  </tree_integrity>
+  </integrity>
 
-  <fact_preservation>
+  <fact>
     do   : store EXACT technical values in data — addresses, offsets, keys, ports, recovered bytes
     do   : when source code is read, extract session behavior into data — e.g. session_persistence = per-connection
     do   : when values change across steps, flag it explicitly in findings as CONTRADICTION DETECTED: explain
     avoid: summarizing exact values away into vague prose
-  </fact_preservation>
+  </fact>
 
   <contradiction>
     do   : cross-check new findings against existing data every step
