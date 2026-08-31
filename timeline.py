@@ -57,7 +57,7 @@ _first_node = True
 def print_node(title, right, color="blue"):
     global _first_node
     if not _first_node:
-        console.print(Text("│", style=f"bold {color}"))
+        console.print(Text("│", style="bold blue"))
     _first_node = False
     
     left_part = Text(f"● {title}", style=f"bold {color}")
@@ -74,7 +74,7 @@ import textwrap
 
 def print_line(content, tree="│", color="blue"):
     if content is None:
-        console.print(Text("│", style=f"bold {color}"))
+        console.print(Text("│", style="bold blue"))
         return
         
     for line in content.split("\n"):
@@ -84,17 +84,17 @@ def print_line(content, tree="│", color="blue"):
         else:
             sub_indent = " " * (len(line) - len(line.lstrip()))
             
-        wrapped = textwrap.wrap(line, width=74, subsequent_indent=sub_indent)
+        wrapped = textwrap.wrap(line, width=65, subsequent_indent=sub_indent)
         
         if not wrapped:
-            console.print(Text("│  ", style=f"bold {color}"))
+            console.print(Text("│  ", style="bold blue"))
             continue
             
         for chunk in wrapped:
-            console.print(Text(f"│  {chunk}", style=f"bold {color}"))
+            console.print(Text("│  ", style="bold blue") + Text(chunk, style=f"bold {color}"))
 
 def print_error(msg):
-    console.print(Text(f"│  [Error]: {msg}", style="bold red"))
+    console.print(Text("│  ", style="bold blue") + Text(f"[Error]: {msg}", style="bold red"))
 
 def print_footer(flag, elapsed):
     minutes = int(elapsed // 60)

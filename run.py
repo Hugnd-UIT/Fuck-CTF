@@ -60,8 +60,19 @@ while True:
         )
         consecutive_crashes = 0
 
+        # Check for flag
+        found = FLAG.search(summary)
+        if not found:
+            found = FLAG.search(str(agent.history))
+            
+        if found:
+            elapsed = time.time() - start_time
+            print_footer(found.group(0), elapsed)
+            break
+            
         if summary == "Goal Achieved":
             elapsed = time.time() - start_time
+            print_line("└─ 🛑 Goal achieved, but no flag was found in the output.", color="red")
             break
 
     except KeyboardInterrupt:
@@ -77,13 +88,6 @@ while True:
             break
         time.sleep(min(2 ** consecutive_crashes, 30))
         continue
-
-    # Check for flag
-    found = FLAG.search(summary)
-    if found:
-        elapsed = time.time() - start_time
-        print_footer(found.group(0), elapsed)
-        break
 
 # Stop sandbox if needed
 if not args.keep_running:
