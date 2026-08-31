@@ -639,6 +639,7 @@ class Orchestrator:
                 subtask=subtask,
                 commands=commands,
                 indicator=indicator,
+                output=output,
                 hypothesis=plan_data.get(
                     "reason",
                     {}
