@@ -150,11 +150,7 @@ class Orchestrator:
             else target
         )
 
-        tree = (
-            json.dumps(self.tree, indent=2)
-            if isinstance(self.tree, dict)
-            else self.tree
-        )
+        tree = self.tree
 
         # Memory retrieval
         memories = []

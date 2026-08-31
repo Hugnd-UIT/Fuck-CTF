@@ -114,6 +114,10 @@ LOOP DISCIPLINE
 - Always read the "observation" of the most recent HISTORY entry before
   reasoning - it is the ground truth of what actually happened.
 
+- CONTINUITY & CONTRADICTION HANDLING:
+  - You are stateless, but your past decisions are in the HISTORY. If a past step made a specific architectural constraint (e.g., "Use ONE persistent connection because secret changes"), DO NOT arbitrarily revert to a contradicting strategy (e.g., "per-byte reconnection") in the next step unless the environment explicitly forces it.
+  - If the Summarizer flags a "CONTRADICTION DETECTED" (e.g., recovered bytes changing), you MUST immediately deduce that the underlying state (like a secret key or message) is changing per connection. You must then pivot to a strategy that preserves state (e.g., single persistent connection, pipelining).
+
 OUTPUT FORMAT
 
 Return ONLY the JSON object below, filled in - no markdown, no comments,

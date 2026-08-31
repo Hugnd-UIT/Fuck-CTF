@@ -103,6 +103,12 @@ RULES OF SUMMARIZATION
    - Examples of generic keys you can create: "overflow_offset": 44, "web_admin_path": "/secret-admin", "rsa_n": "0x1234...", "architecture": "ELF32", "canary_found": true.
    - These exact facts will be passed to other agents to avoid guessing.
 
+5. Cross-Step Consistency & Contradiction Detection (CRITICAL)
+   - You MUST cross-check new findings against existing data in the tree.
+   - If a newly recovered value (e.g., byte 15 = '9') contradicts a previously recovered value (e.g., byte 15 = '8') or if an ongoing exploit suddenly stalls unexpectedly, it means the underlying state (e.g. secret key) has changed!
+   - In your summary and findings, EXPLICITLY flag the contradiction: "CONTRADICTION DETECTED: [explain]".
+   - When reading source code, deeply analyze it for session-specific state. E.g., if a secret or `urandom` is initialized inside an `__init__` or handler for EACH connection, you MUST record in `data`: `"session_persistence": "Secrets are regenerated per connection. MUST use a single connection!"`.
+
 OUTPUT FORMAT
 
 Return ONLY the JSON object below, filled in - no markdown, no comments,
