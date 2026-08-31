@@ -6,7 +6,7 @@ from sandbox import init
 import time
 import re
 
-FLAG_REGEX = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
+FLAG = re.compile(r"[A-Za-z0-9_]{0,10}CTF\{[^}\s]{1,200}\}")
 
 dotenv.load_dotenv()
 
@@ -37,7 +37,8 @@ display = (
     f"\n"
     f"  Category      : {target.get('category', '-')}\n"
     f"  Description   : {target.get('desc', '-')}\n"
-    f"  Server        : {target.get('server', '-')}\n"
+    f"  Host          : {target.get('host', '-')}\n"
+    f"  Port          : {target.get('port', '-')}\n"
     f"  Directory     : {target.get('dir', '-')}\n"
     f"  Flag          : {target['flag']}"
 )
@@ -114,7 +115,7 @@ while True:
         continue
 
     # Check for flag
-    found = FLAG_REGEX.search(summary)
+    found = FLAG.search(summary)
     if found:
         elapsed = time.time() - start_time
 

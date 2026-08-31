@@ -42,14 +42,15 @@
     "tools": "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, john, hashcat, binwalk, exiftool, steghide, linpeas",
     "sandbox": "ctf",
     "timeout": 30,
-    "default_cmd_timeout": 30,
-    "max_cmd_timeout": 600,
     "limit": 2000,
     "flag": "247CTF{32-hex}",
     "target": {
         "category": "pwn",
         "desc": "We might not be able to write secure code, but at least we are starting to learn about secure compilation flags. Can you beat the cookie monster?",
-        "server": "nc 6819145ba4f17aac.247ctf.com 50456",
-        "dir": "/data"
-    }
+        "dir": "/data",
+        "host": "6819145ba4f17aac.247ctf.com",
+        "port": 50456
+    },
+    "cmd_time": 30,
+    "max_time": 600
 }
