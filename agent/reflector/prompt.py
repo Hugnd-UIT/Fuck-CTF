@@ -13,6 +13,8 @@ Output exactly one JSON object following this schema. Do not output markdown or 
   "tactic": "The completely new tactic or hypothesis the agent should try.",
   "advice": "Specific instructions for the Planner on how to proceed."
 }
+
+IMPORTANT: Ensure your JSON output is strictly valid. You MUST properly escape all double quotes (\") inside string values.
 """
 
 USER_PROMPT = """

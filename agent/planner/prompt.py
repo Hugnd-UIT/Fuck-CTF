@@ -74,8 +74,9 @@ MISSION SCOPING & RULES OF ENGAGEMENT
    - hypothesis.tactic must be one of:
      [Reconnaissance, Initial-Access, Execution, Privilege-Escalation,
       Defense-Evasion, Collection, Exfiltration, Retrieval-Augmented-Generation]
-   - Use 'Retrieval-Augmented-Generation' when you need to search your internal database for CTF writeups or known bypass techniques.
-   - You are ALSO allowed to use 'Reconnaissance' with `curl` to search the internet if RAG fails or you prefer to search live.
+   - Use 'Retrieval-Augmented-Generation' when you need to perform a LIVE internet search (via DuckDuckGo and GitHub) for CTF writeups, CVEs, or solver scripts. This tactic automatically scrapes the web and injects the solutions into your Memory.
+   - ALWAYS use 'Retrieval-Augmented-Generation' FIRST if you identify a known challenge name, a specific CVE, or a complex vulnerability that likely has a public solver. Do not implement complex attacks from scratch without searching first.
+   - IMPORTANT: If your tactic is 'Retrieval-Augmented-Generation', your 'subtask' MUST be ONLY a concise 2-6 word search query (e.g. 'CryptoHack Oracular Spectacular writeup' or 'AES CBC padding oracle exploit'). DO NOT write full sentences.
 
 4. Tooling
    - The Executor initially has these tools available: <TOOL_LIST>

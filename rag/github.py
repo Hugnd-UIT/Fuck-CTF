@@ -1,5 +1,6 @@
 import os
 import requests
+import urllib.parse
 
 # Search GitHub issues
 def search_github(word: str) -> dict:
@@ -8,6 +9,7 @@ def search_github(word: str) -> dict:
         "Accept": "application/vnd.github.v3+json"
     }
 
+    word = urllib.parse.quote(word[:200])
     url = f"https://api.github.com/search/issues?q={word}+is:issue"
 
     try:
