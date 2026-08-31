@@ -4,3 +4,4 @@ python-dotenv
 chromadb
 sentence-transformers
 ddgs
+json-repair

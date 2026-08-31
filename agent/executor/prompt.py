@@ -93,15 +93,21 @@ RULES OF ENGAGEMENT
    - Use the tool named in TOOL HINT.
    - Use exact, correct flags.
 
-7. Escaping
+7. Escaping & Complex Scripts
    - Quote and escape complex payloads so they are copy-paste runnable.
-   - Example for payload:
-     `python3 -c "print('A'*100)" | ./vuln`
+   - For LONG or COMPLEX scripts (like Python solvers), ALWAYS use base64 to avoid JSON escaping errors. Example:
+     `echo "aW1wb3J0IG9zCg==" | base64 -d > script.py && python3 script.py`
+   - NEVER put literal newlines or unescaped quotes in your JSON strings.
 
 8. Output Control
    - NEVER redirect primary command output to a file with `>` unless the output is provably too large (>500 lines). For anything reasonably sized, print directly to stdout so it is visible THIS SAME cycle.
    - If you MUST write to a file, you MUST include a command in the SAME array that extracts the RELEVANT portion (e.g., `grep`, `head`) immediately.
    - Prefer quiet flags [-q, --quiet, | head] to keep output small, but still print to stdout.
+
+IMPORTANT JSON RULES:
+- Your output MUST be strictly valid JSON.
+- DO NOT include literal newlines inside JSON strings. Use \\n instead.
+- You MUST properly escape all double quotes (\\") inside strings.
 
 9. Avoid Repeats
    - Check HISTORY SUMMARY.

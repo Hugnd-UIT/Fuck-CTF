@@ -1,4 +1,5 @@
 import json
+import json_repair
 
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
@@ -83,9 +84,9 @@ class VerifierAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            verify_data = json.loads(json_str)
+            verify_data = json_repair.loads(json_str)
 
-        except json.JSONDecodeError as e:
+        except Exception as e:
             print(f"  ✗ Verifier   : JSON parse failed - {e}")
 
             verify_data = {

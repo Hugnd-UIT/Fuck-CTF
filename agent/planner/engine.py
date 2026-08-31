@@ -1,4 +1,5 @@
 import json
+import json_repair
 
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
@@ -153,14 +154,14 @@ class PlannerAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            plan_data = json.loads(json_str)
+            plan_data = json_repair.loads(json_str)
 
             plan = plan_data.get("plan", {})
             subtask = plan.get("subtask", "plan generated")
 
             print(f"  ✓ Planner    : {subtask}")
 
-        except json.JSONDecodeError as e:
+        except Exception as e:
             print(f"  ✗ Planner    : JSON parse failed - {e}")
 
             plan_data = {

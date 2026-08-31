@@ -1,4 +1,5 @@
 import json
+import json_repair
 
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
@@ -68,14 +69,14 @@ class SummarizerAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            summary_data = json.loads(json_str)
+            summary_data = json_repair.loads(json_str)
 
             print(
                 f"  ✓ Summarizer : "
                 f"{summary_data.get('summary', 'completed')}"
             )
 
-        except json.JSONDecodeError as e:
+        except Exception as e:
             print(f"  ✗ Summarizer : JSON parse failed - {e}")
 
             summary_data = {

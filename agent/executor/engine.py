@@ -1,4 +1,5 @@
 import json
+import json_repair
 
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
@@ -78,7 +79,7 @@ class ExecutorAgent(PentestAgent):
             else:
                 json_str = text.strip()
 
-            exec_data = json.loads(json_str)
+            exec_data = json_repair.loads(json_str)
 
             commands = exec_data.get("commands", [])
             print(
@@ -86,7 +87,7 @@ class ExecutorAgent(PentestAgent):
                 f"{len(commands)} command(s) generated"
             )
 
-        except json.JSONDecodeError as e:
+        except Exception as e:
             print(f"  ✗ Executor   : JSON parse failed - {e}")
 
             exec_data = {

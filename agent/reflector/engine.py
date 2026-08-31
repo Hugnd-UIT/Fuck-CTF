@@ -1,4 +1,5 @@
 import json
+import json_repair
 from agent.pentest import PentestAgent
 from .prompt import SYSTEM_PROMPT, USER_PROMPT
 
@@ -58,10 +59,10 @@ class ReflectorAgent(PentestAgent):
             else:
                 json_str = text.strip()
                 
-            review_data = json.loads(json_str)
+            review_data = json_repair.loads(json_str)
             print(f"  ✓ Reflector  : {review_data.get('tactic', 'replan')[:60]}...")
             
-        except json.JSONDecodeError as e:
+        except Exception as e:
             print(f"  ✗ Reflector  : JSON parse failed - {e}")
             review_data = {
                 "cause": "Failed to parse reflection.",
