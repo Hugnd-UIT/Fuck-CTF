@@ -35,10 +35,17 @@ class ExecutorAgent(PentestAgent):
     ):
 
         # Format history
-        if isinstance(history, (list, dict)):
-            history_str = json.dumps(history, indent=2)
+        slim_history = [
+            {
+                k: v for k, v in entry.items()
+                if k != "raw"
+            }
+            for entry in (history[-10:] if isinstance(history, list) else [])
+        ]
+        if isinstance(slim_history, (list, dict)):
+            history_str = json.dumps(slim_history, indent=2)
         else:
-            history_str = str(history)
+            history_str = str(slim_history)
 
         # Format user prompt
         user_content = USER_PROMPT.format(

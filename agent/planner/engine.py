@@ -69,7 +69,12 @@ class PlannerAgent(PentestAgent):
             warns = []
 
         history = self.build_history(history, fails)
-        last_output = history[-1].get("raw", "") if history else ""
+        last_output = ""
+        for entry in reversed(history):
+            raw = entry.get("raw", "")
+            if raw:
+                last_output = raw
+                break
 
 
         # Format history

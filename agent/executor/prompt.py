@@ -67,7 +67,7 @@ RULES OF ENGAGEMENT
 2. Bounded Execution
    - Every command set must have a timeout value. Choose it based on the task:
      * Static analysis / local GDB: 10-60s.
-     * A brute-force script over the NETWORK: Can take 200-600s. Set timeout accordingly and make the script print progress (e.g., "byte 1 found...") periodically to stdout so partial progress is visible.
+     * A brute-force or oracle attack script over the NETWORK: Can take 1800-3600s. Set timeout accordingly (e.g., 1800 or 3600) and make the script print progress (e.g., "byte 1 found...") periodically to stdout so partial progress is visible.
    - Prefer tool-native timeout flags [nmap -T4, curl --max-time].
    - Never run unbounded scans.
 
@@ -85,6 +85,8 @@ RULES OF ENGAGEMENT
    - Example pattern:
      `if ! command -v gdb &> /dev/null; then apt-get update -y &&
      apt-get install -y gdb; fi; gdb -batch ...`
+   - If installing Python packages that require C-extensions (like `pwntools`), ALWAYS install system build dependencies first to avoid failures:
+     `apt-get update -y && apt-get install -y build-essential cmake python3-dev && pip3 install pwntools --break-system-packages`
 
 5. Safety
    - No destructive actions [rm -rf, DROP TABLE, service kill] unless explicit.
@@ -95,9 +97,8 @@ RULES OF ENGAGEMENT
 
 7. Escaping & Complex Scripts
    - Quote and escape complex payloads so they are copy-paste runnable.
-   - For LONG or COMPLEX scripts (like Python solvers), ALWAYS use base64 to avoid JSON escaping errors. Example:
-     `echo "aW1wb3J0IG9zCg==" | base64 -d > script.py && python3 script.py`
-   - NEVER put literal newlines or unescaped quotes in your JSON strings.
+   - For LONG or COMPLEX scripts (like Python solvers), write them directly to a file using heredoc to avoid quote escaping issues:
+     `cat << 'EOF' > script.py\nprint('hello')\nEOF\npython3 script.py`
 
 8. Output Control
    - NEVER redirect primary command output to a file with `>` unless the output is provably too large (>500 lines). For anything reasonably sized, print directly to stdout so it is visible THIS SAME cycle.

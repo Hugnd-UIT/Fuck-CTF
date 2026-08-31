@@ -151,8 +151,7 @@ class Orchestrator:
         self.snap_done = []
 
     def normalize(self, text: str) -> str:
-        norm = re.sub(r"'[^']*'|\"[^\"]*\"", "<STR>", text)
-        norm = re.sub(r"\b\d+\b", "<NUM>", norm)
+        norm = re.sub(r"\s+", " ", text)
         return norm.strip().lower()
 
     def absorb(self, data: dict):
@@ -216,6 +215,12 @@ class Orchestrator:
         print("\n╭─ PLANNER ────────────────────────────────────────────╮")
         print("│ Thinking...")
         print("╰──────────────────────────────────────────────────────╯")
+
+        category = (
+            target.get("category", "")
+            if isinstance(target, dict)
+            else ""
+        )
 
         target = (
             json.dumps(target, indent=2)
@@ -572,8 +577,7 @@ class Orchestrator:
                 raw_timeout = exec_json.get("timeout", 30)
 
                 try:
-                    category = target.get("category", "")
-                    max_timeout = 600 if category == "crypto" else 120
+                    max_timeout = 3600 if category == "crypto" else 120
                     cmd_timeout = min(
                         int(raw_timeout),
                         max_timeout
@@ -695,8 +699,6 @@ class Orchestrator:
                         continue
                     break
 
-                refine_tries += 1
-
                 refine_data = refine_res.get(
                     "refine_data",
                     {}
@@ -728,14 +730,13 @@ class Orchestrator:
 
                 for cmd in commands:
 
-                    raw_timeout = exec_json.get(
+                    raw_timeout = refine_data.get(
                         "timeout",
-                        30
+                        exec_json.get("timeout", 30)
                     )
 
                     try:
-                        category = target.get("category", "")
-                        max_timeout = 600 if category == "crypto" else 120
+                        max_timeout = 3600 if category == "crypto" else 120
                         cmd_timeout = min(
                             int(raw_timeout),
                             max_timeout
@@ -847,7 +848,7 @@ class Orchestrator:
         step = {
             "subtask": subtask,
             "commands": commands,
-            "output_summary": output[:500],
+            "output_summary": output[-8000:],
             "verification": verify_data
         }
 
@@ -935,10 +936,10 @@ class Orchestrator:
             )
 
         step_count = len(self.history)
-        if step_count in [3, 6, 9]:
-            # Invoke reflector
-            time_used = "Unknown" 
-            time_total = "Unknown"
+        consecutive_fails = max(self.fails.values()) if self.fails else 0
+        if step_count in [3, 6, 9] and consecutive_fails >= 2:
+            time_used = str(int(3600 - (time_left or 3600)))
+            time_total = "3600"
             
             print("\n╭─ REFLECTOR ───────────────────────────────────────────╮")
             print("│ Analyzing stuck state and replanning...")

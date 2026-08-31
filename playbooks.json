@@ -36,13 +36,14 @@
                 "2. Weakness-Analysis: based on the identified scheme, enumerate KNOWN structural weaknesses before attempting anything: RSA (small e / low exponent, common modulus attack, Wiener's attack for small d, shared prime with another key, Fermat factorization if p,q close), XOR (key reuse / known-plaintext, repeating key length via Kasiski/Hamming distance), AES-ECB (identical ciphertext blocks reveal identical plaintext blocks), weak PRNG/seed (predictable random, LCG), padding oracle (if a decryption oracle is exposed).",
                 "3. Attack-Implementation: write ONE python script (use pycryptodome / sympy / gmpy2 if available, or implement manually) that performs the FULL mathematical attack in one deterministic run — e.g. full RSA factorization attempt, full XOR key recovery via frequency analysis, full CRT reconstruction — not incremental manual guesses.",
                 "4. Decryption: use the recovered key/plaintext to decrypt the target ciphertext and print the flag in cleartext to stdout.",
-                "5. Network Protocol Awareness: Before any attack script, determine if the server maintains state per-connection by reading source code. If `key`, `message`, or any secret is initialized in `__init__` or per-connection handler, record session_persistence = 'per-connection'. ALL attack queries MUST be sent within ONE persistent socket connection. Use pipelining (batch all queries for one byte as one sendall()) to avoid 60-second timeout.",
-                "6. Probabilistic Oracle Handling: If oracle response is probabilistic (e.g., noise 40/60), use majority vote with NUM_QUERIES >= 5 per candidate. Never trust a single query result."
+                "5. Network Protocol Awareness: Determine if the server maintains state per-connection. If it does (e.g., secrets initialized per socket), ALL attack queries MUST be sent within ONE persistent socket connection. CRITICAL: If the server closes the connection after a failed attempt or validation check, a NEW session means NEW random secrets. NEVER submit a final 'check' or 'guess' to the server unless you have recovered the full secret with high confidence in the CURRENT session.",
+                "6. Oracle Reliability: If an oracle response is probabilistic or noisy, use statistical methods (like majority voting) with enough queries to ensure high confidence before progressing."
             ],
             "forbidden": [
                 "Do NOT attempt brute-forcing an encryption key one candidate value per plan/execute cycle. Any keyspace search must be a single script iterating the full space (or a mathematically pruned subspace) internally.",
                 "Do NOT skip Weakness-Analysis and jump to guessing; classical/RSA/XOR challenges almost always rely on a specific known mathematical weakness, not brute force.",
-                "Do NOT assume AES/RSA are 'unbreakable' without first checking for the common CTF-style implementation flaws listed in Weakness-Analysis."
+                "Do NOT assume AES/RSA are 'unbreakable' without first checking for the common CTF-style implementation flaws listed in Weakness-Analysis.",
+                "Do NOT submit to a validation/check endpoint until the full secret is confidently recovered. Failing a validation check usually resets the entire connection state."
             ]
         },
         "reverse": {
