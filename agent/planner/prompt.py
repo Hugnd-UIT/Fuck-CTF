@@ -60,6 +60,24 @@ SYSTEM_PROMPT = f"""
     do   : <20 % remaining = only the highest-probability direct action toward the flag
   </time_budget>
 
+  <efficiency_first>
+    do   : before writing ANY attack script, estimate total queries/time the approach requires and compare against available budget
+    do   : if a brute-force is feasible within the budget, go ahead — brute-force is a valid strategy when the search space is small enough
+    do   : if the naive approach would exhaust the budget before finishing, search for a budget-optimal alternative first — adaptive allocation, statistical testing, pruning, meet-in-the-middle
+    do   : always prefer algorithms that are both correct AND fast when two approaches solve the same problem
+    do   : if MEMORY contains a known algorithm or writeup for this problem class, use it as the implementation blueprint
+    avoid: launching an approach whose estimated resource cost provably exceeds the available budget
+    avoid: naive repetition when an adaptive statistical method uses far fewer queries for the same confidence
+  </efficiency_first>
+
+  <rag_discipline>
+    do   : use Retrieval-Augmented-Generation BEFORE writing any non-trivial attack script — search for the challenge name, the vulnerability class, or the mathematical technique
+    do   : search query must be specific to the problem — include key constraints (e.g. noisy oracle, query budget, hex plaintext) to find budget-optimal solutions
+    do   : if RAG returns a known algorithm or approach in MEMORY, use it directly — do not ignore it and reinvent a worse solution
+    do   : after RAG completes, the VERY NEXT step must be implementing what was found, not another search
+    avoid: going straight to coding for complex attacks without a prior RAG step
+  </rag_discipline>
+
   <playbook>
     category  : <CATEGORY>
     tactics   : <TACTIC_LIST>
