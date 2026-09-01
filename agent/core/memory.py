@@ -42,7 +42,7 @@ def query(desc, stage, findings, tasks):
                 if dist < 1.5:
                     memories.append(f"[EXTERNAL_KNOWLEDGE] {doc}")
     except Exception as e:
-        rag_ui.dberr(e)
+        rag_ui.db(e)
         
     return memories
 
@@ -104,5 +104,5 @@ def execute(subtask, length):
         }
     except Exception as e:
         elapsed = time.time() - start
-        rag_ui.geterr(elapsed, e)
+        rag_ui.retrieve(elapsed, e)
         return None

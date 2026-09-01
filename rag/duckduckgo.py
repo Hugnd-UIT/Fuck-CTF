@@ -9,17 +9,17 @@ def search_web(query: str, max_results: int = 5) -> dict:
     if query in _search_cache:
         return _search_cache[query]
 
-    rag_ui.ddg(query)
+    rag_ui.duckduckgo(query)
 
     try:
         results = DDGS().text(query, max_results=max_results)
         urls = [r.get("href") for r in results if r.get("href")]
     except Exception as e:
-        rag_ui.ddgerr(e)
+        rag_ui.fail('DuckDuckGo error', e)
         return {"error": str(e)}
 
     if not urls:
-        rag_ui.ddgno()
+        rag_ui.fail('DuckDuckGo', 'No URLs found')
         return {"error": "No URLs found from DuckDuckGo"}
 
     total_chunks = 0

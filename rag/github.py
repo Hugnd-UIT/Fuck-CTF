@@ -86,10 +86,10 @@ def search_github(word: str) -> dict:
                     "state": item.get("state"),
                     "body": body
                 })
-                rag_ui.gh(item.get('html_url'))
+                rag_ui.issue(item.get('html_url'))
 
             except Exception as e:
-                rag_ui.gherr(e)
+                rag_ui.fail('Github error', e)
                 pass
 
             if len(results) >= 5:
@@ -98,5 +98,5 @@ def search_github(word: str) -> dict:
         return {"github_issues": results}
 
     except Exception as err:
-        rag_ui.ghserr(err)
+        rag_ui.fail('Github search', err)
         return {"error": str(err)}

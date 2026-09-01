@@ -38,24 +38,24 @@ def scrape(target: str) -> tuple[Optional[str], Optional[str]]:
 
                 # Handle successful response
                 if data.get("success"):
-                    rag_ui.fc(target)
+                    rag_ui.firecrawl(target)
                     return data.get("data", {}).get("markdown"), None
 
-                rag_ui.fcerr("API error")
+                rag_ui.fail('Firecrawl error', 'API error')
                 return None, "API_ERR"
 
         except urllib.error.HTTPError as err:
             if err.code == 429 and attempt < retries - 1:
-                rag_ui.fcretry(attempt + 1, retries - 1)
+                rag_ui.retry(attempt + 1, retries - 1)
                 time.sleep(2 ** attempt)
                 continue
 
-            rag_ui.fcerr(f"HTTP {err.code}")
+            rag_ui.fail('Firecrawl error', f"HTTP {err.code}")
             return None, str(err.code)
 
         except Exception as err:
-            rag_ui.fcerr(f"{type(err).__name__}")
+            rag_ui.fail('Firecrawl error', f"{type(err).__name__}")
             return None, type(err).__name__
 
-    rag_ui.fcerr("HTTP 429")
+    rag_ui.fail('Firecrawl error', 'HTTP 429')
     return None, "429"
