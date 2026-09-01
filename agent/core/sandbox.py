@@ -28,23 +28,3 @@ def run(sandbox, commands, category, timeout=30):
 
         output += f"--- Output of '{cmd}' ---\n{out}\n"
     return output
-
-def vision(sandbox):
-    
-    import base64
-    
-    cmd = "find /data -type f \\( -name '*.jpg' -o -name '*.png' -o -name '*.jpeg' \\) -printf '%T@ %p\\n' 2>/dev/null | sort -n | tail -1 | cut -d' ' -f2"
-    res = sandbox.exec_run(["/bin/bash", "-c", cmd])
-    
-    if res.exit_code == 0 and res.output:
-        
-        path = res.output.decode('utf-8').strip()
-        
-        if path:
-            
-            cat = sandbox.exec_run(f"cat {path}")
-            
-            if cat.exit_code == 0 and cat.output:
-                return base64.b64encode(cat.output).decode('utf-8')
-                
-    return None

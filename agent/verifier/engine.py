@@ -33,8 +33,7 @@ class VerifierAgent(PentestAgent):
         indicator,
         output,
         hypothesis=None,
-        facts=None,
-        img=None
+        facts=None
     ):
         hyp = (
             json.dumps(hypothesis, indent=2)
@@ -54,14 +53,6 @@ class VerifierAgent(PentestAgent):
             output=output
         )
 
-        if img:
-            content = [
-                {"type": "text", "text": text},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img}"}}
-            ]
-        else:
-            content = text
-
         messages = [
             {
                 "role": "system",
@@ -69,19 +60,12 @@ class VerifierAgent(PentestAgent):
             },
             {
                 "role": "user",
-                "content": content
+                "content": text
             }
         ]
 
-        # Call model — fallback to text-only if vision not supported
-        try:
-            raw, in_tokens, out_tokens = self.call(messages)
-        except Exception:
-            fallback = [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": text}
-            ]
-            raw, in_tokens, out_tokens = self.call(fallback)
+        # Call model
+        raw, in_tokens, out_tokens = self.call(messages)
 
         # Parse JSON
         try:
