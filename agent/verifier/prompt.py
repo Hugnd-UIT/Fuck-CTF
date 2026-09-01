@@ -9,7 +9,7 @@ _schema = json.dumps(
         "result": "success | partial | fail",
         "knowledge": ["concise fact 1", "concise fact 2"],
         "contradiction": False,
-        "flag": False,
+        "flag": "extracted flag string or false",
     },
     indent=2,
 )
@@ -42,7 +42,8 @@ SYSTEM_PROMPT = f"""
   </knowledge>
 
   <flag>
-    do   : set flag = true if output contains a CTF flag pattern
+    do   : set flag to the exact extracted string if output contains a CTF flag
+    do   : set flag to false if no flag is found
   </flag>
 
   <contradiction>

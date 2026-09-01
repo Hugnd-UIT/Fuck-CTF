@@ -13,24 +13,6 @@ import time
 import re
 from cli.run import header, footer, timeout, crashes, noflag, stop
 
-import collections
-import math
-
-FLAG = re.compile(r"(?:[a-zA-Z0-9_]{0,10}CTF|crypto|flag|HTB)\{[^}\s]{1,200}\}", re.IGNORECASE)
-
-# Check flag entropy
-def valid(flag):
-    inner = re.search(r'\{(.+)\}', flag)
-    if not inner:
-        return False
-    content = inner.group(1)
-    if len(set(content)) <= 2:
-        return False
-    freq = collections.Counter(content)
-    n = len(content)
-    ent = -sum((c/n) * math.log2(c/n) for c in freq.values())
-    return ent >= 2.5
-
 # Load environment
 dotenv.load_dotenv()
 
@@ -84,19 +66,9 @@ while True:
         consecutive_crashes = 0
 
         # Check for flag
-        found = FLAG.search(summary)
-        if found and not valid(found.group(0)):
-            found = None
-            
-        if not found:
-            for match in reversed(list(FLAG.finditer(str(agent.history)))):
-                if valid(match.group(0)):
-                    found = match
-                    break
-            
-        if found:
+        if "flag_captured" in exec_json:
             elapsed = time.time() - start_time
-            footer(found.group(0), elapsed)
+            footer(exec_json["flag_captured"], elapsed)
             break
             
         if summary == "Goal Achieved":

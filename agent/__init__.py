@@ -207,13 +207,6 @@ class Orchestrator:
             # Run commands in sandbox
             out = sb.run(sandbox, cmds, category, exec_json.get("timeout", 30))
 
-            # Detect flag
-            FLAG = re.compile(r"(?:[a-zA-Z0-9_]{0,10}CTF|crypto|flag|HTB)\{[^}\s]{1,200}\}", re.IGNORECASE)
-            match = FLAG.search(out)
-            
-            if match:
-                return match.group(0), {"flag_captured": match.group(0)}
-
             # Verify results
             v_start = time.time()
             
@@ -226,6 +219,10 @@ class Orchestrator:
                 agent_ui.passed()
             else:
                 agent_ui.failed()
+                
+            flag = verif.get("flag")
+            if flag and isinstance(flag, str):
+                return flag, {"flag_captured": flag}
                 
             know = verif.get("knowledge", [])
             
@@ -253,14 +250,14 @@ class Orchestrator:
                             discovered=discovered
                         )
                     
-                    raw = r_res.get("raw", "")
-                    
-                    if "429" in ind:
-                        agent_ui.retry(retry + 1)
-                        retry += 1
-                        time.sleep(2 * retry)
-                        continue
-                    break
+                        raw = r_res.get("raw", "")
+                        
+                        if "429" in ind:
+                            agent_ui.retry(retry + 1)
+                            retry += 1
+                            time.sleep(2 * retry)
+                            continue
+                        break
 
                     r_data = r_res.get("refine_data", {})
                     r_cmds = r_data.get("commands", [])
