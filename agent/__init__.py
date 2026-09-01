@@ -239,7 +239,7 @@ class Orchestrator:
             exec_reason = exec_json.get("reason", {}) if isinstance(exec_json.get("reason"), dict) else {}
             exec_analysis = exec_reason.get("analysis", "") or exec_reason.get("construction", "")
             if exec_analysis:
-                agent_ui.think(exec_analysis)
+                agent_ui.think(exec_analysis, header=False)
             
             for i, cmd in enumerate(cmds):
                 agent_ui.command(cmd, i == len(cmds) - 1)
@@ -353,7 +353,7 @@ class Orchestrator:
                     r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
                     r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
                     if r_analysis:
-                        agent_ui.think(r_analysis)
+                        agent_ui.think(r_analysis, header=False)
                     
                     if not r_cmds:
                         agent_ui.empty()

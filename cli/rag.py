@@ -11,7 +11,7 @@ def retrieve(elapsed, err):
 
 # Log search start
 def search():
-    line("├─ Searching...")
+    line("│  ├─ Searching...")
 
 # Log search complete
 def done():

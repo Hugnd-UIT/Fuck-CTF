@@ -5,14 +5,16 @@ def plan(elapsed):
     node("Planning...", clock(elapsed), "cyan")
 
 # Log thinking phase
-def think(rationale=None):
-    line("├─ Thinking...")
+def think(rationale=None, header=True):
+    if header:
+        line("├─ Thinking...")
     if rationale:
-        line(f"├─ {rationale}", color="dim white")
+        line(f"├─ {rationale}")
 
 # Log current subtask
 def subtask(sub, rag=False):
-    prefix = "├─ " if rag else "└─ "
+    line(" ")
+    prefix = "│  ├─ " if rag else "└─ "
     line(f"{prefix}{sub}")
 
 # Log circuit breaker
