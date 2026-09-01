@@ -70,8 +70,10 @@ class SummarizerAgent(PentestAgent):
                 json_str = text.strip()
 
             summary_data = json_repair.loads(json_str)
-
-
+            if isinstance(summary_data, list):
+                summary_data = summary_data[0] if summary_data else {}
+            if not isinstance(summary_data, dict):
+                summary_data = {}
         except Exception as e:
 
             summary_data = {

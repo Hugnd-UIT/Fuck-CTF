@@ -10,6 +10,7 @@ _schema = json.dumps(
         "commands": ["command 1", "command 2 if needed"],
         "timeout": 600,
         "success": "expected pattern in stdout/stderr",
+        "rag": "search query here if you forgot syntax/options, else null",
         "avoids": "step_id of identical failed command, or none",
     },
     indent=2,
@@ -30,6 +31,7 @@ SYSTEM_PROMPT = f"""
     do   : write complete, working commands — not skeletons or TODOs
     do   : for long or complex scripts, write to file via heredoc then run it
     do   : add periodic stdout progress prints in long-running scripts
+    do   : use the 'rag' field to search for exact syntax if you forget how to use a tool
     avoid: interactive tools — nano, vim, less, plain gdb, plain nc, bare python shell
     avoid: commands that block waiting on stdin
     avoid: repeating a command already in HISTORY — change tool/technique/flags

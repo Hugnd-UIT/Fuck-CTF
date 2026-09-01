@@ -157,22 +157,39 @@ class Orchestrator:
         plan = plan_res["plan_data"]
         elapsed = time.time() - start
 
+        plan_dict = plan.get("plan", {}) if isinstance(plan.get("plan"), dict) else {}
+        sub = plan_dict.get("subtask", "") or plan.get("subtask", "")
+        if not sub:
+            sub = "Planning next execution step..."
+
+        rag_query = plan_dict.get("rag", "") or plan.get("rag", "")
+
         # Check completion
-        if plan.get("plan", {}).get("finished", False):
+        if plan_dict.get("finished", False) or plan.get("finished", False):
             agent_ui.plan(elapsed)
             return "Goal Achieved", plan
 
-        sub = plan.get("plan", {}).get("subtask", "")
-        
         agent_ui.plan(elapsed)
         
-        if memories:
-            agent_ui.think()
+        reason_dict = plan.get("reason", {}) if isinstance(plan.get("reason"), dict) else {}
+        hypothesis = reason_dict.get("hypothesis", {}) if isinstance(reason_dict.get("hypothesis"), dict) else {}
+        
+        rationale = (
+            hypothesis.get("rationale", "") or 
+            reason_dict.get("rationale", "") or 
+            plan.get("rationale", "") or 
+            (plan.get("hypothesis", {}).get("rationale", "") if isinstance(plan.get("hypothesis"), dict) else "") or
+            plan.get("raw_text", "")
+        )
+        
+        if rationale:
+            agent_ui.think(rationale)
+        else:
+            agent_ui.think(f"Raw Output: {str(plan)[:200]}...")
             
         tactic = plan.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
 
         # Handle RAG query
-        rag_query = plan.get("plan", {}).get("rag")
         if rag_query and str(rag_query).lower() not in ("none", "null", ""):
             agent_ui.subtask(rag_query, rag=True)
             rag = memory.execute(rag_query, len(state.history))
@@ -200,14 +217,29 @@ class Orchestrator:
             # Execute plan
             exec_start = time.time()
             
-            exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=plan.get("plan", {}).get("tool", ""), history=state.history)
+            exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=plan_dict.get("tool", "") or plan.get("tool", ""), history=state.history)
             
             exec_json = exec_res["exec_data"]
+            
+            # Handle RAG
+            exec_rag = exec_json.get("rag")
+            if exec_rag and str(exec_rag).lower() not in ("none", "null", ""):
+                agent_ui.subtask(exec_rag, rag=True)
+                rag_out = memory.execute(exec_rag, len(state.history))
+                if rag_out:
+                    state.history.append(rag_out)
+                return "Knowledge Retrieval by Executor", {"commands": [], "success": "none"}
+                
             cmds = exec_json.get("commands", [])
             ind = exec_json.get("success", "")
 
             exec_time = time.time() - exec_start
             agent_ui.execute(exec_time)
+            
+            exec_reason = exec_json.get("reason", {}) if isinstance(exec_json.get("reason"), dict) else {}
+            exec_analysis = exec_reason.get("analysis", "") or exec_reason.get("construction", "")
+            if exec_analysis:
+                agent_ui.think(exec_analysis)
             
             for i, cmd in enumerate(cmds):
                 agent_ui.command(cmd, i == len(cmds) - 1)
@@ -220,10 +252,19 @@ class Orchestrator:
             
             v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
             verif = v_res["verify_data"]
-            if isinstance(verif, list) and len(verif) > 0:
+            if isinstance(verif, list):
                 verif = verif[0]
             if not isinstance(verif, dict):
                 verif = {}
+                
+            # Handle RAG
+            verif_rag = verif.get("rag")
+            if verif_rag and str(verif_rag).lower() not in ("none", "null", ""):
+                agent_ui.subtask(verif_rag, rag=True)
+                rag_out = memory.execute(verif_rag, len(state.history))
+                if rag_out:
+                    state.history.append(rag_out)
+                return "Knowledge Retrieval by Verifier", {"commands": cmds, "success": ind}
             
             v_time = time.time() - v_start
             
@@ -308,6 +349,11 @@ class Orchestrator:
 
                     r_data = r_res.get("refine_data", {})
                     r_cmds = r_data.get("commands", [])
+                    
+                    r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
+                    r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
+                    if r_analysis:
+                        agent_ui.think(r_analysis)
                     
                     if not r_cmds:
                         agent_ui.empty()

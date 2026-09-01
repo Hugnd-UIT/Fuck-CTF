@@ -35,7 +35,7 @@ SYSTEM_PROMPT = f"""
 
   <subtask>
     do   : write a concise English directive covering all related steps of one tactic
-    do   : if you need to search for knowledge, leave 'subtask' empty and fill the 'rag' field instead.
+    do   : always provide a descriptive 'subtask', even if you are using RAG in this step
     avoid: writing Python / Bash / C code in subtask — that is Executor's job
     avoid: copying example queries verbatim — reason from the real challenge
   </subtask>

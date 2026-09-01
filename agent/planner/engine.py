@@ -149,10 +149,10 @@ class PlannerAgent(PentestAgent):
             if isinstance(plan_data, list):
                 plan_data = plan_data[0] if plan_data else {}
             if not isinstance(plan_data, dict):
-                plan_data = {}
+                plan_data = {"raw_text": json_str}
 
             plan = plan_data.get("plan", {})
-            subtask = plan.get("subtask", "plan generated")
+            subtask = plan.get("subtask", plan_data.get("raw_text", "plan generated"))
 
 
         except Exception as e:

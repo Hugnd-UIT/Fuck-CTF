@@ -8,6 +8,7 @@ _schema = json.dumps(
         },
         "result": "success | partial | fail",
         "knowledge": ["concise fact 1", "concise fact 2"],
+        "rag": "search query if you need to look up an error message, else null",
         "contradiction": False,
         "flag": "extracted flag string or false",
     },
@@ -38,6 +39,7 @@ SYSTEM_PROMPT = f"""
   <knowledge>
     do   : extract concrete facts — addresses, ports, versions, paths, credentials, recovered values
     do   : keep each entry one short sentence
+    do   : use the 'rag' field to look up cryptic error messages, crash codes, or unknown tool output
     avoid: writing paragraphs or restating the full output
   </knowledge>
 

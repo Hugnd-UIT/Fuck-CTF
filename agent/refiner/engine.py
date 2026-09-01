@@ -90,8 +90,10 @@ class RefinerAgent(PentestAgent):
                 json_str = text.strip()
 
             refine_data = json_repair.loads(json_str)
-
-
+            if isinstance(refine_data, list):
+                refine_data = refine_data[0] if refine_data else {}
+            if not isinstance(refine_data, dict):
+                refine_data = {}
         except Exception as e:
 
             refine_data = {

@@ -5,8 +5,10 @@ def plan(elapsed):
     node("Planning...", clock(elapsed), "cyan")
 
 # Log thinking phase
-def think():
+def think(rationale=None):
     line("├─ Thinking...")
+    if rationale:
+        line(f"│  └─ {rationale}")
 
 # Log current subtask
 def subtask(sub, rag=False):
