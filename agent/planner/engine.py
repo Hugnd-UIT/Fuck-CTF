@@ -98,7 +98,6 @@ class PlannerAgent(PentestAgent):
         # Format system prompts
         system_content = (
             SYSTEM_PROMPT
-            .replace("<TOOL_LIST>", tools)
             .replace("{playbook}", str(playbook))
         )
 
@@ -159,7 +158,13 @@ class PlannerAgent(PentestAgent):
 
             plan_data = {
                 "reason": {
-                    "error": "Failed to parse JSON"
+                    "observation": "Failed to parse JSON",
+                    "alternatives": "none",
+                    "hypothesis": {
+                        "tactic": "Error parsing plan",
+                        "rationale": "Failed to parse JSON"
+                    },
+                    "confidence": 0.0
                 },
                 "plan": {
                     "subtask": "Error parsing plan",

@@ -78,7 +78,8 @@ class SummarizerAgent(PentestAgent):
 
             summary_data = {
                 "reason": {
-                    "error": "Failed to parse JSON"
+                    "analysis": "Failed to parse JSON",
+                    "classification": "inconclusive"
                 },
                 "tree": tree,
                 "summary": "Error parsing summary"

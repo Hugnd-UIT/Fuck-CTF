@@ -98,7 +98,10 @@ class RefinerAgent(PentestAgent):
 
             refine_data = {
                 "reason": {
-                    "error": "Failed to parse JSON"
+                    "analysis": "Failed to parse JSON",
+                    "error": "syntax",
+                    "strategy": "none",
+                    "risk": "none"
                 },
                 "commands": []
             }

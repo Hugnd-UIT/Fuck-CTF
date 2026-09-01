@@ -3,40 +3,46 @@ import requests
 import urllib.parse
 import cli.rag as rag_ui
 
-# Search GitHub issues
 def search_github(word: str) -> dict:
+    
+    # Setup request
     headers = {
         "Authorization": f"token {os.environ['GITHUB_API_KEY']}",
         "Accept": "application/vnd.github.v3+json"
     }
 
+    # Setup target
     word = urllib.parse.quote(word[:200])
     url = f"https://api.github.com/search/issues?q={word}+is:issue"
 
     try:
+        # Fetch issues
         resp = requests.get(url, headers=headers, timeout=10)
         resp.raise_for_status()
         data = resp.json()
 
+        # Parse items
         items = data.get("items", [])[:10]
         results = []
 
+        # Iterate items
         for item in items:
             title = item.get("title", "")
             body = item.get("body") or ""
 
             try:
+                # Import agent
                 from agent.pentest import PentestAgent
                 import json
 
-                # Initialize issue scorer
+                # Initialize scorer
                 scorer = PentestAgent(
                     model=os.getenv("MODEL", "deepseek/deepseek-v4-flash"),
                     temperature=0.1,
                     tokens=50
                 )
 
-                # Build scoring prompt
+                # Build prompt
                 prompt = f'''
                 You are a security analyst evaluating a GitHub issue related to {word}.
                 Score the relevance of this issue from 0 to 100.
@@ -49,6 +55,7 @@ def search_github(word: str) -> dict:
                 Respond in JSON format: {{"score": 100}}
                 '''
 
+                # Build messages
                 messages = [
                     {
                         "role": "system",
@@ -60,11 +67,11 @@ def search_github(word: str) -> dict:
                     }
                 ]
 
-                # Score issue relevance
+                # Execute scoring
                 text, _, _ = scorer.call(messages)
 
                 try:
-                    # Parse scoring response
+                    # Parse score
                     if "```json" in text:
                         json_str = text.split("```json")[1].split("```")[0].strip()
                     elif "```" in text:
@@ -75,11 +82,14 @@ def search_github(word: str) -> dict:
                     res = json.loads(json_str)
                     score = res.get("score", 0)
                 except:
+                    # Handle error
                     score = 0
 
+                # Check threshold
                 if isinstance(score, (int, float)) and score < 70:
                     continue
 
+                # Append result
                 results.append({
                     "title": title,
                     "url": item.get("html_url"),
@@ -88,15 +98,19 @@ def search_github(word: str) -> dict:
                 })
                 rag_ui.issue(item.get('html_url'))
 
+            # Handle item error
             except Exception as e:
                 rag_ui.fail('Github error', e)
                 pass
 
+            # Check limit
             if len(results) >= 5:
                 break
 
+        # Return results
         return {"github_issues": results}
 
+    # Handle global error
     except Exception as err:
         rag_ui.fail('Github search', err)
         return {"error": str(err)}

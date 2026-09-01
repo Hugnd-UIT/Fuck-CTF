@@ -37,14 +37,14 @@ def query(desc, stage, findings, tasks):
         mem = memory.query(query_texts=[q], n_results=3)
         if mem and "documents" in mem and mem["documents"] and mem["documents"][0]:
             for doc in mem["documents"][0]:
-                memories.append(f"[PAST_MEMORY] {doc}")
+                memories.append(f"[MEMORY] {doc}")
 
         # Query external knowledge
         know = knowledge.query(query_texts=[q], n_results=50)
         if know and "documents" in know and know["documents"] and know["documents"][0]:
             for doc, dist in zip(know["documents"][0], know["distances"][0]):
                 if dist < 1.5:
-                    memories.append(f"[EXTERNAL_KNOWLEDGE] {doc}")
+                    memories.append(f"[KNOWLEDGE] {doc}")
     except Exception as e:
         rag_ui.db(e)
         
@@ -62,7 +62,7 @@ def execute(subtask, length):
             preview = ""
 
             if not issues:
-                return 0, "No GH issues found."
+                return 0, "No issues found."
 
             # Scrape issue content
             def scrape_store(issue):
@@ -107,9 +107,9 @@ def execute(subtask, length):
         step = f"step_{length + 1}"
         return {
             "step_id": step,
-            "tactic": "Retrieval-Augmented-Generation",
+            "tactic": "RAG",
             "plan": subtask,
-            "observation": f"[Knowledge Gathered] Github chunks: {gh_chunks}, Web chunks: {web_chunks}. Preview: {gh_preview or web_preview}",
+            "observation": f"Github chunks: {gh_chunks}, Web chunks: {web_chunks}. Preview: {gh_preview or web_preview}",
             "result": "success"
         }
     except Exception as e:

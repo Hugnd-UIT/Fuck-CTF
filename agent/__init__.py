@@ -104,6 +104,7 @@ class Orchestrator:
         state.init(self.book)
         memory.init()
 
+    # Get history
     @property
     def history(self):
         return state.history
@@ -116,10 +117,10 @@ class Orchestrator:
         category = target.get("category", "") if isinstance(target, dict) else ""
         
         if isinstance(target, dict):
-            clean_target = {k: v for k, v in target.items() if v}
-            if "host" not in clean_target and "port" not in clean_target:
-                clean_target["network"] = "None. This is a local challenge. DO NOT use network tools like nmap or nc."
-            target_str = json.dumps(clean_target, indent=2)
+            clean = {k: v for k, v in target.items() if v}
+            if "host" not in clean and "port" not in clean:
+                clean["network"] = "This is a local challenge!"
+            target_str = json.dumps(clean, indent=2)
         else:
             target_str = str(target)
         
@@ -132,12 +133,13 @@ class Orchestrator:
         if target_dir and target_dir != "-" and os.path.exists(workspace):
             files = os.listdir(workspace)
             if not files:
-                state.absorb({"Environment": "No local directory or files provided. This is a black-box challenge. DO NOT try to read files."})
+                state.absorb({"Environment": "No local directory or files provided!"})
             else:
                 state.absorb({"Environment": f"Directory /data contains: {files}."})
         else:
-            state.absorb({"Environment": "No local directory or files provided. This is a black-box challenge. DO NOT try to read files."})
+            state.absorb({"Environment": "No local directory or files provided!"})
 
+        # Build memory query
         next_str = " ".join(state.tree.get("next", [])) if isinstance(state.tree.get("next"), list) else str(state.tree.get("next", ""))
         
         findings = " ".join(state.tree.get("findings", [])) if isinstance(state.tree.get("findings"), list) else str(state.tree.get("findings", ""))
@@ -160,7 +162,7 @@ class Orchestrator:
         plan_dict = plan.get("plan", {}) if isinstance(plan.get("plan"), dict) else {}
         sub = plan_dict.get("subtask", "") or plan.get("subtask", "")
         if not sub:
-            sub = "Planning next execution step..."
+            sub = "Planning next step..."
 
         rag_query = plan_dict.get("rag", "") or plan.get("rag", "")
 
@@ -185,17 +187,17 @@ class Orchestrator:
         if rationale:
             agent_ui.think(rationale)
         else:
-            agent_ui.think(f"Raw Output: {str(plan)[:200]}...")
+            agent_ui.think(f"Output: {str(plan)[:200]}...")
             
         tactic = plan.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
 
-        # Handle RAG query
+        # Handle RAG
         if rag_query and str(rag_query).lower() not in ("none", "null", ""):
             agent_ui.subtask(rag_query, rag=True)
             rag = memory.execute(rag_query, len(state.history))
             if rag:
                 state.history.append(rag)
-            return "Knowledge Retrieval Completed", {"commands": [], "success": "none"}
+            return "RAG completed!", {"commands": [], "success": "none"}
         else:
             agent_ui.subtask(sub, rag=False)
 
@@ -209,15 +211,16 @@ class Orchestrator:
             
             state.fails[tactic] = state.fails.get(tactic, 0) + 1
             exec_json = {"commands": [], "success": "none"}
-            verif = {"result": "fail", "knowledge": ["Circuit breaker: subtask repeated too many times."]}
-            out = "[SKIPPED - circuit breaker]"
+            verif = {"result": "fail", "knowledge": ["subtask repeated too many times!"]}
+            out = "[SKIPPED]"
             cmds = []
             
         else:
             # Execute plan
             exec_start = time.time()
             
-            exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=plan_dict.get("tool", "") or plan.get("tool", ""), history=state.history)
+            tool_hint = plan_dict.get("hint", "") or plan.get("hint", "") or plan_dict.get("tool", "") or plan.get("tool", "")
+            exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=tool_hint, history=state.history)
             
             exec_json = exec_res["exec_data"]
             
@@ -228,7 +231,7 @@ class Orchestrator:
                 rag_out = memory.execute(exec_rag, len(state.history))
                 if rag_out:
                     state.history.append(rag_out)
-                return "Knowledge Retrieval by Executor", {"commands": [], "success": "none"}
+                return "RAG completed!", {"commands": [], "success": "none"}
                 
             cmds = exec_json.get("commands", [])
             ind = exec_json.get("success", "")
@@ -264,54 +267,40 @@ class Orchestrator:
                 rag_out = memory.execute(verif_rag, len(state.history))
                 if rag_out:
                     state.history.append(rag_out)
-                return "Knowledge Retrieval by Verifier", {"commands": cmds, "success": ind}
+                return "RAG completed!", {"commands": cmds, "success": ind}
             
             v_time = time.time() - v_start
             
+            # Print verification status
             if verif.get("result") in ("pass", "success"):
                 agent_ui.passed()
             else:
                 agent_ui.failed()
                 
-            flag = verif.get("flag")
+            # Validate flag format
             if flag and isinstance(flag, str):
                 lower = flag.lower()
                 skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
                 
                 if not skip:
-                    expected_format = target.get("flag", "")
-                    if expected_format:
-                        prefix = expected_format.split("{")[0] + "{" if "{" in expected_format else ""
-                        if prefix and not flag.startswith(prefix):
-                            state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. It must start with '{prefix}'."})
-                            skip = True
-                        
-                        if not skip and "{" in expected_format and "}" in expected_format:
-                            inner_hint = expected_format[expected_format.find("{")+1:expected_format.rfind("}")]
-                            inner_actual = flag[flag.find("{")+1:flag.rfind("}")] if "{" in flag else flag
-                            
-                            if inner_actual == inner_hint:
-                                state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. You just printed the placeholder format string instead of the actual flag!"})
+                    expected = target.get("flag", "")
+                    if expected:
+                        # Check prefix
+                        if "{" in expected:
+                            prefix = expected.split("{")[0] + "{"
+                            if not flag.startswith(prefix):
+                                state.absorb({"Invalid": f"The flag '{flag}' is INVALID. It must start with '{prefix}'!"})
                                 skip = True
-                            else:
-                                import re
-                                len_match = re.search(r'(\d+)', inner_hint)
-                                if len_match:
-                                    expected_len = int(len_match.group(1))
-                                    is_hex = 'hex' in inner_hint.lower()
-                                    
-                                    if is_hex and not re.fullmatch(r"[0-9a-fA-F]*", inner_actual):
-                                        state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. It must contain only hex characters."})
-                                        skip = True
-                                    elif len(inner_actual) != expected_len:
-                                        if is_hex and len(inner_actual) == expected_len * 2:
-                                            state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. Expected length {expected_len} but got {len(inner_actual)}. You double-hex-encoded it. Decode it from hex to ASCII!"})
-                                        else:
-                                            state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. Expected length {expected_len} but got {len(inner_actual)}."})
-                                        skip = True
+                        
+                        # Check placeholder
+                        if not skip and flag == expected:
+                            state.absorb({"Invalid": f"The flag '{flag}' is INVALID. You printed the placeholder instead of the real flag!"})
+                            skip = True
+
                 if not skip:
-                    return flag, {"flag_captured": flag}
+                    return flag, {"captured": flag}
                 
+            # Print knowledge
             know = verif.get("knowledge", [])
             
             if know:
@@ -329,9 +318,10 @@ class Orchestrator:
                         extra = "\n".join(verif.get("knowledge", []))
                         discovered = (
                             "Findings:\n" + "\n".join(state.tree.get("findings", []))
-                            + "\nExtracted Data:\n" + str(state.tree.get("data", {}))
-                            + ("\nVerifier Notes:\n" + extra if extra else "")
+                            + "\nData:\n" + str(state.tree.get("data", {}))
+                            + ("\nNotes:\n" + extra if extra else "")
                         )
+
                         # Request refinement
                         r_res = self.refiner.refine(
                             target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
@@ -382,8 +372,8 @@ class Orchestrator:
                     else:
                         agent_ui.evaluated(len(cmds))
 
-                    strat = r_data.get("reason", {}).get("strategy", "No strategy provided.")
-                    verif.setdefault("knowledge", []).append(f"Refinement applied: {strat}")
+                    strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
+                    verif.setdefault("knowledge", []).append(f"strategy: {strat}")
                     
                     if verif.get("result") in ("pass", "success"):
                         break
@@ -416,6 +406,7 @@ class Orchestrator:
         sum_time = time.time() - sum_start
         agent_ui.summarize(sum_time)
 
+        # Print alerts
         if state.alerts:
             agent_ui.contradict(len(state.alerts))
         else:
@@ -437,7 +428,7 @@ class Orchestrator:
         state.compressed += f"\n[{id}] {obs}"
         
         if len(state.compressed) > 3000:
-            state.compressed = "...[truncated]\n" + state.compressed[-3000:]
+            state.compressed = "...[TRUNCATED]...\n" + state.compressed[-3000:]
 
         count = len(state.history)
         fails = max(state.fails.values()) if state.fails else 0
@@ -457,6 +448,6 @@ class Orchestrator:
             tac = review.get("tactic", "")
             
             if adv or tac:
-                state.alerts.append(f"[REFLECTOR ADVICE] {tac} - {adv}")
+                state.alerts.append(f"[ADVICE] {tac} - {adv}")
 
         return sum_data.get("summary", ""), exec_json

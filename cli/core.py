@@ -68,14 +68,20 @@ def header(target, minutes):
 
 _first_node = True
 _current_color = "blue"
+_last_node = ""
 
 # Print timeline node
 def node(title, right, color="blue"):
-    global _first_node, _current_color
+    global _first_node, _current_color, _last_node
+    
+    if _last_node == title:
+        return
+        
     if not _first_node:
         console.print(Text("│", style="bold blue"))
     _first_node = False
     _current_color = color
+    _last_node = title
     
     left_part = Text(f"● {title}", style=f"bold {color}")
     right_part = Text(right, style="dim white")
@@ -95,7 +101,8 @@ def line(content, tree="│", color=None):
     use_color = color if color else _current_color
 
     if content is None:
-        console.print(Text("│", style="bold blue"))
+        prefix = f"{tree}  " if tree else "   "
+        console.print(Text(prefix, style="bold blue"))
         return
         
     import shutil

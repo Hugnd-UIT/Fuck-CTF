@@ -17,7 +17,7 @@ def init(playbook):
     global tree
     
     stage = "Reconnaissance"
-    next_steps = ["Follow the master workflow outlined in the playbook."]
+    next_steps = ["Follow workflow in the playbook!"]
 
     tree = {
         "stage": stage,
@@ -82,9 +82,9 @@ def guard() -> list:
         missing = set(done) - set(dn)
         if missing:
             out.append(
-                f"[WARNING] DONE LIST SHRANK: {len(missing)} item(s) "
-                f"vanished: {list(missing)[:3]}. "
-                "Likely a new server connection reset state!"
+                f"[WARNING] done list shrunk: {len(missing)} item(s) "
+                f"lost: {list(missing)[:3]}. "
+                "New server connection reset the state!"
             )
     return out
 

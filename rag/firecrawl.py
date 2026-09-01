@@ -7,21 +7,22 @@ import cli.rag as rag_ui
 
 URL = "https://api.firecrawl.dev/v1/scrape"
 
-# Scrape URL via Firecrawl
 def scrape(target: str) -> tuple[Optional[str], Optional[str]]:
     api_key = os.environ.get('FIRECRAWL_API_KEY')
     if not api_key:
         return None, "MISSING_API_KEY"
 
+    # Setup payload
     payload = json.dumps({
         "url": target,
         "formats": ["markdown"]
     }).encode("utf-8")
 
-    # Configure retries
     retries = 3
 
     for attempt in range(retries):
+        
+        # Build request
         req = urllib.request.Request(
             URL,
             data=payload,
@@ -33,18 +34,22 @@ def scrape(target: str) -> tuple[Optional[str], Optional[str]]:
         )
 
         try:
+            # Execute request
             with urllib.request.urlopen(req, timeout=30) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
 
-                # Handle successful response
+                # Handle response
                 if data.get("success"):
                     rag_ui.firecrawl(target)
                     return data.get("data", {}).get("markdown"), None
 
+                # Handle error
                 rag_ui.fail('Firecrawl error', 'API error')
                 return None, "API_ERR"
 
         except urllib.error.HTTPError as err:
+            
+            # Check rate limit
             if err.code == 429 and attempt < retries - 1:
                 rag_ui.retry(attempt + 1, retries - 1)
                 time.sleep(2 ** attempt)

@@ -70,9 +70,11 @@ class ReflectorAgent(PentestAgent):
             
         except Exception as e:
             review_data = {
-                "cause": "Failed to parse reflection.",
+                "reason": {
+                    "cause": "Failed to parse"
+                },
                 "tactic": "Backtrack and try a different approach.",
-                "advice": "Review the last outputs carefully."
+                "advice": "Review the last outputs carefully"
             }
             
         return {

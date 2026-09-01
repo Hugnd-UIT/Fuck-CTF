@@ -94,7 +94,9 @@ class VerifierAgent(PentestAgent):
 
             verify_data = {
                 "reason": {
-                    "error": "Failed to parse JSON"
+                    "analysis": "Failed to parse JSON",
+                    "discovery": "none",
+                    "unmet": "Failed to parse JSON"
                 },
                 "result": "fail",
                 "knowledge": [],

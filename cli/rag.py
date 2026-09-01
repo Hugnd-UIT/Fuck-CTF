@@ -11,7 +11,7 @@ def retrieve(elapsed, err):
 
 # Log search start
 def search():
-    line("│  ├─ Searching...")
+    pass
 
 # Log search complete
 def done():
@@ -19,21 +19,21 @@ def done():
 
 # Log web query
 def duckduckgo(query):
-    line(f"│  │  ├─ DuckDuckGo: {query}")
+    line(f"│  ├─ DuckDuckGo: {query}")
 
 # Log GitHub issue
 def issue(url):
-    line(f"│  │  ├─ Github: {url}")
+    line(f"│  ├─ Github: {url}")
 
 # Log URL scrape
 def firecrawl(url):
     display_url = url if len(url) <= 50 else url[:47] + "..."
-    line(f"│  │  ├─ Firecrawl: {display_url}")
+    line(f"│  ├─ Firecrawl: {display_url}")
 
 # Log API retry
 def retry(attempt, retries):
-    line(f"│  │  ├─ Firecrawl retry: {attempt}/{retries}")
+    line(f"│  ├─ Firecrawl retry: {attempt}/{retries}")
 
 # Log search error
 def fail(source, msg):
-    line(f"│  │  ├─ {source}: {msg}")
+    line(f"│  ├─ {source}: {msg}")

@@ -98,7 +98,9 @@ class ExecutorAgent(PentestAgent):
 
             exec_data = {
                 "reason": {
-                    "error": "Failed to parse JSON"
+                    "analysis": "Failed to parse JSON",
+                    "construction": "none",
+                    "scope": "none"
                 },
                 "commands": [
                     "echo 'Executor failed to parse JSON'"

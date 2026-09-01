@@ -2,7 +2,6 @@ import argparse
 import json
 import sys
 
-# Setup encoding
 if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
@@ -34,7 +33,7 @@ agent = Orchestrator(config=config, container=container)
 
 # Setup config
 target = config["target"]
-target["flag"] = config.get("flag", "247CTF{")
+target["flag"] = config.get("flag", "")
 timeout_minutes = config.get("timeout", 15) 
 timeout_seconds = timeout_minutes * 60
 start_time = time.time()
@@ -43,8 +42,7 @@ step = 0
 # Start script
 header(target, timeout_minutes)
 
-consecutive_crashes = 0
-MAX_CONSECUTIVE_CRASHES = 5
+crashes = 0
 
 # Start loop
 while True:
@@ -63,12 +61,12 @@ while True:
             sandbox=container,
             time_left=remaining
         )
-        consecutive_crashes = 0
+        crashes = 0
 
-        # Check for flag
-        if "flag_captured" in exec_json:
+        # Check flag
+        if "captured" in exec_json:
             elapsed = time.time() - start_time
-            footer(exec_json["flag_captured"], elapsed)
+            footer(exec_json["captured"], elapsed)
             break
             
         if summary == "Goal Achieved":
@@ -85,11 +83,11 @@ while True:
     except Exception:
         import traceback
         traceback.print_exc()
-        consecutive_crashes += 1
-        if consecutive_crashes >= MAX_CONSECUTIVE_CRASHES:
-            crashes(consecutive_crashes)
+        crashes += 1
+        if crashes >= 5:
+            crashes(crashes)
             break
-        time.sleep(min(2 ** consecutive_crashes, 30))
+        time.sleep(min(2 ** crashes, 30))
         continue
 
 # Stop sandbox

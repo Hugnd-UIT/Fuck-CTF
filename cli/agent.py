@@ -13,9 +13,13 @@ def think(rationale=None, header=True):
 
 # Log current subtask
 def subtask(sub, rag=False):
-    line(" ")
-    prefix = "│  ├─ " if rag else "└─ "
-    line(f"{prefix}{sub}")
+    if not rag:
+        line("│")
+        prefix = "└─ "
+        line(f"{prefix}{sub}")
+    else:
+        prefix = "├─ "
+        line(f"{prefix}Searching \"{sub}\"...")
 
 # Log circuit breaker
 def breaker(attempts):
