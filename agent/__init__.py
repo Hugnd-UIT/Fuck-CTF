@@ -162,7 +162,7 @@ class Orchestrator:
         plan_dict = plan.get("plan", {}) if isinstance(plan.get("plan"), dict) else {}
         sub = plan_dict.get("subtask", "") or plan.get("subtask", "")
         if not sub:
-            sub = "Planning next step..."
+            sub = "Thinking..."
 
         rag_query = plan_dict.get("rag", "") or plan.get("rag", "")
 
@@ -278,6 +278,7 @@ class Orchestrator:
                 agent_ui.failed()
                 
             # Validate flag format
+            flag = verif.get("flag", "")
             if flag and isinstance(flag, str):
                 lower = flag.lower()
                 skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
@@ -371,6 +372,29 @@ class Orchestrator:
                         agent_ui.knowledge(know[0])
                     else:
                         agent_ui.evaluated(len(cmds))
+                        
+                    flag = verif.get("flag", "")
+                    if flag and isinstance(flag, str):
+                        lower = flag.lower()
+                        skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
+                        
+                        if not skip:
+                            expected = target.get("flag", "")
+                            if expected:
+                                # Check prefix
+                                if "{" in expected:
+                                    prefix = expected.split("{")[0] + "{"
+                                    if not flag.startswith(prefix):
+                                        state.absorb({"Invalid": f"The flag '{flag}' is INVALID. It must start with '{prefix}'!"})
+                                        skip = True
+                                
+                                # Check placeholder
+                                if not skip and flag == expected:
+                                    state.absorb({"Invalid": f"The flag '{flag}' is INVALID. You printed the placeholder instead of the real flag!"})
+                                    skip = True
+
+                        if not skip:
+                            return flag, {"captured": flag}
 
                     strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
                     verif.setdefault("knowledge", []).append(f"strategy: {strat}")
