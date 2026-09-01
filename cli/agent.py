@@ -8,7 +8,7 @@ def plan(elapsed):
 def think(rationale=None):
     line("├─ Thinking...")
     if rationale:
-        line(f"│  └─ {rationale}")
+        line(f"├─ {rationale}", color="dim white")
 
 # Log current subtask
 def subtask(sub, rag=False):
