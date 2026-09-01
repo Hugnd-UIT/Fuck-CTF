@@ -14,6 +14,7 @@ _schema = json.dumps(
             "subtask": "high-level English directive — no raw code",
             "target": "file/url/port",
             "tool": "tool name",
+            "rag": "search query here if needed, else null",
             "avoids": "step_id or none",
             "safety": "safe/destructive",
             "finished": False,
@@ -34,18 +35,17 @@ SYSTEM_PROMPT = f"""
 
   <subtask>
     do   : write a concise English directive covering all related steps of one tactic
-    do   : if tactic is Retrieval-Augmented-Generation, subtask must be a 2–6 word search query derived from the actual challenge context
+    do   : if you need to search for knowledge, leave 'subtask' empty and fill the 'rag' field instead.
     avoid: writing Python / Bash / C code in subtask — that is Executor's job
     avoid: copying example queries verbatim — reason from the real challenge
   </subtask>
 
   <tactics>
-    do   : pick from: Reconnaissance, Initial-Access, Execution, Privilege-Escalation,
-           Defense-Evasion, Collection, Exfiltration, Retrieval-Augmented-Generation
-    do   : PRIORITIZE Retrieval-Augmented-Generation if you feel stuck, if your script fails unexpectedly, or if you suspect you are on the wrong track. Do NOT be overly confident.
-    do   : switch tactic category entirely if the same tactic has failed 3+ times in a row
-    do   : use Retrieval-Augmented-Generation to search for known exploit patterns, vulnerabilities, or CTF writeups if you are unsure how to proceed.
+    do   : CRITICAL RULE: If you do not know the exact exploit chain or command syntax, you MUST populate the 'rag' field in your plan to search for it immediately. DO NOT GUESS.
+    do   : CRITICAL RULE: If a tactic fails, switch to using the 'rag' field to find the correct approach instead of retrying the failed tactic with minor tweaks.
+    do   : switch tactic category entirely if the same tactic has failed 2+ times in a row
     avoid: repeating a failed tactic without changing technique or target
+    avoid: attempting to write a complex exploit script without using RAG first to find a reference.
   </tactics>
 
   <loop>
@@ -64,12 +64,7 @@ SYSTEM_PROMPT = f"""
   </time>
 
   <playbook>
-    category  : <CATEGORY>
-    tactics   : <TACTIC_LIST>
-    procedure :
-<PROCEDURE>
-    forbidden :
-<FORBIDDEN>
+{playbook}
   </playbook>
 
 </rules>

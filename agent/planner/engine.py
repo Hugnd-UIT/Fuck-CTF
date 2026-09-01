@@ -95,25 +95,11 @@ class PlannerAgent(PentestAgent):
             else "None."
         )
 
-        # Build playbook parts
-        tactics_str = ", ".join(playbook.get("tactics", []))
-        procedure_str = "\n".join(playbook.get("procedure", []))
-        forbidden_str = "\n".join(
-            f"- {item}"
-            for item in playbook.get("forbidden", [])
-        )
-
         # Format system prompts
         system_content = (
             SYSTEM_PROMPT
             .replace("<TOOL_LIST>", tools)
-            .replace(
-                "<CATEGORY>",
-                playbook.get("category", "default")
-            )
-            .replace("<TACTIC_LIST>", tactics_str)
-            .replace("<PROCEDURE>", procedure_str)
-            .replace("<FORBIDDEN>", forbidden_str)
+            .replace("{playbook}", str(playbook))
         )
 
         user_content = USER_PROMPT.format(

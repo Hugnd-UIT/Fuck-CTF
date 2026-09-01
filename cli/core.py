@@ -98,17 +98,24 @@ def line(content, tree="│", color=None):
         console.print(Text("│", style="bold blue"))
         return
         
-    for line_text in content.split("\n"):
-        if line_text.lstrip().startswith("├─ ") or line_text.lstrip().startswith("└─ "):
-            pos = line_text.find("─ ") + 2
-            sub_indent = " " * pos
+    import shutil
+    base = ""
+    for i, text in enumerate(content.split("\n")):
+        if "├─ " in text or "└─ " in text:
+            pos = text.find("─ ") + 2
+            pref = text[:pos]
+            base = pref.replace("├─ ", "│  ").replace("└─ ", "   ")
+            sub = base
         else:
-            sub_indent = " " * (len(line_text) - len(line_text.lstrip()))
+            if i == 0:
+                base = " " * (len(text) - len(text.lstrip()))
+            sub = base
+            if text.strip():
+                text = base + text.lstrip()
             
-        import shutil
         term = shutil.get_terminal_size().columns
         wrap = min(term - 10, 65) if term > 20 else 65
-        wrapped = textwrap.wrap(line_text, width=wrap, subsequent_indent=sub_indent, drop_whitespace=False)
+        wrapped = textwrap.wrap(text, width=wrap, subsequent_indent=sub, drop_whitespace=False)
         
         prefix = f"{tree}  " if tree else "   "
         

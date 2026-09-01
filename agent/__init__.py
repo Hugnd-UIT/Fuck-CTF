@@ -87,20 +87,18 @@ class Orchestrator:
         )
 
         # Load playbooks
-        try:
-            with open("playbooks.json", "r") as f:
-                self.books = json.load(f)
-        except:
-            self.books = {}
-
         category = config.get("target", {}).get("category", "default")
-        
-        self.book = {
-            "category": category,
-            **self.books.get("playbooks", {}).get(category, self.books.get("playbooks", {}).get("default", {}))
-        }
+        book_path = os.path.join("books", f"{category}.md")
+        if not os.path.exists(book_path):
+            book_path = os.path.join("books", "default.md")
+            
+        try:
+            with open(book_path, "r", encoding="utf-8") as f:
+                self.book = f.read()
+        except:
+            self.book = "Failed to load playbook."
 
-        self.tools = self.books.get("tools", "nmap, gobuster, curl, nc, python3, gdb")
+        self.tools = "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, radare2, ghidra, angr, one_gadget, seccomp-tools, patchelf, upx, john, hashcat, binwalk, exiftool, steghide, linpeas, pwntools, pycryptodome, sympy, gmpy2, sagemath"
 
         # Initialize state
         state.init(self.book)
@@ -237,6 +235,38 @@ class Orchestrator:
             if flag and isinstance(flag, str):
                 lower = flag.lower()
                 skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
+                
+                if not skip:
+                    expected_format = target.get("flag", "")
+                    if expected_format:
+                        prefix = expected_format.split("{")[0] + "{" if "{" in expected_format else ""
+                        if prefix and not flag.startswith(prefix):
+                            state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. It must start with '{prefix}'."})
+                            skip = True
+                        
+                        if not skip and "{" in expected_format and "}" in expected_format:
+                            inner_hint = expected_format[expected_format.find("{")+1:expected_format.rfind("}")]
+                            inner_actual = flag[flag.find("{")+1:flag.rfind("}")] if "{" in flag else flag
+                            
+                            if inner_actual == inner_hint:
+                                state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. You just printed the placeholder format string instead of the actual flag!"})
+                                skip = True
+                            else:
+                                import re
+                                len_match = re.search(r'(\d+)', inner_hint)
+                                if len_match:
+                                    expected_len = int(len_match.group(1))
+                                    is_hex = 'hex' in inner_hint.lower()
+                                    
+                                    if is_hex and not re.fullmatch(r"[0-9a-fA-F]*", inner_actual):
+                                        state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. It must contain only hex characters."})
+                                        skip = True
+                                    elif len(inner_actual) != expected_len:
+                                        if is_hex and len(inner_actual) == expected_len * 2:
+                                            state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. Expected length {expected_len} but got {len(inner_actual)}. You double-hex-encoded it. Decode it from hex to ASCII!"})
+                                        else:
+                                            state.absorb({"Flag-Validation": f"The flag '{flag}' is INVALID. Expected length {expected_len} but got {len(inner_actual)}."})
+                                        skip = True
                 if not skip:
                     return flag, {"flag_captured": flag}
                 

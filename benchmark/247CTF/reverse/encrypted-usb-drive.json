@@ -1,0 +1,63 @@
+{
+    "planner": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 0.9,
+        "sample": true,
+        "tokens": 4096
+    },
+    "executor": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "verifier": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.1,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "refiner": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "summarizer": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.3,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "reflector": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "sandbox": "ctf",
+    "timeout": 120,
+    "limit": 2000,
+    "flag": "247CTF{32-hex}",
+    "target": {
+        "category": "reverse",
+        "desc": "An important USB drive containing sensitive information has been encrypted by some new ransomware variant. Can you reverse the ransomware encryption function and recover the files?",
+        "dir": "/data",
+        "host": "",
+        "port": ""
+    },
+    "cmd_time": 30,
+    "max_time": 600
+}
