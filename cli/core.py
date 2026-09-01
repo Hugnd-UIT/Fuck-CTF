@@ -34,12 +34,15 @@ def header(target, minutes):
     for i in range(1, len(words)):
         details += f"\n                  {words[i]}"
 
+    path = target.get('dir')
+    display = path if path and path != '-' else "None (Black-box challenge)"
+
     info = (
         f"  Category      : {str(target.get('category', '-')).capitalize()}\n"
         f"{details}\n"
         f"  Host          : {target.get('host', '-')}\n"
         f"  Port          : {target.get('port', '-')}\n"
-        f"  Directory     : {target.get('dir', '-')}\n"
+        f"  Directory     : {display}\n"
         f"  Time          : {minutes} minutes"
     )
 

@@ -346,11 +346,11 @@ class Orchestrator:
         fails = max(state.fails.values()) if state.fails else 0
         
         # Reflect if stuck
-        if count in [3, 6, 9] and fails >= 2:
+        if count in [2, 4, 6, 8] and fails >= 1:
             used = str(int(3600 - (time_left or 3600)))
             ref_start = time.time()
             
-            ref_res = self.reflector.review(history=state.history, facts=state.store, target=target_str, time_used=used, time_total="3600")
+            ref_res = self.reflector.review(history=state.history, facts=state.store, target=target_str, time_used=used, time_total="3600", tree=state.tree)
             
             ref_time = time.time() - ref_start
             agent_ui.reflect(ref_time)

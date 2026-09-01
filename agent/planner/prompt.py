@@ -42,12 +42,14 @@ SYSTEM_PROMPT = f"""
   <tactics>
     do   : pick from: Reconnaissance, Initial-Access, Execution, Privilege-Escalation,
            Defense-Evasion, Collection, Exfiltration, Retrieval-Augmented-Generation
-    do   : use Retrieval-Augmented-Generation FIRST when a known challenge name or CVE is identified
+    do   : use Retrieval-Augmented-Generation ONLY when a specific tool name, CVE, or known challenge title is identified
     do   : switch tactic category entirely if the same tactic has failed 3+ times in a row
+    avoid: using RAG for custom/novel crypto challenges — start with Reconnaissance instead
     avoid: repeating a failed tactic without changing technique or target
   </tactics>
 
   <loop>
+    do   : read LAST_OUTPUT first — it is ground truth, diagnose why it failed before planning
     do   : read HISTORY before planning — latest observation is ground truth
     do   : if a step failed because a tool was missing, next plan = install that tool, not abandon the tactic
     do   : if CONTRADICTION WARNING appears, deduce session state changed — pivot to single-connection strategy

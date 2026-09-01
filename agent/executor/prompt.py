@@ -8,7 +8,7 @@ _schema = json.dumps(
             "scope": "confirm only authorized assets targeted",
         },
         "commands": ["command 1", "command 2 if needed"],
-        "timeout": 30,
+        "timeout": 600,
         "success": "expected pattern in stdout/stderr",
         "avoids": "step_id of identical failed command, or none",
     },
@@ -36,9 +36,10 @@ SYSTEM_PROMPT = f"""
   </commands>
 
   <timeout>
-    do   : short local commands — analysis, static tools = 10–60 s
-    do   : network-based attack scripts — brute-force, oracle = 1800–3600 s
-    avoid: leaving timeout unset or too small for the task
+    do   : short local commands — analysis, static tools        = 10–60 s
+    do   : oracle / brute-force attacks over network            = 1800–3600 s
+    do   : python crypto scripts against a socket               = 300–600 s
+    avoid: leaving timeout at default for network attack scripts
   </timeout>
 
   <environment>

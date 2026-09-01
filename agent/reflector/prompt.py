@@ -44,6 +44,7 @@ USER_PROMPT = """
 <input>
   target    = {target}
   facts     = {facts}
+  tree      = {tree}
   history   = {history}
   time_used = {time_used} s
   time_total= {time_total} s

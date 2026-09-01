@@ -28,17 +28,20 @@ class ReflectorAgent(PentestAgent):
         facts,
         target,
         time_used,
-        time_total
+        time_total,
+        tree=None
     ):
         
         recent = history[-10:] if len(history) > 10 else history
         history_str = json.dumps(recent, indent=2)
         facts_str = json.dumps(facts, indent=2) if facts else "None"
         target_str = json.dumps(target, indent=2) if isinstance(target, dict) else str(target)
+        tree_str = json.dumps(tree, indent=2) if tree else "None"
         
         user_content = USER_PROMPT.format(
             target=target_str,
             facts=facts_str,
+            tree=tree_str,
             history=history_str,
             time_used=time_used,
             time_total=time_total

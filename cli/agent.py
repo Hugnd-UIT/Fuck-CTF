@@ -23,12 +23,24 @@ def execute(elapsed):
 
 # Log executed command
 def command(cmd, last):
-    prefix = "└─ " if last else "├─ "
-    lines = cmd.split('\n')
-    line(f"{prefix}$ {lines[0]}")
-    for l in lines[1:]:
-        char = "" if last else "│"
-        line(f"     {l}", tree=char)
+    from .core import console
+    from rich.text import Text
+    import shutil, textwrap
+
+    rows = cmd.split('\n')
+    branch = "└─ " if last else "├─ "
+    wrap = min(shutil.get_terminal_size().columns - 10, 62)
+
+    # Print first line
+    head = textwrap.wrap(f"{branch}$ {rows[0]}", width=wrap, subsequent_indent="     ")
+    for chunk in head:
+        console.print(Text("│  ", style="bold blue") + Text(chunk, style="bold magenta"))
+
+    # Print heredoc body
+    for row in rows[1:]:
+        wrapped = textwrap.wrap(row, width=wrap, subsequent_indent="     ") or [""]
+        for chunk in wrapped:
+            console.print(Text("│  ", style="bold blue") + Text(f"   {chunk}", style="bold magenta"))
 
 # Log verification success
 def passed():
