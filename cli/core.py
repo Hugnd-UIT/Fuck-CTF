@@ -7,6 +7,7 @@ from rich.style import Style
 
 console = Console()
 
+# Print CLI header
 def header(target, minutes):
     art = (
         "      ███████╗██╗   ██╗ ██████╗██╗  ██╗     ██████╗████████╗███████╗      \n"
@@ -54,6 +55,7 @@ def header(target, minutes):
 
 _first_node = True
 
+# Print timeline node
 def node(title, right, color="blue"):
     global _first_node
     if not _first_node:
@@ -72,6 +74,7 @@ def node(title, right, color="blue"):
 
 import textwrap
 
+# Print timeline line
 def line(content, tree="│", color="blue"):
     if content is None:
         console.print(Text("│", style="bold blue"))
@@ -98,9 +101,11 @@ def line(content, tree="│", color="blue"):
         for chunk in wrapped:
             console.print(Text(prefix, style="bold blue") + Text(chunk, style=f"bold {color}"))
 
+# Print error message
 def error(msg):
     console.print(Text("│  ", style="bold blue") + Text(f"[Error]: {msg}", style="bold red"))
 
+# Print CLI footer
 def footer(flag, elapsed):
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)
@@ -124,6 +129,7 @@ def footer(flag, elapsed):
     )
     console.print(panel)
 
+# Format elapsed time
 def clock(seconds):
     if seconds < 0:
         seconds = 0

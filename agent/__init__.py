@@ -18,7 +18,7 @@ from .core import sandbox as sb
 
 class Orchestrator:
     def __init__(self, config, container=None):
-        
+        # Extract config
         p = config.get("planner", {})
         e = config.get("executor", {})
         v = config.get("verifier", {})
@@ -26,6 +26,7 @@ class Orchestrator:
         s = config.get("summarizer", {})
         ref = config.get("reflector", {})
 
+        # Initialize Planner
         self.planner = PlannerAgent(
             model=p.get("model"), 
             local=p.get("local", False), 
@@ -35,6 +36,7 @@ class Orchestrator:
             tokens=p.get("tokens", 1024)
         )
         
+        # Initialize Executor
         self.executor = ExecutorAgent(
             model=e.get("model"), 
             local=e.get("local", False), 
@@ -44,6 +46,7 @@ class Orchestrator:
             tokens=e.get("tokens", 1024)
         )
         
+        # Initialize Verifier
         self.verifier = VerifierAgent(
             model=v.get("model"), 
             local=v.get("local", False), 
@@ -53,6 +56,7 @@ class Orchestrator:
             tokens=v.get("tokens", 1024)
         )
         
+        # Initialize Refiner
         self.refiner = RefinerAgent(
             model=r.get("model"), 
             local=r.get("local", False), 
@@ -62,6 +66,7 @@ class Orchestrator:
             tokens=r.get("tokens", 1024)
         )
         
+        # Initialize Summarizer
         self.summarizer = SummarizerAgent(
             model=s.get("model"), 
             local=s.get("local", False), 
@@ -71,6 +76,7 @@ class Orchestrator:
             tokens=s.get("tokens", 1024)
         )
         
+        # Initialize Reflector
         self.reflector = ReflectorAgent(
             model=ref.get("model"), 
             local=ref.get("local", False), 
@@ -80,6 +86,7 @@ class Orchestrator:
             tokens=ref.get("tokens", 4096)
         )
 
+        # Load playbooks
         try:
             with open("playbooks.json", "r") as f:
                 self.books = json.load(f)
@@ -95,6 +102,7 @@ class Orchestrator:
 
         self.tools = self.books.get("tools", config.get("tools", "nmap, gobuster, curl, nc, python3, gdb"))
 
+        # Initialize state
         state.init(self.book)
         memory.init()
 
@@ -103,14 +111,17 @@ class Orchestrator:
         return state.history
 
     def execute(self, target, sandbox, time_left=None):
+        # Start execution
         start = time.time()
         
+        # Parse target
         category = target.get("category", "") if isinstance(target, dict) else ""
         
         target_str = json.dumps(target, indent=2) if isinstance(target, dict) else target
         
         desc = target.get("description", "") if isinstance(target, dict) else str(target)
 
+        # Check workspace
         workspace = os.path.join(os.getcwd(), 'workspace')
         if os.path.exists(workspace):
             files = os.listdir(workspace)
@@ -124,9 +135,11 @@ class Orchestrator:
         findings = " ".join(state.tree.get("findings", [])) if isinstance(state.tree.get("findings"), list) else str(state.tree.get("findings", ""))
         findings += " " + str(state.tree.get("data", {}))
         
+        # Query memory
         memories = memory.query(desc, state.tree.get("stage", ""), findings, next_str)
         mem_str = "\n".join(memories) if memories else "No relevant memories found."
 
+        # Plan next steps
         plan_res = self.planner.plan(
             history=state.history, fails=state.fails, target=target_str, tree=state.tree,
             tools=self.tools, playbook=self.book, memory=mem_str, time_left=time_left,
@@ -136,6 +149,7 @@ class Orchestrator:
         plan = plan_res["plan_data"]
         elapsed = time.time() - start
 
+        # Check completion
         if plan.get("plan", {}).get("finished", False):
             agent_ui.plan(elapsed)
             agent_ui.noflag()
@@ -150,6 +164,7 @@ class Orchestrator:
             
         tactic = plan.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
 
+        # Handle RAG tactic
         if tactic == "Retrieval-Augmented-Generation":
             agent_ui.subtask(sub, rag=True)
             rag = memory.execute(sub, len(state.history))
@@ -159,9 +174,11 @@ class Orchestrator:
         else:
             agent_ui.subtask(sub, rag=False)
 
+        # Track attempts
         norm = state.normalize(sub)
         state.attempts[norm] = state.attempts.get(norm, 0) + 1
         
+        # Trigger circuit breaker
         if state.attempts[norm] > 3:
             agent_ui.breaker(state.attempts[norm])
             
@@ -172,6 +189,7 @@ class Orchestrator:
             cmds = []
             
         else:
+            # Execute plan
             exec_start = time.time()
             
             exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=plan.get("plan", {}).get("tool", ""), history=state.history)
@@ -186,14 +204,17 @@ class Orchestrator:
             for i, cmd in enumerate(cmds):
                 agent_ui.command(cmd, i == len(cmds) - 1)
 
+            # Run commands in sandbox
             out = sb.run(sandbox, cmds, category, exec_json.get("timeout", 30))
 
+            # Detect flag
             FLAG = re.compile(r"(?:[a-zA-Z0-9_]{0,10}CTF|crypto|flag|HTB)\{[^}\s]{1,200}\}", re.IGNORECASE)
             match = FLAG.search(out)
             
             if match:
                 return match.group(0), {"flag_captured": match.group(0)}
 
+            # Verify results
             v_start = time.time()
             
             v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
@@ -213,11 +234,13 @@ class Orchestrator:
             else:
                 agent_ui.evaluated(len(cmds))
 
+            # Refine commands if failed
             for tries in range(2):
                 agent_ui.refine(tries + 1, 2)
                 
                 retry = 0
                 while retry < 3:
+                    # Request refinement
                     r_res = self.refiner.refine(
                         target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
                         discovered="Findings:\n" + "\n".join(state.tree.get("findings", [])) + "\nExtracted Data:\n" + str(state.tree.get("data", {}))
@@ -242,10 +265,12 @@ class Orchestrator:
                 for i, cmd in enumerate(r_cmds):
                     agent_ui.command(cmd, i == len(r_cmds) - 1)
 
+                # Execute refined commands
                 cmds = r_cmds
                 
                 out = sb.run(sandbox, cmds, category, r_data.get("timeout", exec_json.get("timeout", 30)))
 
+                # Verify refined output
                 v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
                 verif = v_res.get("verify_data", verif)
                 
@@ -271,6 +296,7 @@ class Orchestrator:
             else:
                 state.fails[tactic] = 0
 
+        # Summarize step
         sum_start = time.time()
         
         step = {"subtask": sub, "commands": cmds, "output_summary": out[-8000:], "verification": verif}
@@ -281,10 +307,12 @@ class Orchestrator:
         new_tree = sum_data.get("tree", {})
         new_data = new_tree.get("data", {})
 
+        # Detect alerts
         alerts_d = state.diff(new_data)    
         alerts_t = state.guard()
         state.alerts = alerts_d + alerts_t
 
+        # Absorb new knowledge
         state.absorb(new_data)   
         state.snap()
 
@@ -296,6 +324,7 @@ class Orchestrator:
         else:
             agent_ui.clean()
 
+        # Append to history
         id = f"step_{len(state.history) + 1}"
         
         state.history.append({
@@ -316,6 +345,7 @@ class Orchestrator:
         count = len(state.history)
         fails = max(state.fails.values()) if state.fails else 0
         
+        # Reflect if stuck
         if count in [3, 6, 9] and fails >= 2:
             used = str(int(3600 - (time_left or 3600)))
             ref_start = time.time()

@@ -13,6 +13,7 @@ memory = None
 knowledge = None
 
 def init():
+    # Initialize databases
     global client, memory, knowledge
     db = os.path.join(os.getcwd(), "db")
     os.makedirs(db, exist_ok=True)
@@ -23,6 +24,7 @@ def init():
 def query(desc, stage, findings, tasks):
     memories = []
     try:
+        # Format query parts
         parts = [
             desc[:200],
             stage,
@@ -31,11 +33,13 @@ def query(desc, stage, findings, tasks):
         ]
         q = " ".join(filter(None, parts)) or "vulnerability exploitation"
 
+        # Query past memory
         mem = memory.query(query_texts=[q], n_results=3)
         if mem and "documents" in mem and mem["documents"] and mem["documents"][0]:
             for doc in mem["documents"][0]:
                 memories.append(f"[PAST_MEMORY] {doc}")
 
+        # Query external knowledge
         know = knowledge.query(query_texts=[q], n_results=50)
         if know and "documents" in know and know["documents"] and know["documents"][0]:
             for doc, dist in zip(know["documents"][0], know["distances"][0]):
@@ -50,6 +54,7 @@ def execute(subtask, length):
     rag_ui.search()
     start = time.time()
     try:
+        # Search GitHub issues
         def github():
             res = search_github(subtask)
             issues = res.get("github_issues", [])
@@ -59,6 +64,7 @@ def execute(subtask, length):
             if not issues:
                 return 0, "No GH issues found."
 
+            # Scrape issue content
             def scrape_store(issue):
                 url = issue.get("url")
                 text, err = scrape(url)
@@ -68,9 +74,11 @@ def execute(subtask, length):
                     return parts, ids, text
                 return [], [], ""
 
+            # Run scrapers concurrently
             with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
                 results = list(ex.map(scrape_store, issues))
 
+            # Store scraped knowledge
             for parts, ids, text in results:
                 if parts:
                     knowledge.add(documents=parts, ids=ids)
@@ -79,6 +87,7 @@ def execute(subtask, length):
                         preview = text[:1500]
             return chunks, preview
 
+        # Search DuckDuckGo
         def web():
             res = search_web(subtask, max_results=5)
             if "docs" in res and res["docs"]:
@@ -86,6 +95,7 @@ def execute(subtask, length):
                 return res["total_chunks"], res["preview"]
             return 0, res.get("error", "No web results.")
 
+        # Run tasks concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
             f_gh = ex.submit(github)
             f_web = ex.submit(web)

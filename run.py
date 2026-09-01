@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 
+# Setup encoding
 if sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
@@ -14,6 +15,7 @@ from cli.run import header, footer, timeout, crashes, noflag, stop
 
 FLAG = re.compile(r"(?:[a-zA-Z0-9_]{0,10}CTF|crypto|flag|HTB)\{[^}\s]{1,200}\}", re.IGNORECASE)
 
+# Load environment
 dotenv.load_dotenv()
 
 # Parse arguments
@@ -32,6 +34,7 @@ container = init(config=config)
 # Initialize agent
 agent = Orchestrator(config=config, container=container)
 
+# Setup config
 target = config["target"]
 target["flag"] = config.get("flag", "247CTF{")
 timeout_minutes = config.get("timeout", 15) 
@@ -39,20 +42,24 @@ timeout_seconds = timeout_minutes * 60
 start_time = time.time()
 step = 0
 
+# Start script
 header(target, timeout_minutes)
 
 consecutive_crashes = 0
 MAX_CONSECUTIVE_CRASHES = 5
 
+# Start loop
 while True:
     elapsed = time.time() - start_time
     remaining = timeout_seconds - elapsed
 
+    # Check timeout
     if elapsed > timeout_seconds:
         timeout(timeout_minutes)
         break
     
     try:
+        # Execute agent
         summary, exec_json = agent.execute(
             target=target,
             sandbox=container,
@@ -75,10 +82,12 @@ while True:
             noflag()
             break
 
+    # Handle interrupt
     except KeyboardInterrupt:
         stop()
         break
 
+    # Handle error
     except Exception:
         import traceback
         traceback.print_exc()
@@ -89,6 +98,6 @@ while True:
         time.sleep(min(2 ** consecutive_crashes, 30))
         continue
 
-# Stop sandbox if needed
+# Stop sandbox
 if not args.keep_running:
     container.stop()

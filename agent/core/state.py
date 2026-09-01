@@ -13,6 +13,7 @@ seen = {}
 done = []
 
 def init(playbook):
+    # Initialize state
     global tree
     tactics = playbook.get("tactics", ["Reconnaissance"])
     stage = tactics[0] if tactics else "Reconnaissance"
@@ -26,10 +27,12 @@ def init(playbook):
     }
 
 def normalize(text: str) -> str:
+    # Normalize text
     norm = re.sub(r"\s+", " ", text)
     return norm.strip().lower()
 
 def absorb(data: dict):
+    # Absorb new data
     if not isinstance(data, dict):
         return
     for k, v in data.items():
@@ -48,6 +51,7 @@ def absorb(data: dict):
                 locked.add(k)
 
 def diff(data: dict) -> list:
+    # Detect data changes
     out = []
     if not isinstance(data, dict):
         return out
@@ -65,6 +69,7 @@ def diff(data: dict) -> list:
     return out
 
 def guard() -> list:
+    # Monitor state regressions
     out = []
     dn = tree.get("done", [])
     if isinstance(dn, list) and done:
@@ -78,6 +83,7 @@ def guard() -> list:
     return out
 
 def snap():
+    # Snapshot completed tasks
     global done
     dn = tree.get("done", [])
     if isinstance(dn, list):
