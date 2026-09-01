@@ -31,7 +31,7 @@ SYSTEM_PROMPT = f"""
 
   <result_labels>
     success : command ran, hypothesis confirmed, indicator matched
-    partial : command ran but goal only partly achieved — use this over fail when something useful happened
+    partial : command ran and new technical knowledge was learned even if final goal is unmet. use this when extracting addresses or values.
     fail    : command not found, crashed before output, or hypothesis explicitly disproved
   </result_labels>
 

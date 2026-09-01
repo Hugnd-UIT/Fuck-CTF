@@ -50,6 +50,8 @@ def absorb(data: dict):
             if count >= 2:
                 locked.add(k)
 
+_NOISE = {"path", "binary", "filename", "file", "dir"}
+
 def diff(data: dict) -> list:
     # Detect data changes
     out = []
@@ -57,7 +59,10 @@ def diff(data: dict) -> list:
         return out
     for k, v in data.items():
         if str(v).startswith("OVERRIDE:"):
-            continue 
+            continue
+        # Skip path changes
+        if any(noise in k.lower() for noise in _NOISE):
+            continue
         old = store.get(k)
         if old is None or old == v:
             continue

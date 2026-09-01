@@ -27,6 +27,7 @@ def command(cmd, last):
     from rich.text import Text
     import shutil, textwrap
 
+    cmd = cmd.replace('\\n', '\n').replace('\\t', '\t')
     rows = cmd.split('\n')
     branch = "└─ " if last else "├─ "
     

@@ -222,7 +222,7 @@ class Orchestrator:
             
             v_time = time.time() - v_start
             
-            if verif.get("result") == "pass":
+            if verif.get("result") in ("pass", "success"):
                 agent_ui.passed()
             else:
                 agent_ui.failed()
@@ -235,16 +235,23 @@ class Orchestrator:
                 agent_ui.evaluated(len(cmds))
 
             # Refine commands if failed
-            for tries in range(2):
-                agent_ui.refine(tries + 1, 2)
-                
-                retry = 0
-                while retry < 3:
-                    # Request refinement
-                    r_res = self.refiner.refine(
-                        target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
-                        discovered="Findings:\n" + "\n".join(state.tree.get("findings", [])) + "\nExtracted Data:\n" + str(state.tree.get("data", {}))
-                    )
+            if verif.get("result") == "fail":
+                for tries in range(2):
+                    agent_ui.refine(tries + 1, 2)
+                    
+                    retry = 0
+                    while retry < 3:
+                        extra = "\n".join(verif.get("knowledge", []))
+                        discovered = (
+                            "Findings:\n" + "\n".join(state.tree.get("findings", []))
+                            + "\nExtracted Data:\n" + str(state.tree.get("data", {}))
+                            + ("\nVerifier Notes:\n" + extra if extra else "")
+                        )
+                        # Request refinement
+                        r_res = self.refiner.refine(
+                            target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
+                            discovered=discovered
+                        )
                     
                     raw = r_res.get("raw", "")
                     
@@ -274,7 +281,7 @@ class Orchestrator:
                 v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
                 verif = v_res.get("verify_data", verif)
                 
-                if verif.get("result") == "pass":
+                if verif.get("result") in ("pass", "success"):
                     agent_ui.passed()
                 else:
                     agent_ui.failed()
@@ -288,12 +295,12 @@ class Orchestrator:
                 strat = r_data.get("reason", {}).get("strategy", "No strategy provided.")
                 verif.setdefault("knowledge", []).append(f"Refinement applied: {strat}")
                 
-                if verif.get("result") == "pass":
+                if verif.get("result") in ("pass", "success"):
                     break
 
             if verif.get("result") == "fail":
                 state.fails[tactic] = state.fails.get(tactic, 0) + 1
-            else:
+            elif verif.get("result") in ("pass", "success", "partial"):
                 state.fails[tactic] = 0
 
         # Summarize step
