@@ -117,7 +117,13 @@ class Orchestrator:
         # Parse target
         category = target.get("category", "") if isinstance(target, dict) else ""
         
-        target_str = json.dumps(target, indent=2) if isinstance(target, dict) else target
+        if isinstance(target, dict):
+            clean_target = {k: v for k, v in target.items() if v}
+            if "host" not in clean_target and "port" not in clean_target:
+                clean_target["network"] = "None. This is a local challenge. DO NOT use network tools like nmap or nc."
+            target_str = json.dumps(clean_target, indent=2)
+        else:
+            target_str = str(target)
         
         desc = target.get("description", "") if isinstance(target, dict) else str(target)
 

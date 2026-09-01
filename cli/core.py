@@ -37,14 +37,21 @@ def header(target, minutes):
     path = target.get('dir')
     display = path if path and path != '-' else "Black-box challenge"
 
-    info = (
-        f"  Category      : {str(target.get('category', '-')).capitalize()}\n"
-        f"{details}\n"
-        f"  Host          : {target.get('host', '-')}\n"
-        f"  Port          : {target.get('port', '-')}\n"
-        f"  Directory     : {display}\n"
+    info_lines = [
+        f"  Category      : {str(target.get('category', '-')).capitalize()}",
+        details,
+    ]
+    if target.get('host'):
+        info_lines.append(f"  Host          : {target['host']}")
+    if target.get('port'):
+        info_lines.append(f"  Port          : {target['port']}")
+        
+    info_lines.extend([
+        f"  Directory     : {display}",
         f"  Time          : {minutes} minutes"
-    )
+    ])
+    
+    info = "\n".join(info_lines)
 
     content = Text(art, style="bold cyan") + Text("\n") + Text(info)
     
