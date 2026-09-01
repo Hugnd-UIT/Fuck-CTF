@@ -9,7 +9,16 @@ FuckCTF's multi-module architecture includes a Planner, Executor, Verifier, Refi
 
 ## Using the repository
 - You will have to install Python 3.9+ and Docker (must be running to create the sandbox container)
-- Copy your API keys to the `.env` file based on `.env_example` (e.g., DeepSeek, OpenAI, Anthropic, Gemini, Firecrawl)
+- Set up your Environment Variables (`.env`)
+  - Copy the example environment file to create your own:
+    ```bash
+    cp .env_example .env
+    ```
+  - Open the `.env` file and insert your API keys. You will need:
+    - **OPENAI_API_KEY / OPENAI_BASE_URL**: Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys) (or your preferred proxy like DeepSeek/OpenRouter).
+    - **HF_TOKEN** *(for local models)*: Get your access token from [Hugging Face Settings](https://huggingface.co/settings/tokens).
+    - **GITHUB_API_KEY**: Generate a personal access token at [GitHub Developer Settings](https://github.com/settings/tokens).
+    - **FIRECRAWL_API_KEY**: Sign up and get your key at [Firecrawl](https://www.firecrawl.dev/).
 - Create a workspace for the challenge
   - Create a new directory named `workspace` in the root of the repository.
   - Whenever you have a new challenge with downloadable files (like source code, a zip file, or a compiled binary), place them inside this `workspace/` directory.
