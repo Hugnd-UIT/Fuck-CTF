@@ -10,7 +10,7 @@ from agent import Orchestrator
 from sandbox import init
 import time
 import re
-from timeline import print_header, print_footer, console, print_line
+from cli.run import header, footer, timeout, crashes, noflag, stop
 
 FLAG = re.compile(r"(?:[a-zA-Z0-9_]{0,10}CTF|crypto|flag|HTB)\{[^}\s]{1,200}\}", re.IGNORECASE)
 
@@ -39,7 +39,7 @@ timeout_seconds = timeout_minutes * 60
 start_time = time.time()
 step = 0
 
-print_header(target, timeout_minutes)
+header(target, timeout_minutes)
 
 consecutive_crashes = 0
 MAX_CONSECUTIVE_CRASHES = 5
@@ -49,7 +49,7 @@ while True:
     remaining = timeout_seconds - elapsed
 
     if elapsed > timeout_seconds:
-        print_line(f"└─ 🛑 TIMEOUT: Reached {timeout_minutes} minutes.", color="red")
+        timeout(timeout_minutes)
         break
     
     try:
@@ -67,16 +67,16 @@ while True:
             
         if found:
             elapsed = time.time() - start_time
-            print_footer(found.group(0), elapsed)
+            footer(found.group(0), elapsed)
             break
             
         if summary == "Goal Achieved":
             elapsed = time.time() - start_time
-            print_line("└─ 🛑 Goal achieved, but no flag was found in the output.", color="red")
+            noflag()
             break
 
     except KeyboardInterrupt:
-        print_line("└─ 🛑 STOPPED BY USER", color="red")
+        stop()
         break
 
     except Exception:
@@ -84,7 +84,7 @@ while True:
         traceback.print_exc()
         consecutive_crashes += 1
         if consecutive_crashes >= MAX_CONSECUTIVE_CRASHES:
-            print_line(f"└─ 🛑 ABORTED: {consecutive_crashes} consecutive crashes.", color="red")
+            crashes(consecutive_crashes)
             break
         time.sleep(min(2 ** consecutive_crashes, 30))
         continue

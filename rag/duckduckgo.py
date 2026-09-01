@@ -2,28 +2,25 @@ import hashlib
 from ddgs import DDGS
 from .firecrawl import scrape
 import concurrent.futures
-
-
+import cli.rag as rag_ui
 _search_cache = {}
 
 def search_web(query: str, max_results: int = 5) -> dict:
     if query in _search_cache:
         return _search_cache[query]
 
-    print(f"  → DuckDuckGo : {query}")
+    rag_ui.ddg(query)
 
     try:
         results = DDGS().text(query, max_results=max_results)
         urls = [r.get("href") for r in results if r.get("href")]
     except Exception as e:
-        print(f"  ✗ DuckDuckGo : {e}")
+        rag_ui.ddgerr(e)
         return {"error": str(e)}
 
     if not urls:
-        print("  ✗ DuckDuckGo : No URLs found")
+        rag_ui.ddgno()
         return {"error": "No URLs found from DuckDuckGo"}
-
-    print(f"  ✓ DuckDuckGo : {len(urls)} URLs found")
 
     total_chunks = 0
     knowledge_preview = ""
@@ -66,8 +63,6 @@ def search_web(query: str, max_results: int = 5) -> dict:
 
             if not knowledge_preview:
                 knowledge_preview = md_text[:1500] + "...[truncated]"
-
-    print(f"  ✓ Web Search  : {total_chunks} chunks collected")
 
     res = {
         "docs": docs,

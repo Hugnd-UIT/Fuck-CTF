@@ -3,6 +3,7 @@ import json
 import urllib.request
 from typing import Optional
 import time
+import cli.rag as rag_ui
 
 URL = "https://api.firecrawl.dev/v1/scrape"
 
@@ -37,27 +38,24 @@ def scrape(target: str) -> tuple[Optional[str], Optional[str]]:
 
                 # Handle successful response
                 if data.get("success"):
-                    print(f"  ✓ Firecrawl  : {target}")
+                    rag_ui.fc(target)
                     return data.get("data", {}).get("markdown"), None
 
-                print("  ✗ Firecrawl  : API error")
+                rag_ui.fcerr("API error")
                 return None, "API_ERR"
 
         except urllib.error.HTTPError as err:
             if err.code == 429 and attempt < retries - 1:
-                print(
-                    f"  ↻ Firecrawl  : retry "
-                    f"{attempt + 1}/{retries - 1}"
-                )
+                rag_ui.fcretry(attempt + 1, retries - 1)
                 time.sleep(2 ** attempt)
                 continue
 
-            print(f"  ✗ Firecrawl  : HTTP {err.code}")
+            rag_ui.fcerr(f"HTTP {err.code}")
             return None, str(err.code)
 
         except Exception as err:
-            print(f"  ✗ Firecrawl  : {type(err).__name__}")
+            rag_ui.fcerr(f"{type(err).__name__}")
             return None, type(err).__name__
 
-    print("  ✗ Firecrawl  : HTTP 429")
+    rag_ui.fcerr("HTTP 429")
     return None, "429"

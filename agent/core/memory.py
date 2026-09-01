@@ -3,7 +3,7 @@ import time
 import hashlib
 import concurrent.futures
 import chromadb
-from timeline import print_node, print_line, print_error, format_time
+import cli.rag as rag_ui
 from rag.github import search_github
 from rag.firecrawl import scrape
 from rag.duckduckgo import search_web
@@ -42,11 +42,12 @@ def query(desc, stage, findings, tasks):
                 if dist < 1.5:
                     memories.append(f"[EXTERNAL_KNOWLEDGE] {doc}")
     except Exception as e:
-        print_error(f"Memory DB: {e}")
+        rag_ui.dberr(e)
         
     return memories
 
 def execute(subtask, length):
+    rag_ui.search()
     start = time.time()
     try:
         def github():
@@ -91,12 +92,7 @@ def execute(subtask, length):
             gh_chunks, gh_preview = f_gh.result()
             web_chunks, web_preview = f_web.result()
 
-        elapsed = time.time() - start
-        print_node("Retrieving...", format_time(elapsed), "blue")
-        print_line("Searching...")
-        print_line(f"├─ Github: found {gh_chunks} chunks")
-        print_line(f"├─ Web: found {web_chunks} chunks")
-        print_line("└─ Saved!")
+        rag_ui.done()
 
         step = f"step_{length + 1}"
         return {
@@ -108,6 +104,5 @@ def execute(subtask, length):
         }
     except Exception as e:
         elapsed = time.time() - start
-        print_node("Retrieving...", format_time(elapsed), "blue")
-        print_error(str(e))
+        rag_ui.geterr(elapsed, e)
         return None

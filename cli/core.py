@@ -7,7 +7,7 @@ from rich.style import Style
 
 console = Console()
 
-def print_header(target, minutes):
+def header(target, minutes):
     art = (
         "      ███████╗██╗   ██╗ ██████╗██╗  ██╗     ██████╗████████╗███████╗      \n"
         "      ██╔════╝██║   ██║██╔════╝██║ ██╔╝    ██╔════╝╚══██╔══╝██╔════╝      \n"
@@ -54,7 +54,7 @@ def print_header(target, minutes):
 
 _first_node = True
 
-def print_node(title, right, color="blue"):
+def node(title, right, color="blue"):
     global _first_node
     if not _first_node:
         console.print(Text("│", style="bold blue"))
@@ -72,7 +72,7 @@ def print_node(title, right, color="blue"):
 
 import textwrap
 
-def print_line(content, tree="│", color="blue"):
+def line(content, tree="│", color="blue"):
     if content is None:
         console.print(Text("│", style="bold blue"))
         return
@@ -84,19 +84,24 @@ def print_line(content, tree="│", color="blue"):
         else:
             sub_indent = " " * (len(line) - len(line.lstrip()))
             
-        wrapped = textwrap.wrap(line, width=65, subsequent_indent=sub_indent)
+        import shutil
+        term = shutil.get_terminal_size().columns
+        wrap = min(term - 10, 65) if term > 20 else 65
+        wrapped = textwrap.wrap(line, width=wrap, subsequent_indent=sub_indent, drop_whitespace=False)
+        
+        prefix = f"{tree}  " if tree else "   "
         
         if not wrapped:
-            console.print(Text("│  ", style="bold blue"))
+            console.print(Text(prefix, style="bold blue"))
             continue
             
         for chunk in wrapped:
-            console.print(Text("│  ", style="bold blue") + Text(chunk, style=f"bold {color}"))
+            console.print(Text(prefix, style="bold blue") + Text(chunk, style=f"bold {color}"))
 
-def print_error(msg):
+def error(msg):
     console.print(Text("│  ", style="bold blue") + Text(f"[Error]: {msg}", style="bold red"))
 
-def print_footer(flag, elapsed):
+def footer(flag, elapsed):
     minutes = int(elapsed // 60)
     seconds = int(elapsed % 60)
     
@@ -119,7 +124,7 @@ def print_footer(flag, elapsed):
     )
     console.print(panel)
 
-def format_time(seconds):
+def clock(seconds):
     if seconds < 0:
         seconds = 0
     return f"{seconds:.1f}s"

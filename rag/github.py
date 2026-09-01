@@ -1,6 +1,7 @@
 import os
 import requests
 import urllib.parse
+import cli.rag as rag_ui
 
 # Search GitHub issues
 def search_github(word: str) -> dict:
@@ -85,18 +86,17 @@ def search_github(word: str) -> dict:
                     "state": item.get("state"),
                     "body": body
                 })
+                rag_ui.gh(item.get('html_url'))
 
             except Exception as e:
-                print(f"  ✗ GitHub error: {e}")
+                rag_ui.gherr(e)
                 pass
 
             if len(results) >= 5:
                 break
 
-        print(f"  ✓ GitHub  : {len(results)} found")
-
         return {"github_issues": results}
 
     except Exception as err:
-        print(f"  ✗ GitHub search  : {err}")
+        rag_ui.ghserr(err)
         return {"error": str(err)}

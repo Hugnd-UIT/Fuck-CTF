@@ -10,7 +10,7 @@ from .refiner.engine import RefinerAgent
 from .summarizer.engine import SummarizerAgent
 from .reflector.engine import ReflectorAgent
 
-from timeline import print_node, print_line, print_error, format_time
+import cli.agent as agent_ui
 
 from .core import state
 from .core import memory
@@ -98,6 +98,10 @@ class Orchestrator:
         state.init(self.book)
         memory.init()
 
+    @property
+    def history(self):
+        return state.history
+
     def execute(self, target, sandbox, time_left=None):
         start = time.time()
         
@@ -133,32 +137,33 @@ class Orchestrator:
         elapsed = time.time() - start
 
         if plan.get("plan", {}).get("finished", False):
-            print_node("Planning...", format_time(elapsed), "cyan")
-            print_line("└─ Goal achieved")
+            agent_ui.plan(elapsed)
+            agent_ui.noflag()
             return "Goal Achieved", plan
 
         sub = plan.get("plan", {}).get("subtask", "")
         
-        print_node("Planning...", format_time(elapsed), "cyan")
+        agent_ui.plan(elapsed)
         
         if memories:
-            print_line("├─ Thinking...")
+            agent_ui.think()
             
-        print_line(f"└─ {sub}")
-
         tactic = plan.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
 
         if tactic == "Retrieval-Augmented-Generation":
+            agent_ui.subtask(sub, rag=True)
             rag = memory.execute(sub, len(state.history))
             if rag:
                 state.history.append(rag)
             return "Knowledge Retrieval Completed", {"commands": [], "success": "none"}
+        else:
+            agent_ui.subtask(sub, rag=False)
 
         norm = state.normalize(sub)
         state.attempts[norm] = state.attempts.get(norm, 0) + 1
         
         if state.attempts[norm] > 3:
-            print_error(f"Guard: subtask repeated {state.attempts[norm]}x — skipped")
+            agent_ui.breaker(state.attempts[norm])
             
             state.fails[tactic] = state.fails.get(tactic, 0) + 1
             exec_json = {"commands": [], "success": "none"}
@@ -176,11 +181,10 @@ class Orchestrator:
             ind = exec_json.get("success", "")
 
             exec_time = time.time() - exec_start
-            print_node("Executing...", format_time(exec_time), "magenta")
+            agent_ui.execute(exec_time)
             
             for i, cmd in enumerate(cmds):
-                prefix = "└─ " if i == len(cmds) - 1 else "├─ "
-                print_line(f"{prefix}$ {cmd}")
+                agent_ui.command(cmd, i == len(cmds) - 1)
 
             out = sb.run(sandbox, cmds, category, exec_json.get("timeout", 30))
 
@@ -198,21 +202,19 @@ class Orchestrator:
             v_time = time.time() - v_start
             
             if verif.get("result") == "pass":
-                print_node("Verifying...", "[ Pass ]", "green")
+                agent_ui.passed()
             else:
-                print_node("Verifying...", "[ Fail ]", "red")
+                agent_ui.failed()
                 
             know = verif.get("knowledge", [])
             
             if know:
-                print_line(f"└─ {know[0]}")
+                agent_ui.knowledge(know[0])
             else:
-                print_line(f"└─ Evaluated {len(cmds)} command(s)")
+                agent_ui.evaluated(len(cmds))
 
-            tries = 0
-            
-            while verif.get("result") == "fail" and tries < 2:
-                print_node("Refining...", f"Retry {tries + 1} / 2", "yellow")
+            for tries in range(2):
+                agent_ui.refine(tries + 1, 2)
                 
                 retry = 0
                 while retry < 3:
@@ -223,8 +225,8 @@ class Orchestrator:
                     
                     raw = r_res.get("raw", "")
                     
-                    if "API Error" in raw or "API Exception" in raw:
-                        print_line(f"├─ Transient API error, retrying ({retry+1}/3)...")
+                    if "429" in ind:
+                        agent_ui.retry(retry + 1)
                         retry += 1
                         time.sleep(2 * retry)
                         continue
@@ -234,13 +236,11 @@ class Orchestrator:
                 r_cmds = r_data.get("commands", [])
                 
                 if not r_cmds:
-                    verif.setdefault("knowledge", []).append("Refinement failed to produce new commands.")
-                    print_line("└─ Failed to produce new commands")
+                    agent_ui.empty()
                     break
 
                 for i, cmd in enumerate(r_cmds):
-                    prefix = "└─ " if i == len(r_cmds) - 1 else "├─ "
-                    print_line(f"{prefix}$ {cmd}")
+                    agent_ui.command(cmd, i == len(r_cmds) - 1)
 
                 cmds = r_cmds
                 
@@ -250,20 +250,21 @@ class Orchestrator:
                 verif = v_res.get("verify_data", verif)
                 
                 if verif.get("result") == "pass":
-                    print_node("Verifying...", "[ Pass ]", "green")
+                    agent_ui.passed()
                 else:
-                    print_node("Verifying...", "[ Fail ]", "red")
+                    agent_ui.failed()
                 
                 know = verif.get("knowledge", [])
                 if know:
-                    print_line(f"└─ {know[0]}")
+                    agent_ui.knowledge(know[0])
                 else:
-                    print_line(f"└─ Evaluated {len(cmds)} command(s)")
+                    agent_ui.evaluated(len(cmds))
 
                 strat = r_data.get("reason", {}).get("strategy", "No strategy provided.")
                 verif.setdefault("knowledge", []).append(f"Refinement applied: {strat}")
                 
-                tries += 1
+                if verif.get("result") == "pass":
+                    break
 
             if verif.get("result") == "fail":
                 state.fails[tactic] = state.fails.get(tactic, 0) + 1
@@ -288,13 +289,12 @@ class Orchestrator:
         state.snap()
 
         sum_time = time.time() - sum_start
-        print_node("Summarizing...", format_time(sum_time), "cyan")
-        print_line("Information updating...")
+        agent_ui.summarize(sum_time)
 
         if state.alerts:
-            print_error(f"Contradiction: {len(state.alerts)} item(s) vanished or changed")
+            agent_ui.contradict(len(state.alerts))
         else:
-            print_line("└─ ✓ No contradictions detected")
+            agent_ui.clean()
 
         id = f"step_{len(state.history) + 1}"
         
@@ -323,9 +323,7 @@ class Orchestrator:
             ref_res = self.reflector.review(history=state.history, facts=state.store, target=target_str, time_used=used, time_total="3600")
             
             ref_time = time.time() - ref_start
-            
-            print_node("Reflecting...", format_time(ref_time), "magenta")
-            print_line("└─ Stuck state analyzed and replanned")
+            agent_ui.reflect(ref_time)
             
             review = ref_res["review_data"]
             adv = review.get("advice", "")
