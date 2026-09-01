@@ -262,41 +262,41 @@ class Orchestrator:
                         continue
                     break
 
-                r_data = r_res.get("refine_data", {})
-                r_cmds = r_data.get("commands", [])
-                
-                if not r_cmds:
-                    agent_ui.empty()
-                    break
+                    r_data = r_res.get("refine_data", {})
+                    r_cmds = r_data.get("commands", [])
+                    
+                    if not r_cmds:
+                        agent_ui.empty()
+                        break
 
-                for i, cmd in enumerate(r_cmds):
-                    agent_ui.command(cmd, i == len(r_cmds) - 1)
+                    for i, cmd in enumerate(r_cmds):
+                        agent_ui.command(cmd, i == len(r_cmds) - 1)
 
-                # Execute refined commands
-                cmds = r_cmds
-                
-                out = sb.run(sandbox, cmds, category, r_data.get("timeout", exec_json.get("timeout", 30)))
+                    # Execute refined commands
+                    cmds = r_cmds
+                    
+                    out = sb.run(sandbox, cmds, category, r_data.get("timeout", exec_json.get("timeout", 30)))
 
-                # Verify refined output
-                v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
-                verif = v_res.get("verify_data", verif)
-                
-                if verif.get("result") in ("pass", "success"):
-                    agent_ui.passed()
-                else:
-                    agent_ui.failed()
-                
-                know = verif.get("knowledge", [])
-                if know:
-                    agent_ui.knowledge(know[0])
-                else:
-                    agent_ui.evaluated(len(cmds))
+                    # Verify refined output
+                    v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
+                    verif = v_res.get("verify_data", verif)
+                    
+                    if verif.get("result") in ("pass", "success"):
+                        agent_ui.passed()
+                    else:
+                        agent_ui.failed()
+                    
+                    know = verif.get("knowledge", [])
+                    if know:
+                        agent_ui.knowledge(know[0])
+                    else:
+                        agent_ui.evaluated(len(cmds))
 
-                strat = r_data.get("reason", {}).get("strategy", "No strategy provided.")
-                verif.setdefault("knowledge", []).append(f"Refinement applied: {strat}")
-                
-                if verif.get("result") in ("pass", "success"):
-                    break
+                    strat = r_data.get("reason", {}).get("strategy", "No strategy provided.")
+                    verif.setdefault("knowledge", []).append(f"Refinement applied: {strat}")
+                    
+                    if verif.get("result") in ("pass", "success"):
+                        break
 
             if verif.get("result") == "fail":
                 state.fails[tactic] = state.fails.get(tactic, 0) + 1
