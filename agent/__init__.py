@@ -211,11 +211,13 @@ class Orchestrator:
 
             # Run commands in sandbox
             out = sb.run(sandbox, cmds, category, exec_json.get("timeout", 30))
+            
+            img = sb.vision(sandbox)
 
             # Verify results
             v_start = time.time()
             
-            v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
+            v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store, img=img)
             verif = v_res["verify_data"]
             
             v_time = time.time() - v_start
