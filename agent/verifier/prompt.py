@@ -42,8 +42,9 @@ SYSTEM_PROMPT = f"""
   </knowledge>
 
   <flag>
-    do   : set flag to the exact extracted string if output contains a CTF flag
-    do   : set flag to false if no flag is found
+    do   : set flag to the exact extracted string if output contains a REAL, CAPTURED CTF flag
+    avoid: do NOT set flag if it is a dummy, fake, or test flag created by the agent
+    do   : set flag to false if no real flag is found
   </flag>
 
   <contradiction>

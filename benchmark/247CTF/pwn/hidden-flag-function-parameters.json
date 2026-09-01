@@ -56,8 +56,8 @@
         "category": "pwn",
         "desc": "Can you control this applications flow to gain access to the hidden flag function with the correct parameters?",
         "dir": "/data",
-        "host": "d1fa1c8db24f2afa.247ctf.com",
-        "port": 50437
+        "host": "a429e514da4ae9a1.247ctf.com",
+        "port": 50326
     },
     "cmd_time": 30,
     "max_time": 600

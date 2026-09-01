@@ -222,7 +222,10 @@ class Orchestrator:
                 
             flag = verif.get("flag")
             if flag and isinstance(flag, str):
-                return flag, {"flag_captured": flag}
+                lower = flag.lower()
+                skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
+                if not skip:
+                    return flag, {"flag_captured": flag}
                 
             know = verif.get("knowledge", [])
             
