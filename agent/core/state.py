@@ -15,14 +15,15 @@ done = []
 def init(playbook):
     # Initialize state
     global tree
-    tactics = playbook.get("tactics", ["Reconnaissance"])
-    stage = tactics[0] if tactics else "Reconnaissance"
+    
+    stage = "Reconnaissance"
+    next_steps = ["Follow the master workflow outlined in the playbook."]
 
     tree = {
         "stage": stage,
         "done": [],
         "findings": ["Initial target mapped"],
-        "next": playbook.get("procedure", [])[:2],
+        "next": next_steps,
         "failed": []
     }
 

@@ -171,10 +171,11 @@ class Orchestrator:
             
         tactic = plan.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
 
-        # Handle RAG tactic
-        if tactic == "Retrieval-Augmented-Generation":
-            agent_ui.subtask(sub, rag=True)
-            rag = memory.execute(sub, len(state.history))
+        # Handle RAG query
+        rag_query = plan.get("plan", {}).get("rag")
+        if rag_query and str(rag_query).lower() not in ("none", "null", ""):
+            agent_ui.subtask(rag_query, rag=True)
+            rag = memory.execute(rag_query, len(state.history))
             if rag:
                 state.history.append(rag)
             return "Knowledge Retrieval Completed", {"commands": [], "success": "none"}

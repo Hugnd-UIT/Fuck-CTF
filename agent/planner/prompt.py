@@ -5,7 +5,7 @@ _schema = json.dumps(
         "reason": {
             "observation": "what the last step revealed",
             "hypothesis": {
-                "tactic": "<tactic from list>",
+                "tactic": "<short name for current approach>",
                 "rationale": "why this is the best next move",
             },
             "confidence": 0.0,
@@ -64,7 +64,7 @@ SYSTEM_PROMPT = f"""
   </time>
 
   <playbook>
-{playbook}
+{{playbook}}
   </playbook>
 
 </rules>
