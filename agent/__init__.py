@@ -158,7 +158,6 @@ class Orchestrator:
         # Check completion
         if plan.get("plan", {}).get("finished", False):
             agent_ui.plan(elapsed)
-            agent_ui.noflag()
             return "Goal Achieved", plan
 
         sub = plan.get("plan", {}).get("subtask", "")

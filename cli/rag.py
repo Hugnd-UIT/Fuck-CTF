@@ -27,7 +27,8 @@ def issue(url):
 
 # Log URL scrape
 def firecrawl(url):
-    line(f"│  │  ├─ Firecrawl: {url}")
+    display_url = url if len(url) <= 50 else url[:47] + "..."
+    line(f"│  │  ├─ Firecrawl: {display_url}")
 
 # Log API retry
 def retry(attempt, retries):
