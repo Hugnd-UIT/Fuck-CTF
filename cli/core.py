@@ -35,7 +35,7 @@ def header(target, minutes):
         details += f"\n                  {words[i]}"
 
     path = target.get('dir')
-    display = path if path and path != '-' else "None (Black-box challenge)"
+    display = path if path and path != '-' else "Black-box challenge"
 
     info = (
         f"  Category      : {str(target.get('category', '-')).capitalize()}\n"

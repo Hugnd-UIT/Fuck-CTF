@@ -29,18 +29,21 @@ def command(cmd, last):
 
     rows = cmd.split('\n')
     branch = "└─ " if last else "├─ "
-    wrap = min(shutil.get_terminal_size().columns - 10, 62)
+    
+    wrap_width = min(shutil.get_terminal_size().columns - 10, 62)
 
-    # Print first line
-    head = textwrap.wrap(f"{branch}$ {rows[0]}", width=wrap, subsequent_indent="     ")
+    # First line
+    head = textwrap.wrap(f"{branch}$ {rows[0]}", width=wrap_width, subsequent_indent="     ")
     for chunk in head:
         console.print(Text("│  ", style="bold blue") + Text(chunk, style="bold magenta"))
 
-    # Print heredoc body
+    # Heredoc body
+    inner_prefix = "     " if last else "│    "
     for row in rows[1:]:
-        wrapped = textwrap.wrap(row, width=wrap, subsequent_indent="     ") or [""]
-        for chunk in wrapped:
-            console.print(Text("│  ", style="bold blue") + Text(f"   {chunk}", style="bold magenta"))
+        wrapped = textwrap.wrap(row, width=wrap_width, subsequent_indent=inner_prefix) or [""]
+        for i, chunk in enumerate(wrapped):
+            prefix = inner_prefix if i == 0 else ""
+            console.print(Text("│  ", style="bold blue") + Text(f"{prefix}{chunk}", style="bold magenta"))
 
 # Log verification success
 def passed():
