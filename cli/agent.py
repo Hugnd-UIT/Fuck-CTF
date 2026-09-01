@@ -23,7 +23,7 @@ def execute(elapsed):
 
 # Log executed command
 def command(cmd, last):
-    from .core import console
+    from .core import console, _current_color
     from rich.text import Text
     import shutil, textwrap
 
@@ -38,17 +38,17 @@ def command(cmd, last):
     cont_prefix = "     " if last else "│    "
     for i, chunk in enumerate(head):
         prefix = cont_prefix if i > 0 else ""
-        console.print(Text("│  ", style="bold blue") + Text(f"{prefix}{chunk}", style="bold magenta"))
+        console.print(Text("│  ", style="bold blue") + Text(f"{prefix}{chunk}", style=f"bold {_current_color}"))
 
     # Heredoc body
     for row in rows[1:]:
         wrapped = textwrap.wrap(row, width=wrap_width) or [""]
         for chunk in wrapped:
-            console.print(Text("│  ", style="bold blue") + Text(f"{cont_prefix}{chunk}", style="bold magenta"))
+            console.print(Text("│  ", style="bold blue") + Text(f"{cont_prefix}{chunk}", style=f"bold {_current_color}"))
 
 # Log verification success
 def passed():
-    node("Verifying...", "[ Pass ]", "green")
+    node("Verifying...", "[ Pass ]", "red")
 
 # Log verification failure
 def failed():
@@ -76,8 +76,8 @@ def empty():
 
 # Log summarize phase
 def summarize(elapsed):
-    node("Summarizing...", clock(elapsed), "cyan")
-    line("Information updating...")
+    node("Summarizing...", clock(elapsed), "green")
+    line("Updating...")
 
 # Log state contradictions
 def contradict(count):

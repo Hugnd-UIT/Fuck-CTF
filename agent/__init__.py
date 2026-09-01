@@ -100,7 +100,7 @@ class Orchestrator:
             **self.books.get("playbooks", {}).get(category, self.books.get("playbooks", {}).get("default", {}))
         }
 
-        self.tools = self.books.get("tools", config.get("tools", "nmap, gobuster, curl, nc, python3, gdb"))
+        self.tools = self.books.get("tools", "nmap, gobuster, curl, nc, python3, gdb")
 
         # Initialize state
         state.init(self.book)

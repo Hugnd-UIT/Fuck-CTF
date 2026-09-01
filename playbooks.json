@@ -3,68 +3,136 @@
         "pwn": {
             "tactics": [
                 "Static-Analysis",
+                "Environment-Fingerprinting",
                 "Dynamic-Analysis",
+                "Bug-Class-Identification",
                 "Offset-Discovery",
                 "Protection-Bypass",
+                "Leak-Engineering",
+                "Primitive-Escalation",
                 "Payload-Crafting",
-                "Exploitation"
+                "Exploitation",
+                "Post-Exploitation",
+                "Failure-Diagnosis"
             ],
             "procedure": [
-                "1. Static-Analysis: run `file`, `checksec`, `strings -n 8`, `objdump -d -M intel` on the binary FIRST. Identify architecture (32/64-bit), protections (NX/PIE/Canary/RELRO), libc version if given, and any 'interesting' functions (system, win, backdoor, gets, strcpy).",
-                "2. Dynamic-Analysis: Check if the binary is a network server (e.g., listens on a port using socket/bind/listen) or reads from stdin. IF LOCAL/STDIN: use gdb/pwndbg in BATCH mode (`gdb -batch -ex 'run < input' -ex 'bt' -ex 'info registers' binary`) to observe crash location and stack layout. IF NETWORK SERVER: run the server in the background (`./binary &`), then write and run a Python script to connect to its local port and send the test payload. DO NOT use `run < input` in gdb for network servers, as they will hang waiting for a connection.",
-                "3. Offset-Discovery: write and run ONE python script using a cyclic/De Bruijn pattern (implement manually if pwntools unavailable) to compute the EXACT overflow offset from the crash. This must be a single deterministic script. For network binaries, the script must connect via socket.",
-                "4. Protection-Bypass: if Canary/PIE/ASLR present, decide bypass strategy BEFORE crafting payload: prefer an information leak (format string, partial overwrite, printed stack data) over brute force. Brute-forcing the canary is allowed ONLY as last resort, and MUST be implemented as ONE python script that loops through all byte values internally against a persistent connection (fork-per-byte on crash detection), never as repeated single-guess plan/execute cycles.",
-                "5. Payload-Crafting: write ONE python script that builds the complete exploit payload deterministically using the offset (and leaked/bruteforced values) from previous steps. The script must construct the FULL payload in one pass, not incrementally probe byte by byte.",
-                "6. Exploitation: connect to the remote target (nc/python socket) with the crafted script and print the raw response so the flag is visible in stdout."
+                "1. Static-Analysis: run `file`, `checksec --file=<bin>`, `strings -n 8`, `objdump -d -M intel`, `readelf -h -d -r -S`. Record architecture, endianness, stripped/not-stripped, and every protection flag individually. Do not summarize protections as a single 'secured/unsecured' judgment — each flag independently changes which techniques in later steps are even legal.",
+                "2. Static-Analysis: enumerate the full import table to know exactly which libc functions are linked and therefore available as ROP targets. Separately list all binary-local functions with suggestive names since a direct-call win-function path is always simpler than building a ROP chain when available.",
+                "3. Environment-Fingerprinting: if a libc.so is provided, extract its exact build id/version string. If a matching `ld.so` is also provided, note that the remote almost certainly expects the binary to be run via that exact loader — mismatched loader/libc pairs produce different heap/stack layouts and silently break otherwise-correct exploits. If no libc is provided at all, treat libc-version-fingerprinting as a required sub-goal to be solved via a leaked function address later.",
+                "4. Dynamic-Analysis: determine precisely how input reaches the vulnerable code — raw stdin, a length-prefixed protocol, a menu-driven interface with numbered options, or a custom binary protocol. For a menu-driven binary, first fully map every menu option's effect since heap challenges are almost always solved by finding one illegal sequence of otherwise-legal menu operations, not by attacking a single option in isolation.",
+                "5. Dynamic-Analysis: IF LOCAL/STDIN: use gdb/pwndbg in BATCH mode to capture the exact faulting instruction, faulting register value, and a stack/heap memory dump at the moment of the crash. IF NETWORK SERVER: start the service locally only if both binary and matching libc are provided and it is safely runnable, then drive it with ONE deterministic python script; never attempt `run < input` against a listening service since it will hang waiting for a connection rather than reading from stdin.",
+                "6. Bug-Class-Identification — classify precisely into exactly one primary category before continuing, using direct evidence rather than assumption:",
+                "   a. Stack overflow.",
+                "   b. Off-by-one / single-byte overflow — these often only allow overwriting the least-significant byte of an adjacent pointer/canary, which changes the whole exploitation strategy.",
+                "   c. Format-string bug — determine independently whether it grants a READ primitive, a WRITE primitive, or both.",
+                "   d. Heap corruption — subclassify further: use-after-free, double-free, heap buffer overflow, or type confusion.",
+                "   e. Integer overflow/underflow or signedness bug.",
+                "   f. Race condition / TOCTOU.",
+                "   g. Pure logic bug with no memory corruption.",
+                "7. Offset-Discovery: for/, write and run ONE python script using a cyclic/De Bruijn pattern to compute the EXACT offset to the saved return address and, separately, to the canary if present. For/, instead determine the exact chunk-size-to-usable-size relationship and the byte distance from the vulnerable write to the target chunk's metadata/adjacent pointer via one scripted allocation-pattern probe.",
+                "8. Protection-Bypass strategy — decide explicitly, in this priority order, BEFORE writing the final payload:",
+                "   a. If Stack-Canary is present: prefer leaking it over brute force. If forced to brute force, implement it as ONE self-contained script that loops through all byte values internally against a persistent/forkable connection per byte, detecting the crash-vs-no-crash signal programmatically — never as separate plan/execute guesses.",
+                "   b. If PIE/ASLR is present: obtain an info-leak and compute the base address by subtracting the known static offset within the same binary/library. Treat brute-forcing PIE bits as an absolute last resort, and only as one self-contained script, since PIE has far fewer random bits than ASLR on 64-bit libc bases and may occasionally be the only option on constrained targets.",
+                "   c. If Full-RELRO: a GOT overwrite is not viable at all — do not attempt it. Redirect the write primitive toward a different target: a stack return address, a saved frame pointer, `.fini_array`/`.init_array` entries, a function pointer stored in `.data`/`.bss`, or a heap-stored function pointer/vtable if the bug class is heap-based.",
+                "   d. If Partial-RELRO or No-RELRO: a GOT overwrite remains viable and is often the simplest write target when a write primitive of any kind exists.",
+                "   e. If NX is disabled: shellcode injection onto the stack/heap becomes viable and is simpler than ROP — prefer it when NX is off and a sufficiently large writable+executable region is reachable.",
+                "   f. If a seccomp filter is detected: enumerate exactly which syscalls are allowed before assuming `execve`/`system` will work; if `execve` is filtered out, plan an ORW chain using only whitelisted syscalls instead, and if `open`/`read`/`write` themselves are restricted, look for an `orw`-equivalent using whatever syscalls remain plus SROP if a full register-control primitive is needed and `rt_sigreturn` is not filtered.",
+                "9. Leak-Engineering: when a libc/heap/stack address must be leaked, identify the exact delivery mechanism`-style call via a first-stage ROP chain, a freed heap chunk's `fd`/`bk` pointer disclosed through a UAF/view primitive, an unsorted-bin remainder address left in a printed buffer after a large allocation/free). Write ONE script that performs the leak, parses the returned bytes into an integer respecting endianness and any partial/truncated-read quirks, and computes the base address by subtracting the statically-known offset for the fingerprinted libc version.",
+                "10. Primitive-Escalation: if the initial bug only grants a limited primitive, determine explicitly how to escalate it into a full arbitrary-read/write or code-execution primitive before crafting the final payload — for heap bugs this typically means chaining the limited primitive through tcache/fastbin manipulation to fake a chunk at an arbitrary address and obtain a write-what-where primitive.",
+                "11. Payload-Crafting: with offset, base address, and any leaked/derived values available, write ONE python script that builds the COMPLETE exploit payload deterministically in a single pass. For a ROP chain: enumerate gadgets with `ropper`/`ROPgadget` against the resolved base and chain argument-setup gadgets plus the chosen target, or build a full ORW chain if `system`/`/bin/sh` are unavailable. For a format-string write: compute the exact width/positional arguments needed to write the target value to the target address in one calculation covering all required bytes, not iterative guessing. For heap exploitation: script the full allocate/free/reallocate sequence required end-to-end, consistent with the mitigations identified in step 10.",
+                "12. Exploitation: connect to the remote target`) with the crafted script, send the payload, and print the raw response so the flag is directly visible in stdout.",
+                "13. Post-Exploitation: once a shell or code execution is obtained, if the flag is not immediately visible, chain `ls -la`, `cat flag*`, and a check of environment variables/working directory into the same script's interactive stage automatically, rather than stopping at 'shell obtained'.",
+                "14. Failure-Diagnosis: if the exploit fails, re-derive the failure point from the ACTUAL response/crash rather than re-guessing blindly. Check, in order: offset correctness — a one-byte-off offset is the most common silent failure; libc-version match — a mismatched version silently shifts every derived offset; leaked-address parsing — endianness or truncated-byte bugs corrupt an otherwise-correct leak; protection assumptions — confirm the protection flags recorded in step 1 still hold for the exact binary being run."
             ],
             "forbidden": [
                 "Do NOT skip checksec and static analysis before attempting exploitation.",
-                "Do NOT skip Offset-Discovery and jump straight to Exploitation.",
+                "Do NOT skip Bug-Class-Identification and Offset-Discovery and jump straight to Exploitation.",
                 "Do NOT search the web unless a working search/browse tool is explicitly listed in TOOL LIST. If none is listed, rely entirely on binary analysis instead of assuming external writeups exist.",
-                "Do NOT brute-force anything one guess per plan/execute cycle; any brute-force must be one self-contained script."
+                "Do NOT brute-force anything one guess per plan/execute cycle; any brute-force must be one self-contained script.",
+                "Do NOT hardcode libc offsets/addresses from a locally installed libc without confirming, via build-id or leaked-address fingerprinting, that it matches the remote's exact glibc version.",
+                "Do NOT attempt a GOT overwrite against a Full-RELRO binary; check the RELRO level before choosing a write target.",
+                "Do NOT assume `system` is reachable without checking for seccomp filters and confirming both `system` is linked/reachable and a `/bin/sh` string exists first.",
+                "Do NOT treat a heap exploitation technique as valid without checking whether the fingerprinted glibc version enforces safe-linking / tcache-count / other mitigations that would break it.",
+                "Do NOT trust a one_gadget's address without checking its listed memory/register constraints against the actual exploitation-time state.",
+                "Do NOT assume a canary's stack offset without confirming it directly from a crash/memory dump; it is not always immediately adjacent to the saved base pointer on non-standard stack layouts."
             ]
         },
         "crypto": {
             "tactics": [
                 "Cipher-Identification",
+                "Source-Code-Audit",
+                "Parameter-Extraction",
                 "Weakness-Analysis",
                 "Attack-Implementation",
-                "Decryption"
+                "Key-Recovery",
+                "Decryption",
+                "Session-State-Management",
+                "Oracle-Reliability",
+                "Validation"
             ],
             "procedure": [
-                "1. Cipher-Identification: inspect the provided files/output to determine the cryptosystem in use (classical cipher, XOR, AES mode, RSA, ECC, custom scheme). Check for telltale signs: base64/hex encoding, PEM headers, modulus/exponent values, block sizes, IV presence.",
-                "2. Weakness-Analysis: based on the identified scheme, enumerate KNOWN structural weaknesses before attempting anything: RSA (small e / low exponent, common modulus attack, Wiener's attack for small d, shared prime with another key, Fermat factorization if p,q close), XOR (key reuse / known-plaintext, repeating key length via Kasiski/Hamming distance), AES-ECB (identical ciphertext blocks reveal identical plaintext blocks), weak PRNG/seed (predictable random, LCG), padding oracle (if a decryption oracle is exposed).",
-                "3. Attack-Implementation: write ONE python script (use pycryptodome / sympy / gmpy2 if available, or implement manually) that performs the FULL mathematical attack in one deterministic run — e.g. full RSA factorization attempt, full XOR key recovery via frequency analysis, full CRT reconstruction — not incremental manual guesses.",
-                "4. Decryption: use the recovered key/plaintext to decrypt the target ciphertext and print the flag in cleartext to stdout.",
-                "5. Network Protocol Awareness: Determine if the server maintains state per-connection. If it does (e.g., secrets initialized per socket), ALL attack queries MUST be sent within ONE persistent socket connection. CRITICAL: If the server closes the connection after a failed attempt or validation check, a NEW session means NEW random secrets. NEVER submit a final 'check' or 'guess' to the server unless you have recovered the full secret with high confidence in the CURRENT session.",
-                "6. Oracle Reliability: If an oracle response is probabilistic or noisy, use statistical methods (like majority voting) with enough queries to ensure high confidence before progressing."
+                "1. Cipher-Identification: inspect all provided files/output to determine the cryptosystem precisely. Check for telltale signs: base64/hex/PEM encoding, `-----BEGIN` headers, explicit modulus/exponent/ciphertext values, ECC curve parameters, Diffie-Hellman parameters, block size and mode hints, an IV or nonce, or a fully custom/from-scratch algorithm given as source. Distinguish 'textbook primitive attacked directly' challenges from 'custom implementation with a deliberate bug' challenges early, since the latter is far more common in CTF and requires reading the given source in full rather than attacking the named primitive abstractly.",
+                "2. Source-Code-Audit: if source code is provided, read it completely line by line before forming any hypothesis. Specifically look for: parameters generated with insufficient entropy or a small/bounded range, a homemade primitive that resembles but subtly deviates from a standard one, a reused nonce/IV/key across multiple operations, a debug/test code path left enabled, an off-by-one or wrong-variable bug in a comparison/validation function, and any place where the server echoes back more information than intended.",
+                "3. Parameter-Extraction: extract every numeric/byte parameter into a script-usable form. Explicitly record which parameters are reused across multiple connections/samples versus freshly regenerated each time, since reuse across sessions is itself frequently the exploited weakness.",
+                "4. Weakness-Analysis — enumerate KNOWN structural weaknesses for the identified scheme and verify each candidate against the actual extracted parameters by direct computation, not assumption:",
+                "   a. RSA — small/low public exponent e, common-modulus attack, shared prime factor across two or more given moduli directly), Fermat factorization when p and q are numerically close, Wiener's attack or Boneh-Durfee for a small private exponent d relative to n, partial key exposure when some bits of p/q/d are leaked, related/stereotyped-message Coppersmith attacks when partial plaintext structure is known or padding is weak, Bleichenbacher's padding-oracle attack against PKCS#1 v1.5 when a decryption oracle leaks padding validity through a distinguishable response.",
+                "   b. Diffie-Hellman / discrete-log — small or smooth group order enabling Pohlig-Hellman, small subgroup confinement attacks when subgroup membership is not validated, and standard baby-step-giant-step or Pollard's rho for a small-order discrete log directly.",
+                "   c. ECC/ECDSA — invalid-curve or small-subgroup attacks when point validation is missing, reused or predictable nonce `k` across two or more signatures, biased/partially-known nonce bits exploitable via lattice methods across several signatures, and use of a non-standard or intentionally weak curve defined in the challenge itself rather than a named standard curve.",
+                "   d. Classical/XOR/stream ciphers — repeating-key XOR, nonce/keystream reuse in a stream cipher, predictable/seeded PRNG-derived keys.",
+                "   e. Block ciphers — AES-ECB, CBC padding oracle, CBC bit-flipping, IV reuse or a predictable/attacker-supplied IV, and key/IV confusion.",
+                "   f. Hashing/MAC — length-extension attacks against unsalted MD5/SHA1/SHA256/SHA512 constructions of the form H used as a MAC or token, enabling forgery of H without knowing the secret, weak/short HMAC or secret-key brute force, and hash-collision-based forgery when a weak/broken hash is used for integrity in a context where a chosen-prefix or identical-prefix collision is feasible.",
+                "   g. Protocol/encoding-layer traps not tied to a single primitive — JWT `alg=none` acceptance or RS256-to-HS256 key-confusion, predictable session tokens built from ECB-encrypted or otherwise structured data, and serialization/format bugs used to smuggle a decryption or signature-verification bypass past the intended check.",
+                "5. Attack-Implementation: write ONE python script that performs the FULL attack in one deterministic run. Where the correct weakness is not immediately certain, structure the script to try multiple candidate attacks in sequence within the same run rather than committing to one guess and stopping. For lattice-based attacks, construct the lattice basis explicitly and run LLL reduction as a single self-contained step within the script.",
+                "6. Key-Recovery: once the attack yields raw numeric material, reconstruct the actual usable key object within the same script so decryption/signing/forgery can proceed immediately without manual re-entry of intermediate values in a later step.",
+                "7. Decryption: use the recovered key/plaintext/forged value to decrypt the target ciphertext, forge the target signature/token, or reconstruct the target message, and print the flag in cleartext to stdout. If the plaintext carries padding, strip/validate it correctly and programmatically within the script rather than eyeballing raw bytes.",
+                "8. Session-State-Management: determine whether the server maintains per-connection state. If it does, ALL attack queries against that state MUST be sent within ONE persistent socket connection. Treat any dropped/closed connection as a full state reset requiring the attack to restart from scratch with newly generated secrets, not as a resumable checkpoint — this is the single most common cause of an otherwise-correct attack silently failing against a live service.",
+                "9. Oracle-Reliability: if an oracle's response is probabilistic or noisy, use statistical methods — repeated queries with majority voting for binary oracles, averaged timing samples with outlier rejection for timing oracles — to reach high confidence before progressing, and script this batching into the same attack run automatically rather than issuing manual repeated single queries across separate turns.",
+                "10. Validation: before submitting a final answer/flag to any check/validation endpoint, verify internal consistency of the recovered material wherever possible within the same script — re-encrypt a recovered plaintext with the public key and confirm it reproduces the given ciphertext, re-derive a public key from a recovered private key and confirm it matches the given public key, or re-verify a forged signature/MAC locally against the known verification algorithm. Only submit to the server once this self-check passes."
             ],
             "forbidden": [
-                "Do NOT attempt brute-forcing an encryption key one candidate value per plan/execute cycle. Any keyspace search must be a single script iterating the full space (or a mathematically pruned subspace) internally.",
-                "Do NOT skip Weakness-Analysis and jump to guessing; classical/RSA/XOR challenges almost always rely on a specific known mathematical weakness, not brute force.",
-                "Do NOT assume AES/RSA are 'unbreakable' without first checking for the common CTF-style implementation flaws listed in Weakness-Analysis.",
-                "Do NOT submit to a validation/check endpoint until the full secret is confidently recovered. Failing a validation check usually resets the entire connection state."
+                "Do NOT attempt brute-forcing an encryption key one candidate value per plan/execute cycle. Any keyspace search must be a single script iterating the full space internally.",
+                "Do NOT skip Weakness-Analysis and jump to guessing; classical/RSA/XOR/ECC challenges almost always rely on a specific known mathematical weakness deliberately built into the challenge, not brute force.",
+                "Do NOT assume AES/RSA/ECC are 'unbreakable' without first checking for the common CTF-style implementation flaws in Weakness-Analysis and reading any provided source code in full for the deliberate bug.",
+                "Do NOT submit to a validation/check endpoint until the full secret is confidently recovered and self-verified. Failing a validation check usually resets the entire connection state.",
+                "Do NOT reuse a locally-assumed parameter without re-extracting it from the actual challenge files; copied textbook parameters will not match the challenge instance.",
+                "Do NOT treat a dropped or closed network connection as a resumable checkpoint for a stateful attack; assume secrets have been regenerated and restart the attack sequence.",
+                "Do NOT rely on a single noisy oracle query when a statistical batching approach is available and the oracle's reliability has not already been confirmed."
             ]
         },
         "reverse": {
             "tactics": [
+                "Toolchain-Identification",
                 "Static-Disassembly",
+                "Anti-Analysis-Bypass",
                 "Control-Flow-Analysis",
+                "Data-Structure-Recovery",
                 "Algorithm-Reconstruction",
+                "Symbolic-Execution",
                 "Dynamic-Verification",
-                "Solution-Synthesis"
+                "Solution-Synthesis",
+                "Final-Verification"
             ],
             "procedure": [
-                "1. Static-Disassembly: run `file`, `checksec`, `strings -n 8`, and disassemble with `objdump -d -M intel` (or radare2/ghidra headless if listed in TOOL LIST) to get an overview of functions, especially any comparison/check/validate/verify-named routines.",
-                "2. Control-Flow-Analysis: identify the main input-validation or key-check logic — locate where user input is compared, transformed, or hashed. Note branch conditions that lead to a 'success'/'correct' path versus a 'failure' path.",
-                "3. Algorithm-Reconstruction: reconstruct the validation algorithm as an equivalent, readable form (pseudocode or a python re-implementation) by tracing the disassembly instruction by instruction. This must be written out as ONE coherent script/pseudocode block, not inferred piecemeal across many separate probing steps.",
-                "4. Dynamic-Verification: use gdb in BATCH mode to confirm the reconstructed algorithm's behavior matches reality (set a breakpoint at the comparison, inspect register/memory values with a known test input) before trusting the reconstruction.",
-                "5. Solution-Synthesis: from the verified algorithm, either (a) mathematically invert it to compute the correct input directly (keygen approach), or (b) if inversion isn't feasible, write ONE script that computes/searches the valid input space efficiently (e.g. per-character validation if the algorithm checks characters independently, solved in one pass, not one plan/execute cycle per character guess)."
+                "1. Toolchain-Identification: before deep analysis, determine the exact language/runtime/toolchain from file headers, symbol mangling, section names, and embedded strings — native C/C++, Rust, Go, .NET/C#, JVM/Java or Android/Dalvik, or an interpreted-language bundle. The correct analysis approach differs sharply by toolchain, so this classification must happen before choosing tools for the following steps.",
+                "2. Static-Disassembly: run `file`, `checksec`, `strings -n 8`, and disassemble with `objdump -d -M intel` to get an overview of functions, especially any comparison/check/validate/verify/serial/license/auth-named routines. Note statically-linked vs dynamically-linked.",
+                "3. Anti-Analysis-Bypass: check for packing and anti-debug tricks` self-checks, `/proc/self/status` TracerPid inspection, `rdtsc`-based timing checks around sensitive code, environment-variable or parent-process checks, on Windows targets `IsDebuggerPresent`/`CheckRemoteDebuggerPresent`/PEB flag checks). If found, either patch the check out at the binary level or bypass it dynamically — record which method was used, since it determines whether subsequent Dynamic-Verification reflects genuine unmodified program behavior.",
+                "4. Anti-Analysis-Bypass: separately check for self-checksumming or self-modifying code — if present, let the binary run once under a debugger to completion of its self-modification step, then dump the now-decrypted in-memory code region for static analysis rather than analyzing the on-disk bytes directly, which are meaningless before self-modification occurs.",
+                "5. Control-Flow-Analysis: identify the main input-validation or key-check logic — locate where user input is compared, transformed, or hashed, and map every branch condition to whether it leads toward a 'success' or 'failure' path. Separately identify any obfuscation applied to control flow itself: opaque predicates, control-flow flattening, and custom bytecode/VM interpreters — a VM interpreter must be treated as its own nested sub-problem: first fully reverse the VM's dispatch loop and its instruction set/opcode semantics, then separately reverse the bytecode program it executes using that recovered instruction set, rather than attempting to read the flattened native logic directly.",
+                "6. Data-Structure-Recovery: before reconstructing the algorithm itself, recover the shapes of any structs/classes/objects the binary manipulates — attempting algorithm reconstruction against raw, unnamed offset arithmetic is far more error-prone than first naming the fields being accessed.",
+                "7. Algorithm-Reconstruction: reconstruct the validation algorithm as an equivalent, readable form by tracing the disassembly/decompilation instruction by instruction, using the recovered data structures from step 6. This must be written out as ONE coherent script/pseudocode block, not inferred piecemeal across many separate probing steps. Pay particular attention to: constant tables that hint at a known algorithm hidden behind renamed variables, per-character versus whole-buffer checks, and structural hints from the expected flag format that constrain the solution space even before full inversion.",
+                "8. Symbolic-Execution: if the algorithm is too complex, heavily obfuscated, or otherwise resists manual reconstruction within reasonable effort, and a symbolic-execution tool is listed in TOOL LIST, write ONE script that loads the binary, marks the relevant input region as symbolic, defines the confirmed 'success' address as the goal state and the confirmed 'failure' address as states to avoid, and drives the solver to compute a concrete satisfying input directly. Treat this as an alternative route to Solution-Synthesis that still depends on having correctly identified the success/failure addresses in step 5 — symbolic execution over an unbounded or incorrectly-scoped search space will not terminate usefully.",
+                "9. Dynamic-Verification: use gdb in BATCH mode to confirm the reconstructed algorithm's behavior matches reality: set a breakpoint at the comparison/check routine, run with a known test input, and inspect register/memory values to verify the reconstruction produces identical intermediate values to the real binary at each checked stage, before trusting the reconstruction enough to build a solver around it.",
+                "10. Solution-Synthesis: from the verified algorithm, choose in this priority order: mathematically invert it to compute the correct input directly whenever the transform is invertible — this is always preferred when available since it is exact and immediate; if inversion is infeasible but the algorithm checks input in independent, separately-verifiable units, write ONE script that solves each unit within a single run's internal loop; if neither nor applies, fall back to the Symbolic-Execution route from step 8.",
+                "11. Final-Verification: run the derived input against the actual binary as the concluding action of the same script, and print explicitly whether the check passed, so success/failure and the flag are directly visible in stdout rather than inferred from partial evidence."
             ],
             "forbidden": [
                 "Do NOT guess input strings one attempt per plan/execute cycle; the algorithm must be understood and inverted programmatically instead.",
                 "Do NOT skip Algorithm-Reconstruction and attempt Solution-Synthesis based on partial disassembly reading alone.",
-                "Do NOT run the binary with dozens of ad-hoc manual inputs across separate steps in place of proper static analysis; use Dynamic-Verification only to confirm an already-formed hypothesis."
+                "Do NOT run the binary with dozens of ad-hoc manual inputs across separate steps in place of proper static analysis; use Dynamic-Verification only to confirm an already-formed hypothesis.",
+                "Do NOT trust dynamic runs of a packed, self-modifying, or anti-debug-guarded binary without first unpacking, dumping the post-self-modification code, or bypassing the check; behavior observed under active protection is unreliable.",
+                "Do NOT attempt to manually read flattened or VM-obfuscated control flow as if it were plain native code; identify and reverse the VM/dispatcher layer first.",
+                "Do NOT reconstruct an algorithm against raw unnamed offset arithmetic without first recovering the underlying data-structure layout; this produces reconstructions that look plausible but are subtly wrong.",
+                "Do NOT run unbounded symbolic execution without first confirming the exact success/failure target addresses; an unscoped search will not terminate usefully."
             ]
         },
         "default": {
@@ -88,5 +156,5 @@
             ]
         }
     },
-    "tools": "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, radare2, john, hashcat, binwalk, exiftool, steghide, linpeas"
+    "tools": "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, radare2, ghidra, angr, one_gadget, seccomp-tools, patchelf, upx, john, hashcat, binwalk, exiftool, steghide, linpeas, pwntools, pycryptodome, sympy, gmpy2, sagemath"
 }

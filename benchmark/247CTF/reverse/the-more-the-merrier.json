@@ -52,8 +52,8 @@
     "limit": 2000,
     "flag": "247CTF{32-hex}",
     "target": {
-        "category": "crypto",
-        "desc": "Can you recover the secret XOR key we used to encrypt the flag?",
+        "category": "pwn",
+        "desc": "One byte is great. But what if you need more? Can you find the flag hidden in this binary?",
         "dir": "/data",
         "host": "",
         "port": ""

@@ -47,7 +47,6 @@
         "sample": false,
         "tokens": 4096
     },
-    "tools": "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, john, hashcat, binwalk, exiftool, steghide, linpeas",
     "sandbox": "ctf",
     "timeout": 60,
     "limit": 2000,

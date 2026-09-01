@@ -42,9 +42,9 @@ SYSTEM_PROMPT = f"""
   <tactics>
     do   : pick from: Reconnaissance, Initial-Access, Execution, Privilege-Escalation,
            Defense-Evasion, Collection, Exfiltration, Retrieval-Augmented-Generation
-    do   : use Retrieval-Augmented-Generation ONLY when a specific tool name, CVE, or known challenge title is identified
+    do   : PRIORITIZE Retrieval-Augmented-Generation if you feel stuck, if your script fails unexpectedly, or if you suspect you are on the wrong track. Do NOT be overly confident.
     do   : switch tactic category entirely if the same tactic has failed 3+ times in a row
-    avoid: using RAG for custom/novel crypto challenges — start with Reconnaissance instead
+    do   : use Retrieval-Augmented-Generation to search for known exploit patterns, vulnerabilities, or CTF writeups if you are unsure how to proceed.
     avoid: repeating a failed tactic without changing technique or target
   </tactics>
 

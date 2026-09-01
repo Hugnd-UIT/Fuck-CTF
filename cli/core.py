@@ -55,22 +55,26 @@ def header(target, minutes):
 
     content = Text(art, style="bold cyan") + Text("\n") + Text(info)
     
+    from rich import box
     panel = Panel(
         content,
         width=78,
         border_style="cyan",
-        padding=(0, 0)
+        padding=(0, 0),
+        box=box.DOUBLE
     )
     console.print(panel)
 
 _first_node = True
+_current_color = "blue"
 
 # Print timeline node
 def node(title, right, color="blue"):
-    global _first_node
+    global _first_node, _current_color
     if not _first_node:
         console.print(Text("│", style="bold blue"))
     _first_node = False
+    _current_color = color
     
     left_part = Text(f"● {title}", style=f"bold {color}")
     right_part = Text(right, style="dim white")
@@ -85,22 +89,25 @@ def node(title, right, color="blue"):
 import textwrap
 
 # Print timeline line
-def line(content, tree="│", color="blue"):
+def line(content, tree="│", color=None):
+    global _current_color
+    use_color = color if color else _current_color
+
     if content is None:
         console.print(Text("│", style="bold blue"))
         return
         
-    for line in content.split("\n"):
-        if line.lstrip().startswith("├─ ") or line.lstrip().startswith("└─ "):
-            pos = line.find("─ ") + 2
+    for line_text in content.split("\n"):
+        if line_text.lstrip().startswith("├─ ") or line_text.lstrip().startswith("└─ "):
+            pos = line_text.find("─ ") + 2
             sub_indent = " " * pos
         else:
-            sub_indent = " " * (len(line) - len(line.lstrip()))
+            sub_indent = " " * (len(line_text) - len(line_text.lstrip()))
             
         import shutil
         term = shutil.get_terminal_size().columns
         wrap = min(term - 10, 65) if term > 20 else 65
-        wrapped = textwrap.wrap(line, width=wrap, subsequent_indent=sub_indent, drop_whitespace=False)
+        wrapped = textwrap.wrap(line_text, width=wrap, subsequent_indent=sub_indent, drop_whitespace=False)
         
         prefix = f"{tree}  " if tree else "   "
         
@@ -109,10 +116,11 @@ def line(content, tree="│", color="blue"):
             continue
             
         for chunk in wrapped:
-            console.print(Text(prefix, style="bold blue") + Text(chunk, style=f"bold {color}"))
+            console.print(Text(prefix, style="bold blue") + Text(chunk, style=f"bold {use_color}"))
 
 # Print error message
 def error(msg):
+    global _current_color
     console.print(Text("│  ", style="bold blue") + Text(f"[Error]: {msg}", style="bold red"))
 
 # Print CLI footer

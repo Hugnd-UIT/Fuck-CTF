@@ -52,11 +52,11 @@
     "limit": 2000,
     "flag": "247CTF{32-hex}",
     "target": {
-        "category": "crypto",
-        "desc": "Can you recover the secret XOR key we used to encrypt the flag?",
-        "dir": "/data",
-        "host": "",
-        "port": ""
+        "category": "pwn",
+        "desc": "Can you abuse our confused environment service to read flag data hidden in an environment variable?",
+        "dir": "",
+        "host": "358c2d86de782d68.247ctf.com",
+        "port": 50244
     },
     "cmd_time": 30,
     "max_time": 600
