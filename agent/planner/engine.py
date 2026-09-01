@@ -160,6 +160,10 @@ class PlannerAgent(PentestAgent):
                 json_str = text.strip()
 
             plan_data = json_repair.loads(json_str)
+            if isinstance(plan_data, list):
+                plan_data = plan_data[0] if plan_data else {}
+            if not isinstance(plan_data, dict):
+                plan_data = {}
 
             plan = plan_data.get("plan", {})
             subtask = plan.get("subtask", "plan generated")

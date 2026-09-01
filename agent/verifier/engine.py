@@ -85,6 +85,10 @@ class VerifierAgent(PentestAgent):
                 parsed = raw.strip()
 
             verify_data = json_repair.loads(parsed)
+            if isinstance(verify_data, list):
+                verify_data = verify_data[0] if verify_data else {}
+            if not isinstance(verify_data, dict):
+                verify_data = {}
 
         except Exception as e:
 

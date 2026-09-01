@@ -51,6 +51,7 @@ SYSTEM_PROMPT = f"""
   <loop>
     do   : read LAST_OUTPUT first — it is ground truth, diagnose why it failed before planning
     do   : read HISTORY before planning — latest observation is ground truth
+    do   : if facts indicate a BLACK-BOX challenge or EMPTY directory, skip Static-Analysis completely and start with Reconnaissance or Dynamic-Analysis.
     do   : if a step failed because a tool was missing, next plan = install that tool, not abandon the tactic
     do   : if CONTRADICTION WARNING appears, deduce session state changed — pivot to single-connection strategy
     avoid: reverting an established architectural constraint without explicit evidence

@@ -129,12 +129,16 @@ class Orchestrator:
 
         # Check workspace
         workspace = os.path.join(os.getcwd(), 'workspace')
-        if os.path.exists(workspace):
+        target_dir = target.get("dir", "")
+        
+        if target_dir and target_dir != "-" and os.path.exists(workspace):
             files = os.listdir(workspace)
             if not files:
-                state.absorb({"Environment": "Directory /data is EMPTY. This is a black-box challenge. DO NOT try to read files."})
+                state.absorb({"Environment": "No local directory or files provided. This is a black-box challenge. DO NOT try to read files."})
             else:
                 state.absorb({"Environment": f"Directory /data contains: {files}."})
+        else:
+            state.absorb({"Environment": "No local directory or files provided. This is a black-box challenge. DO NOT try to read files."})
 
         next_str = " ".join(state.tree.get("next", [])) if isinstance(state.tree.get("next"), list) else str(state.tree.get("next", ""))
         
@@ -217,6 +221,10 @@ class Orchestrator:
             
             v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
             verif = v_res["verify_data"]
+            if isinstance(verif, list) and len(verif) > 0:
+                verif = verif[0]
+            if not isinstance(verif, dict):
+                verif = {}
             
             v_time = time.time() - v_start
             

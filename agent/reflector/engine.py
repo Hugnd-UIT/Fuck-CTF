@@ -63,6 +63,10 @@ class ReflectorAgent(PentestAgent):
                 json_str = text.strip()
                 
             review_data = json_repair.loads(json_str)
+            if isinstance(review_data, list):
+                review_data = review_data[0] if review_data else {}
+            if not isinstance(review_data, dict):
+                review_data = {}
             
         except Exception as e:
             review_data = {

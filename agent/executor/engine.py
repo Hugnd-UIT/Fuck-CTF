@@ -87,6 +87,10 @@ class ExecutorAgent(PentestAgent):
                 json_str = text.strip()
 
             exec_data = json_repair.loads(json_str)
+            if isinstance(exec_data, list):
+                exec_data = exec_data[0] if exec_data else {}
+            if not isinstance(exec_data, dict):
+                exec_data = {}
 
             commands = exec_data.get("commands", [])
 
