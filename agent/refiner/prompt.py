@@ -9,7 +9,7 @@ _schema = json.dumps(
             "risk": "what could still go wrong with this fix, if anything non-trivial",
         },
         "commands": ["fixed command 1", "fixed command 2 if needed"],
-        "timeout": 30,
+        "timeout": "integer, dynamic based on time_left and task type (e.g. 1800 for brute-force)",
         "success": "expected pattern in stdout/stderr that proves the fix actually worked, not just that it ran without error",
     },
     indent=2,
@@ -141,6 +141,7 @@ USER_PROMPT = """
   failed_commands = {failed}
   error_output    = {error}
   history         = {history}
+  time_left       = {time_left} s
 </input>
 
 Analyze the error and return corrected command(s), addressing the diagnosed root cause rather than only the

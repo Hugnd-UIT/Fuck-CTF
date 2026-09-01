@@ -326,7 +326,7 @@ class Orchestrator:
                         # Request refinement
                         r_res = self.refiner.refine(
                             target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
-                            discovered=discovered
+                            discovered=discovered, time_left=time_left
                         )
                     
                         raw = r_res.get("raw", "")

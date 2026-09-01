@@ -33,7 +33,8 @@ class RefinerAgent(PentestAgent):
         failed,
         error,
         history,
-        discovered=""
+        discovered="",
+        time_left=None
     ):
 
         # Format history
@@ -48,6 +49,8 @@ class RefinerAgent(PentestAgent):
         else:
             failed_command_str = str(failed)
 
+        time_left_str = str(int(time_left)) if time_left is not None else "Unknown"
+
         # Format user prompt
         user_content = USER_PROMPT.format(
             target=target,
@@ -55,7 +58,8 @@ class RefinerAgent(PentestAgent):
             subtask=subtask,
             failed=failed_command_str,
             error=error,
-            history=history_str
+            history=history_str,
+            time_left=time_left_str
         )
 
         messages = [
