@@ -1,50 +1,76 @@
-```text
-      ███████╗██╗   ██╗ ██████╗██╗  ██╗     ██████╗████████╗███████╗      
-      ██╔════╝██║   ██║██╔════╝██║ ██╔╝    ██╔════╝╚══██╔══╝██╔════╝      
-      █████╗  ██║   ██║██║     █████╔╝     ██║        ██║   █████╗        
-      ██╔══╝  ██║   ██║██║     ██╔═██╗     ██║        ██║   ██╔══╝        
-      ██║     ╚██████╔╝╚██████╗██║  ██╗    ╚██████╗   ██║   ██║           
-      ╚═╝      ╚═════╝  ╚═════╝╚═╝  ╚═╝     ╚═════╝   ╚═╝   ╚═╝           
-```
+<div align="center"><pre>
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║      ███████╗██╗   ██╗ ██████╗██╗  ██╗     ██████╗████████╗███████╗          ║
+║      ██╔════╝██║   ██║██╔════╝██║ ██╔╝    ██╔════╝╚══██╔══╝██╔════╝          ║
+║      █████╗  ██║   ██║██║     █████╔╝     ██║        ██║   █████╗            ║
+║      ██╔══╝  ██║   ██║██║     ██╔═██╗     ██║        ██║   ██╔══╝            ║
+║      ██║     ╚██████╔╝╚██████╗██║  ██╗    ╚██████╗   ██║   ██║               ║
+║      ╚═╝      ╚═════╝  ╚═════╝╚═╝  ╚═╝     ╚═════╝   ╚═╝   ╚═╝               ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+</pre></div>
 
-**Fuck CTF: LLM Agent for Autonomous CTF Solving**
+<div align="center">
+
+**Fuck CTF — LLM Agent for Autonomous CTF Solving**
+
+[![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-required-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen)](#)
+
+</div>
 
 ---
 
-### 📌 Introduction
+## 📌 Introduction
 
-We introduce Fuck CTF, a novel Large Language Model (LLM)-based agent capable of autonomously solving Capture The Flag (CTF) challenges. 
+**Fuck CTF** is an autonomous LLM-based agent that solves Capture The Flag challenges end-to-end — from reading the challenge description to submitting the flag — without human intervention.
 
-Fuck CTF's multi-module architecture includes a Planner, Executor, Verifier, Refiner, Summarizer, and Reflector. The framework dynamically switches between thinking, searching, executing inside a secure sandbox, verifying, refining its approaches, summarizing its findings, and reflecting on its failures until the flag is captured.
+The framework orchestrates six specialized AI modules in a closed loop: **Planner → Executor → Verifier → Refiner → Summarizer → Reflector**. It dynamically switches between reasoning, web-searching, sandboxed code execution, output verification, iterative self-correction, and high-level strategy reflection until the flag is captured.
 
 **Core Capabilities:**
-- **Dynamic Reasoning & Planning:** The `Planner` automatically breaks down complex black-box challenges into executable subtasks while maintaining a global Attack Tree to track its progress and findings.
-- **Retrieval-Augmented Generation:** When facing unfamiliar vulnerabilities, the agent dynamically scrapes GitHub repositories and web pages (via Firecrawl) to acquire exploits, CVE details, and cryptographic scripts.
-- **Isolated Sandboxed Execution:** The `Executor` safely runs arbitrary terminal commands, compiled binaries, and Python scripts inside a disposable Docker environment to interact with the target.
-- **Autonomous Verification:** The `Verifier` evaluates raw terminal outputs against the Planner's initial hypothesis to objectively determine if a subtask succeeded or failed.
-- **Self-Refinement & Reflection:** The `Refiner` diagnoses runtime errors to fix broken exploits iteratively, while the `Reflector` intervenes when the agent is stuck to rethink the overall strategy and backtrack.
+
+| Module | Role |
+|---|---|
+| 🧠 **Planner** | Analyzes the challenge and decomposes it into a prioritized Attack Tree of subtasks |
+| 🌐 **RAG** | Searches GitHub repos and web pages (via Firecrawl) when the agent encounters unfamiliar vulnerabilities |
+| 🛠️ **Executor** | Generates and runs terminal commands, compiled binaries, and Python scripts |
+| 🐳 **Docker Sandbox** | Provides a disposable, isolated environment to safely interact with targets |
+| 🔍 **Verifier** | Evaluates raw command output against the Planner's hypothesis to classify success or failure |
+| ♻️ **Refiner** | Diagnoses errors and rewrites broken commands or scripts to fix failures iteratively |
+| 📊 **Summarizer** | Distills execution logs into structured observations and updates the Attack Tree |
+| 🪞 **Reflector** | Intervenes when the agent is stuck for multiple cycles to backtrack and rethink strategy |
 
 ---
 
-### 📂 Repo structure
+## 📂 Repo Structure
 
 ```text
 .
-├── agent/         # Core orchestrator, planner, executor, verifier, summarizer
-├── benchmark/     # Benchmark configurations and challenge JSON files
-├── cli/           # CLI tool and ASCII UI rendering
-├── db/            # RAG ChromaDB state and context memory
-├── docs/          # Framework documentation
-├── rag/           # Retrieval-Augmented Generation (GitHub & Firecrawl)
-├── workspace/     # Current challenge files mount directory
-├── config.example.json 
-├── run.py         # Main entry point to launch the agent
-└── sandbox.py     # Docker sandbox manager
+├── agent/              # Core orchestrator loop + all agent modules
+│   ├── planner/        # Planner: subtask generation & Attack Tree management
+│   ├── executor/       # Executor: command generation
+│   ├── verifier/       # Verifier: result evaluation
+│   ├── refiner/        # Refiner: error correction
+│   ├── summarizer/     # Summarizer: observation synthesis
+│   ├── reflector/      # Reflector: strategy backtracking
+│   └── core/           # Memory (ChromaDB), state, and shared utilities
+├── benchmark/          # Challenge JSON configs organized by platform & category
+├── cli/                # Terminal UI rendering (ASCII art, panels, progress)
+├── db/                 # Persistent ChromaDB vector store for RAG context
+├── docs/               # Documentation
+├── rag/                # Retrieval-Augmented Generation (GitHub + Firecrawl)
+├── workspace/          # ← Place challenge files here (mounted to /data in Docker)
+├── config.example.json # Config template
+├── run.py              # Main entry point
+└── sandbox.py          # Docker sandbox lifecycle manager
 ```
 
 ---
 
-### ⚙️ Workflow
+## ⚙️ Workflow
 
 ```mermaid
 graph TD
@@ -129,60 +155,68 @@ graph TD
 
 ---
 
-### 🚀 Installation
+## 🚀 Installation
 
-The project dependencies are strictly managed through `requirements.txt`. You must have Python 3.9+ and Docker installed. Docker **must be running** locally for the sandbox to operate.
+> **Requirements:** Python 3.9+, Docker (must be running)
 
-1. **Clone the repository:**
+**1. Clone the repository**
+
 ```bash
-git clone https://github.com/your-org/FuckCTF.git
-cd FuckCTF
+git clone https://github.com/Hugnd-UIT/Fuck-CTF.git
+cd Fuck-CTF
 ```
 
-2. **Setup a virtual environment:**
+**2. Create and activate a virtual environment**
+
 ```bash
 python -m venv venv
-# On Linux/macOS:
+
+# Linux / macOS
 source venv/bin/activate
-# On Windows:
+
+# Windows
 .\venv\Scripts\activate
 ```
 
-3. **Install dependencies:**
+**3. Install dependencies**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-### 🛠️ Setup
+## 🛠️ Setup
 
-Before running the agent, you must configure the required API keys.
+Copy the environment file and fill in your API keys:
 
-1. Copy the example environment file:
 ```bash
 cp .env_example .env
 ```
 
-2. Open `.env` and insert your API keys:
-- **`OPENAI_API_KEY` / `OPENAI_BASE_URL`**: Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys) (or proxies like OpenRouter/DeepSeek).
-- **`HF_TOKEN`** *(Optional for local models)*: Get your access token from [Hugging Face Settings](https://huggingface.co/settings/tokens).
-- **`CUDA_VISIBLE_DEVICES`**: Specify the comma-separated IDs of the GPUs to use (e.g. `0`, `0,1`).
-- **`GITHUB_API_KEY`**: Generate a personal access token at [GitHub Developer Settings](https://github.com/settings/tokens).
-- **`FIRECRAWL_API_KEY`**: Sign up and get your API key at [Firecrawl](https://www.firecrawl.dev/).
+| Variable | Description | Required |
+|---|---|---|
+| `OPENAI_API_KEY` | OpenAI key (or OpenRouter / DeepSeek proxy) | ✅ |
+| `OPENAI_BASE_URL` | API base URL (for proxy providers) | ✅ |
+| `GITHUB_API_KEY` | GitHub Personal Access Token for RAG search | ✅ |
+| `FIRECRAWL_API_KEY` | Firecrawl API key for web scraping | ✅ |
+| `HF_TOKEN` | Hugging Face token (local models only) | Optional |
+| `CUDA_VISIBLE_DEVICES` | GPU IDs for local model inference (e.g. `0,1`) | Optional |
 
 ---
 
-### 🎯 Fuck CTF
+## 🎯 Fuck CTF
 
-1. **Prepare the workspace:**
-   Create a `workspace/` directory in the root of the repository. Whenever you have a new challenge with downloadable files (source code, pcap, zip, binaries), place them inside this `workspace/` folder.
+**1. Drop challenge files into `workspace/`**
 
-   > [!WARNING]
-   > When moving to a new challenge, **clear the `workspace/` directory of old files** so the agent doesn't hallucinate or get confused by leftover scripts from previous runs!
+If the challenge provides downloadable files (source code, pcap, zip, binary), place them in the `workspace/` directory. This folder is automatically mounted to `/data` inside the Docker container.
 
-2. **Configure the target:**
-   Create a `config.json` file (you can use one of the templates in the `benchmark/` folder). Describe the challenge inside the `target` section:
+> [!WARNING]
+> Always **clear `workspace/`** before starting a new challenge. Leftover files from previous runs will confuse the agent.
+
+**2. Create a `config.json`**
+
+Use any file in `benchmark/` as a template, or create one from scratch:
 
 ```json
 {
@@ -234,25 +268,40 @@ cp .env_example .env
         "sample": false,
         "tokens": 4096
     },
-    "sandbox": "ctf", // Docker image tag used for the ephemeral sandbox
-    "timeout": 15, // Overall time limit for the entire agent run
-    "limit": 2000, // Maximum character/token limit for truncating long command outputs
-    "cmd_time": 30, // Maximum execution time for a single terminal command
-    "max_time": 600, // Maximum cumulative time
-    "flag": "crypto{FLAG}", // The expected flag format
+    "sandbox": "ctf",
+    "timeout": 15,
+    "limit": 2000,
+    "cmd_time": 30,
+    "max_time": 600,
+    "flag": "crypto{FLAG}",
     "target": {
         "category": "challenge-category",
         "desc": "Description of the challenge...",
         "dir": "/data",
         "host": "target-host-or-ip",
-        "port": "port"
+        "port": 1337
     }
 }
 ```
-*Note: The `workspace/` folder on your local machine is automatically mounted to `/data` inside the Docker container.*
 
-3. **Launch the Agent:**
+**Config field reference:**
+
+| Field | Type | Description |
+|---|---|---|
+| `sandbox` | string | Docker image tag for the ephemeral sandbox |
+| `timeout` | int (minutes) | Total time limit for the entire agent run |
+| `cmd_time` | int (seconds) | Max execution time for a single command in sandbox |
+| `max_time` | int (seconds) | Max cumulative sandbox runtime before forced reflection |
+| `limit` | int (chars) | Max length for truncating long command outputs |
+| `flag` | string | Expected flag format to help Verifier detect success |
+| `target.dir` | string | Path inside Docker where `workspace/` is mounted (default `/data`) |
+| `target.host` | string | Challenge host or URL |
+| `target.port` | int | Challenge port (leave `""` for web-only challenges) |
+
+**3. Run**
+
 ```bash
 python run.py -c config.json -k
 ```
-*(The `-k` flag tells the framework to keep the Docker container running after the challenge ends, which speeds up subsequent executions).*
+
+The `-k` flag keeps the Docker container alive between runs, significantly speeding up subsequent attempts on the same challenge.
