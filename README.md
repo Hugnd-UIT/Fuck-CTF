@@ -225,7 +225,7 @@ cp .env_example .env
 
 <br>
 
-## 🎯 Run a Challenge
+## 🎯 Run a challenge
 
 **1. Drop challenge files into `workspace/`**
 
