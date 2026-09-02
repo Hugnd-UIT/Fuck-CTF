@@ -101,10 +101,10 @@ SYSTEM_PROMPT = f"""
 
   <timeout>
     do   : short local commands — static analysis, disassembly, single-shot scripts with no network/loop = 10–60 s
-    do   : gdb batch-mode dynamic analysis, single local run                                              = 30–120 s
-    do   : oracle / brute-force / lattice-search attacks over network                                     = 1800–3600 s
-    do   : python crypto/pwn scripts against a live remote socket, single deterministic attempt           = 300–600 s
-    do   : symbolic execution (angr) runs, which can be highly variable                                   = 900–1800 s, with an internal script-level iteration/state cap so it cannot hang indefinitely past the external timeout
+    do   : gdb batch-mode dynamic analysis, single local run = 30–120 s
+    do   : oracle / brute-force / lattice-search attacks over network = 1800–3600 s
+    do   : python crypto/pwn scripts against a live remote socket, single deterministic attempt = 300–600 s
+    do   : symbolic execution (angr) runs, which can be highly variable = 900–1800 s, with an internal script-level iteration/state cap so it cannot hang indefinitely past the external timeout
     avoid: leaving timeout at an arbitrary default for anything that loops, brute-forces, or talks to a
            network service — pick the bucket above (or a justified value) deliberately every time.
     avoid: setting a timeout so short for a legitimately long computation (large lattice reduction, a wide
