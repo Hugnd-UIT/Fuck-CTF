@@ -34,14 +34,14 @@ The framework orchestrates six specialized AI modules in a closed loop: **Planne
 
 | Module | Role |
 |---|---|
+| 🐳 **Docker** | Provides a disposable, isolated environment to safely interact with targets |
 | 🧠 **Planner** | Analyzes the challenge and decomposes it into a prioritized Attack Tree of subtasks |
-| 🌐 **RAG** | Searches GitHub repos and web pages (via Firecrawl) when the agent encounters unfamiliar vulnerabilities |
 | 🛠️ **Executor** | Generates and runs terminal commands, compiled binaries, and Python scripts |
-| 🐳 **Docker Sandbox** | Provides a disposable, isolated environment to safely interact with targets |
 | 🔍 **Verifier** | Evaluates raw command output against the Planner's hypothesis to classify success or failure |
 | ♻️ **Refiner** | Diagnoses errors and rewrites broken commands or scripts to fix failures iteratively |
 | 📊 **Summarizer** | Distills execution logs into structured observations and updates the Attack Tree |
 | 🪞 **Reflector** | Intervenes when the agent is stuck for multiple cycles to backtrack and rethink strategy |
+| 🌐 **RAG** | Searches GitHub repos and web pages (via Firecrawl) when the agent encounters unfamiliar vulnerabilities |
 
 ---
 
