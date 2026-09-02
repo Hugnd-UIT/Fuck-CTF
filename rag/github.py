@@ -3,7 +3,7 @@ import requests
 import urllib.parse
 import cli.rag as rag_ui
 
-def search_github(word: str) -> dict:
+def search_github(word: str, model: str = None) -> dict:
     
     # Setup request
     headers = {
@@ -37,7 +37,7 @@ def search_github(word: str) -> dict:
 
                 # Initialize scorer
                 scorer = PentestAgent(
-                    model=os.getenv("MODEL", "deepseek/deepseek-v4-flash"),
+                    model=model,
                     temperature=0.1,
                     tokens=50
                 )

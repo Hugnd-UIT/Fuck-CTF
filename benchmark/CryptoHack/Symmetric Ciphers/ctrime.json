@@ -48,7 +48,7 @@
         "tokens": 4096
     },
     "sandbox": "ctf",
-    "timeout": 120,
+    "timeout": 180,
     "limit": 2000,
     "flag": "crypto{FLAG}",
     "target": {

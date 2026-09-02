@@ -39,16 +39,25 @@
         "sample": false,
         "tokens": 1024
     },
-    "tools": "nmap, rustscan, ffuf, gobuster, dirsearch, curl, wget, sqlmap, nc, socat, python3, php, perl, gdb, pwndbg, checksec, ldd, strace, ltrace, objdump, readelf, strings, xxd, ropper, ROPgadget, john, hashcat, binwalk, exiftool, steghide, linpeas",
+    "reflector": {
+        "model": "nvidia/nemotron-3.5-lightning:free",
+        "local": false,
+        "temperature": 0.7,
+        "top": 1.0,
+        "sample": true,
+        "tokens": 1024
+    },
     "sandbox": "ctf",
     "timeout": 15,
     "limit": 2000,
-    "flag": "247CTF{32-hex}",
+    "cmd_time": 30,
+    "max_time": 600,
+    "flag": "flag{placeholder}",
     "target": {
-        "category": "pwn",
-        "desc": "We might not be able to write secure code, but at least we are starting to learn about secure compilation flags. Can you beat the cookie monster?",
-        "dir": "/data/cookie_monster",
-        "host": "1864b958e7312f96.247ctf.com",
-        "port": 50277
+        "category": "challenge-category (e.g. web, pwn, crypto)",
+        "desc": "Description or prompt of the challenge...",
+        "dir": "/data",
+        "host": "target-host-or-ip",
+        "port": 1337
     }
 }
