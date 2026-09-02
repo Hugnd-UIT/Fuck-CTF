@@ -17,9 +17,6 @@ from .core import memory
 from .core import sandbox as sb
 
 class Orchestrator:
-    def warning(self, msg: str):
-        state.alerts.append(f"[WARNING] {msg}")
-
     def __init__(self, config, container=None):
         # Extract config
         p = config.get("planner", {})
@@ -195,11 +192,12 @@ class Orchestrator:
         tactic = plan.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown")
 
         # Handle RAG
-        if rag_query and str(rag_query).lower() not in ("none", "null", ""):
-            agent_ui.subtask(rag_query, rag=True)
-            rag = memory.execute(rag_query, len(state.history))
-            if rag:
-                state.history.append(rag)
+        plan_rag = plan_dict.get("rag")
+        if plan_rag and str(plan_rag).lower() not in ("none", "null", ""):
+            agent_ui.subtask(plan_rag, rag=True)
+            rag_out = memory.execute(plan_rag, len(state.history))
+            if rag_out:
+                state.history.append(rag_out)
             return "RAG completed!", {"commands": [], "success": "none"}
         else:
             agent_ui.subtask(sub, rag=False)
@@ -230,6 +228,8 @@ class Orchestrator:
             # Handle RAG
             exec_rag = exec_json.get("rag")
             if exec_rag and str(exec_rag).lower() not in ("none", "null", ""):
+                exec_time = time.time() - exec_start
+                agent_ui.execute(exec_time)
                 agent_ui.subtask(exec_rag, rag=True)
                 rag_out = memory.execute(exec_rag, len(state.history))
                 if rag_out:
@@ -266,6 +266,8 @@ class Orchestrator:
             # Handle RAG
             verif_rag = verif.get("rag")
             if verif_rag and str(verif_rag).lower() not in ("none", "null", ""):
+                v_time = time.time() - v_start
+                agent_ui.verify(v_time)
                 agent_ui.subtask(verif_rag, rag=True)
                 rag_out = memory.execute(verif_rag, len(state.history))
                 if rag_out:
@@ -329,7 +331,7 @@ class Orchestrator:
                         # Request refinement
                         r_res = self.refiner.refine(
                             target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
-                            discovered=discovered, time_left=time_left
+                            discovered=discovered
                         )
                     
                         raw = r_res.get("raw", "")

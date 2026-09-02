@@ -1,0 +1,63 @@
+{
+    "planner": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 0.9,
+        "sample": true,
+        "tokens": 4096
+    },
+    "executor": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "verifier": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.1,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "refiner": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "summarizer": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.3,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "reflector": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "sandbox": "ctf",
+    "timeout": 60,
+    "limit": 2000,
+    "flag": "crypto{FLAG}",
+    "target": {
+        "category": "crypto",
+        "desc": "I've struggled to get PyCrypto's counter mode doing what I want, so I've turned ECB mode into CTR myself. My counter can go both upwards and downwards to throw off cryptanalysts! There's no chance they'll be able to read my picture.",
+        "dir": "",
+        "host": "https://aes.cryptohack.org/bean_counter",
+        "port": ""
+    },
+    "cmd_time": 30,
+    "max_time": 600
+}

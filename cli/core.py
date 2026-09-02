@@ -106,30 +106,40 @@ def line(content, tree="│", color=None):
         return
         
     import shutil
+    term = shutil.get_terminal_size().columns
+    wrap = min(term - 10, 65) if term > 20 else 65
+
     base = ""
     for i, text in enumerate(content.split("\n")):
         if "├─ " in text or "└─ " in text:
             pos = text.find("─ ") + 2
             pref = text[:pos]
             base = pref.replace("├─ ", "│  ").replace("└─ ", "   ")
-            sub = base
+            
+            # Extract the actual text body
+            body = text[pos:]
+            
+            # Wrap just the body
+            wrapped_body = textwrap.wrap(body, width=wrap - len(pref), drop_whitespace=False)
+            if not wrapped_body:
+                wrapped = [pref]
+            else:
+                wrapped = [pref + wrapped_body[0]]
+                for chunk in wrapped_body[1:]:
+                    wrapped.append(base + chunk.lstrip())
         else:
             if i == 0:
                 base = " " * (len(text) - len(text.lstrip()))
-            sub = base
-            if text.strip():
-                text = base + text.lstrip()
             
-        term = shutil.get_terminal_size().columns
-        wrap = min(term - 10, 65) if term > 20 else 65
-        wrapped = textwrap.wrap(text, width=wrap, subsequent_indent=sub, drop_whitespace=False)
+            body = text.lstrip()
+            if body:
+                wrapped_body = textwrap.wrap(body, width=wrap - len(base), drop_whitespace=False)
+                wrapped = [base + chunk.lstrip() for chunk in wrapped_body]
+            else:
+                wrapped = [base]
         
         prefix = f"{tree}  " if tree else "   "
         
-        if not wrapped:
-            console.print(Text(prefix, style="bold blue"))
-            continue
-            
         for chunk in wrapped:
             console.print(Text(prefix, style="bold blue") + Text(chunk, style=f"bold {use_color}"))
 

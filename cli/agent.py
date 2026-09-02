@@ -11,6 +11,10 @@ def think(rationale=None, header=True):
     if rationale:
         line(f"├─ {rationale}")
 
+# Log verifying phase
+def verify(elapsed):
+    node("Verifying...", clock(elapsed), "red")
+
 # Log current subtask
 def subtask(sub, rag=False):
     if not rag:
@@ -35,7 +39,7 @@ def command(cmd, last):
     from rich.text import Text
     import shutil, textwrap
 
-    cmd = cmd.replace('\\n', '\n').replace('\\t', '\t')
+    cmd = cmd.strip().replace('\\n', '\n').replace('\\t', '\t')
     rows = cmd.split('\n')
     branch = "└─ " if last else "├─ "
     
