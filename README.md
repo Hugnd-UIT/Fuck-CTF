@@ -54,6 +54,17 @@ It dynamically switches between reasoning, web searching, sandboxed code executi
 
 <br>
 
+## 🏴 Supported Categories
+ 
+| Category | Description |
+|:---|:---|
+| 🔐 Crypto | Breaking or exploiting classical and modern cryptographic schemes |
+| ⚙️ Reverse | Disassembling and analyzing binaries to recover logic or hidden data |
+| 💥 Pwn | Exploiting memory corruption and binary vulnerabilities to gain control |
+| 🕵️ Forensics | Digging through files, memory dumps, and network captures for hidden clues |
+ 
+<br>
+
 ## 📂 Repo Structure
 
 ```text
