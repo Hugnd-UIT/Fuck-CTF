@@ -18,7 +18,9 @@
 
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-required-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-Hugnd--UIT-181717?logo=github&logoColor=white)](https://github.com/Hugnd-UIT)
+[![Firecrawl](https://img.shields.io/badge/Powered_by-Firecrawl-FF5C00?logo=firefox&logoColor=white)](https://www.firecrawl.dev/)
+[![License](https://img.shields.io/badge/License-AGPLv3-blue)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Active-brightgreen)](#)
 
 </div>
@@ -42,11 +44,11 @@ It dynamically switches between reasoning, web searching, sandboxed code executi
 | Module | Role |
 |:---|:---|
 | 🐳 Docker | Provides a disposable, isolated environment to safely interact with targets |
-| 🧠 Planner | Analyzes the challenge and decomposes it into a prioritized Attack Tree of subtasks |
+| 🧠 Planner | Analyzes the challenge and decomposes it into a prioritized Attack tree of subtasks |
 | 🛠️ Executor | Generates and runs terminal commands, compiled binaries, and Python scripts |
 | 🔍 Verifier | Evaluates raw command output against the Planner's hypothesis to classify success or failure |
 | ♻️ Refiner | Diagnoses errors and rewrites broken commands or scripts to fix failures iteratively |
-| 📊 Summarizer | Distills execution logs into structured observations and updates the Attack Tree |
+| 📊 Summarizer | Distills execution logs into structured observations and updates the Attack tree |
 | 🪞 Reflector | Intervenes when the agent is stuck for multiple cycles to backtrack and rethink strategy |
 | 🌐 RAG | Searches GitHub repos and web pages via Firecrawl when the agent hits an unfamiliar vulnerability |
 
@@ -56,14 +58,14 @@ It dynamically switches between reasoning, web searching, sandboxed code executi
 
 ```text
 .
-├── agent/              Core orchestrator loop and all agent modules
+├── agent/               Core orchestrator loop and all agent modules
 │   ├── planner/         Planner — subtask generation and Attack Tree management
-│   ├── executor/         Executor — command generation
-│   ├── verifier/         Verifier — result evaluation
-│   ├── refiner/          Refiner — error correction
-│   ├── summarizer/       Summarizer — observation synthesis
-│   ├── reflector/        Reflector — strategy backtracking
-│   └── core/             Memory via ChromaDB, state, and shared utilities
+│   ├── executor/        Executor — command generation
+│   ├── verifier/        Verifier — result evaluation
+│   ├── refiner/         Refiner — error correction
+│   ├── summarizer/      Summarizer — observation synthesis
+│   ├── reflector/       Reflector — strategy backtracking
+│   └── core/            Memory via ChromaDB, state, and shared utilities
 ├── benchmark/           Challenge JSON configs organized by platform and category
 ├── cli/                 Terminal UI rendering — ASCII art, panels, progress
 ├── db/                  Persistent ChromaDB vector store for RAG context
@@ -315,8 +317,22 @@ The `-k` flag keeps the Docker container alive between runs, significantly speed
 
 <br>
 
+## 👤 Author
+
+Made by **Hugnd-UIT**
+
+[![GitHub](https://img.shields.io/badge/GitHub-Hugnd--UIT-181717?logo=github&logoColor=white)](https://github.com/Hugnd-UIT)
+
+<br>
+
+## 📜 License
+
+This project is licensed under the **GNU Affero General Public License v3.0**. See [LICENSE](LICENSE) for the full text.
+
+<br>
+
 <div align="center">
 
-—
+© 2026 Hugnd-UIT — All rights reserved under AGPLv3
 
 </div>
