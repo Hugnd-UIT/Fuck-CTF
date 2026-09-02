@@ -76,7 +76,9 @@ while True:
                 elapsed = time.time() - start_time
                 noflag()
                 break
-            agent.warning("SYSTEM: No flag! Retry now!")
+            agent.warning("SYSTEM: No flag! Please check your solver logic!")
+        else:
+            false_done = 0
 
     # Handle interrupt
     except KeyboardInterrupt:

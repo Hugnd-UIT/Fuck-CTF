@@ -21,6 +21,7 @@ _schema = json.dumps(
             "safety": "safe/destructive",
             "evidence": "the specific fact/value this subtask should produce, used to judge success next cycle",
             "finished": False,
+            "captured": "the exact CTF flag string if it has been fully revealed in the history, else null"
         },
     },
     indent=2,
