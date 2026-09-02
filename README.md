@@ -175,7 +175,122 @@ Here is a real example of how fuck ctf autonomously solves a crypto challenge. I
 │  │    2>/dev/null | head -200
 │  └─ $ cat > /tmp/forge_vote.py <<'PY'
 │       import os, re, glob, json, socket, sys, time
-│       ... (code truncated for brevity) ...
+│       DIR='/data'
+│       print('FILES')
+│       for p in sorted(glob.glob(DIR+'/**', recursive=True)):
+│           if os.path.isfile(p):
+│               print(p, os.path.getsize(p))
+│       payload=b'\x00VOTE FOR PEDRO'
+│       vote_target=b'VOTE FOR PEDRO'
+│       n=None
+│       paths=[]
+│       for p in glob.glob(DIR+'/**', recursive=True):
+│           if not os.path.isfile(p):
+│               continue
+│           base=os.path.basename(p).lower()
+│           if any(s in base for s in
+│       ('key','pub','alice','rsa','pem')) or
+│       p.endswith(('.pem','.key','.pub')):
+│               paths.append(p)
+│       for p in list(dict.fromkeys(paths+glob.glob(DIR+'/*'))):
+│           if not os.path.isfile(p):
+│               continue
+│           data=open(p,'rb').read()
+│           txt=data.decode('latin1','ignore')
+│           try:
+│               from Crypto.PublicKey import RSA
+│               n=RSA.import_key(data).n
+│               print(f'[n] RSA parse {p}')
+│               break
+│           except Exception:
+│               pass
+│           m=re.search(r'n\s*=\s*(0x[0-9a-fA-F]+|\d+)', txt)
+│           if m:
+│               n=int(m.group(1),0)
+│               print(f'[n] regex parse {p}')
+│               break
+│           try:
+│               obj=json.loads(txt)
+│               if 'n' in obj:
+│                   n=obj['n']
+│                   n=int(n,0) if isinstance(n,str) else int(n)
+│                   print(f'[n] JSON parse {p}')
+│                   break
+│           except Exception:
+│               pass
+│       if n is None:
+│           print('FATAL: no n')
+│           sys.exit(1)
+│       print(f'n bits={n.bit_length()} payload_bytes={len(payload)}')
+│       a=int.from_bytes(payload,'big')
+│       mod=1 << (8*len(payload))
+│       try:
+│           from sympy.ntheory.residue_ntheory import nthroot_mod
+│       except Exception:
+│           import subprocess
+│       subprocess.check_call([sys.executable,'-m','pip','install','--
+│       quiet','sympy'])
+│           from sympy.ntheory.residue_ntheory import nthroot_mod
+│       roots=nthroot_mod(a,3,mod,all_roots=True)
+│       if roots is None:
+│           roots=[]
+│       print(f'roots={len(roots)}')
+│       x=None
+│       for r in sorted(map(int,roots)):
+│           if r**3 < n:
+│               mb=r**3
+│               b=mb.to_bytes((mb.bit_length()+7)//8,'big')
+│               if b.split(b'\x00')[-1] == vote_target:
+│                   x=r
+│                   print('candidate', x)
+│                   break
+│       if x is None:
+│           for r in sorted(map(int,roots)):
+│               mb=pow(r,3,n)
+│               b=mb.to_bytes((mb.bit_length()+7)//8,'big')
+│               if b.split(b'\x00')[-1] == vote_target:
+│                   x=r
+│                   break
+│       if x is None:
+│           print('FATAL no suitable root')
+│           sys.exit(1)
+│       m=pow(x,3,n)
+│       b=m.to_bytes((m.bit_length()+7)//8,'big')
+│       print('local_verify_split_tail=', b.split(b'\x00')[-1])
+│       print('local_verify_ok=', b.split(b'\x00')[-1] == vote_target)
+│       print('x_bits=', x.bit_length(), 'x3_lt_n=', x**3 < n)
+│       hexvote=format(x,'x')
+│       msg=json.dumps({'vote':hexvote})+'
+│       '
+│       print('sending_json=', msg[:120], '...')
+│       s=socket.create_connection(('socket.cryptohack.org',13375),tim
+│       eout=20)
+│       s.settimeout(15)
+│       try:
+│           data=s.recv(4096)
+│           print('RECV_INIT=', data.decode('latin1','ignore'))
+│       except Exception as e:
+│           print('no initial recv', e)
+│       s.sendall(msg.encode())
+│       buf=b''
+│       deadline=time.time()+25
+│       while time.time()<deadline:
+│           try:
+│               c=s.recv(4096)
+│               if not c:
+│                   break
+│               buf+=c
+│               sys.stdout.write(c.decode('latin1','ignore'))
+│               sys.stdout.flush()
+│               if b'crypto{' in buf:
+│                   break
+│           except socket.timeout:
+│               break
+│       s.close()
+│       print()
+│       print('FLAG_PRESENT=', b'crypto{' in buf)
+│       print('FULL_RESPONSE=')
+│       print(buf.decode('latin1','ignore'))
 │       PY
 │       python3 /tmp/forge_vote.py
 │
@@ -193,11 +308,207 @@ Here is a real example of how fuck ctf autonomously solves a crypto challenge. I
 │  │  n is known from the challenge data (ALICE_N) and can be used 
 │  │  directly.
 │  └─ $ cat > /tmp/forge_vote.py <<'PY'
-│       ...
+│       import os, re, glob, json, socket, sys, time
+│       DIR='/data'
+│       print('FILES')
+│       for p in sorted(glob.glob(DIR+'/**', recursive=True)):
+│           if os.path.isfile(p):
+│               print(p, os.path.getsize(p))
+│       payload=b'\x00VOTE FOR PEDRO'
+│       vote_target=b'VOTE FOR PEDRO'
+│       # Known modulus from challenge data
+│       ALICE_N = 2226661665757498986810932425216066347092520769069409
+│       49533128912823414268805069246485251810142872143501365579412014
+│       45475540830225059514652125310445352175047408966028497316806142
+│       15633892716262100477476994953423947983933420914709779352687976
+│       24175264457395527720398765681564692244916820303149948802479833
+│       32964121759307658270083947005466578077153185206199759569902810
+│       83211405881847851847071572606496061748291017203574300353812240
+│       24401428614948997257205051816637389311516778842184578246761401
+│       90841393217857683627886497104915390385283364971133316672332846
+│       07166508277788402817066814086201044424756001919350599970402822
+│       2347577
 │       n = ALICE_N
-│       ...
+│       print(f'n bits={n.bit_length()} payload_bytes={len(payload)}')
+│       a=int.from_bytes(payload,'big')
+│       mod=1 << (8*len(payload))
+│       try:
+│           from sympy.ntheory.residue_ntheory import nthroot_mod
+│       except Exception:
+│           import subprocess
+│       subprocess.check_call([sys.executable,'-m','pip','install','--
+│       quiet','sympy'])
+│           from sympy.ntheory.residue_ntheory import nthroot_mod
+│       roots=nthroot_mod(a,3,mod,all_roots=True)
+│       if roots is None:
+│           roots=[]
+│       print(f'roots={len(roots)}')
+│       x=None
+│       for r in sorted(map(int,roots)):
+│           if r**3 < n:
+│               mb=r**3
+│               b=mb.to_bytes((mb.bit_length()+7)//8,'big')
+│               if b.split(b'\x00')[-1] == vote_target:
+│                   x=r
+│                   print('candidate', x)
+│                   break
+│       if x is None:
+│           for r in sorted(map(int,roots)):
+│               mb=pow(r,3,n)
+│               b=mb.to_bytes((mb.bit_length()+7)//8,'big')
+│               if b.split(b'\x00')[-1] == vote_target:
+│                   x=r
+│                   break
+│       if x is None:
+│           print('FATAL no suitable root')
+│           sys.exit(1)
+│       m=pow(x,3,n)
+│       b=m.to_bytes((m.bit_length()+7)//8,'big')
+│       print('local_verify_split_tail=', b.split(b'\x00')[-1])
+│       print('local_verify_ok=', b.split(b'\x00')[-1] == vote_target)
+│       print('x_bits=', x.bit_length(), 'x3_lt_n=', x**3 < n)
+│       hexvote=format(x,'x')
+│       msg=json.dumps({'vote':hexvote})+'
+│       '
+│       print('sending_json=', msg[:120], '...')
+│       s=socket.create_connection(('socket.cryptohack.org',13375),tim
+│       eout=20)
+│       s.settimeout(15)
+│       try:
+│           data=s.recv(4096)
+│           print('RECV_INIT=', data.decode('latin1','ignore'))
+│       except Exception as e:
+│           print('no initial recv', e)
+│       s.sendall(msg.encode())
+│       buf=b''
+│       deadline=time.time()+25
+│       while time.time()<deadline:
+│           try:
+│               c=s.recv(4096)
+│               if not c:
+│                   break
+│               buf+=c
+│               sys.stdout.write(c.decode('latin1','ignore'))
+│               sys.stdout.flush()
+│               if b'crypto{' in buf:
+│                   break
+│           except socket.timeout:
+│               break
+│       s.close()
+│       print()
+│       print('FLAG_PRESENT=', b'crypto{' in buf)
+│       print('FULL_RESPONSE=')
+│       print(buf.decode('latin1','ignore'))
 │       PY
 │       python3 /tmp/forge_vote.py
+│
+● Verifying...                                                        [ Fail ]
+│  └─ Forged x = 855520592299350692515886317752220783 (hex: 
+│     a4c46bfb65e7eccc4e76a1ce2afc6f)
+│
+● Refining...                                                      Retry 2 / 2
+│  ├─ The script successfully computed the forged signature x and 
+│  │  local verification passed. The remote server responded with a 
+│  │  JSON error: {"error": "You must send an option to this 
+│  │  server"}. This indicates that the JSON key used in the request
+│  │  ('vote') is not what the server expects; it expects an 
+│  │  'option' field. The source file (which was not read) likely 
+│  │  defines the protocol, but the error message directly reveals 
+│  │  the required key.
+│  ├─ $ cat > /tmp/forge_vote.py <<'PY'
+│  │    import os, re, glob, json, socket, sys, time
+│  │    DIR='/data'
+│  │    print('FILES')
+│  │    for p in sorted(glob.glob(DIR+'/**', recursive=True)):
+│  │        if os.path.isfile(p):
+│  │            print(p, os.path.getsize(p))
+│  │    payload=b'\x00VOTE FOR PEDRO'
+│  │    vote_target=b'VOTE FOR PEDRO'
+│  │    # Known modulus from challenge data
+│  │    ALICE_N = 2226661665757498986810932425216066347092520769069409
+│  │    49533128912823414268805069246485251810142872143501365579412014
+│  │    45475540830225059514652125310445352175047408966028497316806142
+│  │    15633892716262100477476994953423947983933420914709779352687976
+│  │    24175264457395527720398765681564692244916820303149948802479833
+│  │    32964121759307658270083947005466578077153185206199759569902810
+│  │    83211405881847851847071572606496061748291017203574300353812240
+│  │    24401428614948997257205051816637389311516778842184578246761401
+│  │    90841393217857683627886497104915390385283364971133316672332846
+│  │    07166508277788402817066814086201044424756001919350599970402822
+│  │    2347577
+│  │    n = ALICE_N
+│  │    print(f'n bits={n.bit_length()} payload_bytes={len(payload)}')
+│  │    a=int.from_bytes(payload,'big')
+│  │    mod=1 << (8*len(payload))
+│  │    try:
+│  │        from sympy.ntheory.residue_ntheory import nthroot_mod
+│  │    except Exception:
+│  │        import subprocess
+│  │    subprocess.check_call([sys.executable,'-m','pip','install','--
+│  │    quiet','sympy'])
+│  │        from sympy.ntheory.residue_ntheory import nthroot_mod
+│  │    roots=nthroot_mod(a,3,mod,all_roots=True)
+│  │    if roots is None:
+│  │        roots=[]
+│  │    print(f'roots={len(roots)}')
+│  │    x=None
+│  │    for r in sorted(map(int,roots)):
+│  │        if r**3 < n:
+│  │            mb=r**3
+│  │            b=mb.to_bytes((mb.bit_length()+7)//8,'big')
+│  │            if b.split(b'\x00')[-1] == vote_target:
+│  │                x=r
+│  │                print('candidate', x)
+│  │                break
+│  │    if x is None:
+│  │        for r in sorted(map(int,roots)):
+│  │            mb=pow(r,3,n)
+│  │            b=mb.to_bytes((mb.bit_length()+7)//8,'big')
+│  │            if b.split(b'\x00')[-1] == vote_target:
+│  │                x=r
+│  │                break
+│  │    if x is None:
+│  │        print('FATAL no suitable root')
+│  │        sys.exit(1)
+│  │    m=pow(x,3,n)
+│  │    b=m.to_bytes((m.bit_length()+7)//8,'big')
+│  │    print('local_verify_split_tail=', b.split(b'\x00')[-1])
+│  │    print('local_verify_ok=', b.split(b'\x00')[-1] == vote_target)
+│  │    print('x_bits=', x.bit_length(), 'x3_lt_n=', x**3 < n)
+│  │    hexvote=format(x,'x')
+│  │    msg=json.dumps({'option':hexvote})+'
+│  │    '
+│  │    print('sending_json=', msg[:120], '...')
+│  │    s=socket.create_connection(('socket.cryptohack.org',13375),tim
+│  │    eout=20)
+│  │    s.settimeout(15)
+│  │    try:
+│  │        data=s.recv(4096)
+│  │        print('RECV_INIT=', data.decode('latin1','ignore'))
+│  │    except Exception as e:
+│  │        print('no initial recv', e)
+│  │    s.sendall(msg.encode())
+│  │    buf=b''
+│  │    deadline=time.time()+25
+│  │    while time.time()<deadline:
+│  │        try:
+│  │            c=s.recv(4096)
+│  │            if not c:
+│  │                break
+│  │            buf+=c
+│  │            sys.stdout.write(c.decode('latin1','ignore'))
+│  │            sys.stdout.flush()
+│  │            if b'crypto{' in buf:
+│  │                break
+│  │        except socket.timeout:
+│  │            break
+│  │    s.close()
+│  │    print()
+│  │    print('FLAG_PRESENT=', b'crypto{' in buf)
+│  │    print('FULL_RESPONSE=')
+│  │    print(buf.decode('latin1','ignore'))
+│  │    PY
+│  └─ $ python3 /tmp/forge_vote.py
 │
 ● Verifying...                                                        [ Fail ]
 │  └─ Python script at /tmp/forge_vote.py has a SyntaxError at line 
@@ -239,7 +550,32 @@ Here is a real example of how fuck ctf autonomously solves a crypto challenge. I
 │  │  locates and parses it from /data.
 │  └─ $ set -e; python3 -c 'import sympy, Crypto' 2>/dev/null ||
 │       python3 -m pip install sympy pycryptodome; printf '%s
-│       ...
+│       ' "import os, re, pathlib" "from Crypto.Util.number import
+│       long_to_bytes" "from sympy import nthroot_mod" "" "payload =
+│       b'\x00VOTE FOR PEDRO'" "modulus = 1 << (8 * len(payload))"
+│       "target = int.from_bytes(payload, 'big')" "" "alice_n = None"
+│       "for p in pathlib.Path('/data').rglob('*'):" "    if not
+│       p.is_file():" "        continue" "    try:" "        text =
+│       p.read_text(errors='ignore')" "    except Exception:" "
+│       continue" "    m =
+│       re.search(r'^ALICE_N\s*=\s*(0x[0-9a-fA-F]+|\d+)', text, re.M)"
+│       "    if m:" "        alice_n = int(m.group(1), 0)" "
+│       break" "if alice_n is None:" "    print('ALICE_N_NOT_FOUND')"
+│       "    raise SystemExit(1)" "" "roots = nthroot_mod(target, 3,
+│       modulus, all_roots=True)" "cand = None" "for r in roots:" "
+│       if r ** 3 < alice_n:" "        cand = r" "        break" "if
+│       cand is None:" "    print('NO_CANDIDATE_BELOW_ALICE_N')" "
+│       raise SystemExit(1)" "" "cube = cand ** 3" "x_bytes =
+│       long_to_bytes(cube)" "local_verify_ok =
+│       (x_bytes.split(b'\x00')[-1] == b'VOTE FOR PEDRO')" "x_bits =
+│       cube.bit_length()" "print('local_verify_ok =',
+│       local_verify_ok)" "print('x_bits =', x_bits)" "print('x**3 <
+│       ALICE_N =', cube < alice_n)" "print('ALICE_N_BITS =',
+│       alice_n.bit_length())" "hex_str = hex(cand)[2:]"
+│       "open('/tmp/vote.hex','w').write(hex_str)" "print('SAVED_HEX
+│       =', hex_str)" "print('DONE')" > /tmp/forge_vote.py; python3 -m
+│       py_compile /tmp/forge_vote.py && echo COMPILE_OK && python3
+│       /tmp/forge_vote.py
 │
 ● Verifying...                                                        [ Fail ]
 │  └─ Script compilation succeeded (COMPILE_OK).
@@ -272,9 +608,118 @@ Here is a real example of how fuck ctf autonomously solves a crypto challenge. I
 │  │  contain its numeric value. The script will extract ALICE_N, 
 │  │  compute the cube root modulo 2^(8*payload_len), verify 
 │  │  locally, and submit the forged vote.
+│  ├─ $ ls -la /data && file /data/* 2>/dev/null || true
 │  └─ $ python3 - <<'PY'
 │       import os, json, socket, sys, base64, subprocess
-│       ...
+│       from pathlib import Path
+│       from Crypto.PublicKey import RSA
+│       from Crypto.Util.number import long_to_bytes, bytes_to_long
+│       try:
+│           from sympy.ntheory.residue_ntheory import nthroot_mod
+│       except ImportError:
+│           subprocess.check_call([sys.executable, '-m', 'pip',
+│       'install', 'sympy', '-q'])
+│           from sympy.ntheory.residue_ntheory import nthroot_mod
+│       
+│       def get_alice_n():
+│           data_dir = Path('/data')
+│           for p in sorted(data_dir.iterdir()):
+│               if not p.is_file():
+│                   continue
+│               raw = p.read_bytes()
+│               if b'BEGIN PUBLIC KEY' in raw or b'BEGIN RSA PUBLIC
+│       KEY' in raw:
+│                   return RSA.import_key(raw).n
+│               if b'ssh-rsa' in raw:
+│                   parts = raw.split()
+│                   if len(parts) >= 2:
+│                       blob = base64.b64decode(parts[1])
+│                       pos = 0
+│                       def read_int():
+│                           nonlocal pos
+│                           length = int.from_bytes(blob[pos:pos+4],
+│       'big')
+│                           pos += 4
+│                           value =
+│       int.from_bytes(blob[pos:pos+length], 'big')
+│                           pos += length
+│                           return value
+│                       read_int()
+│                       read_int()
+│                       return read_int()
+│               try:
+│                   text = p.read_text(errors='ignore')
+│               except Exception:
+│                   continue
+│               for line in text.splitlines():
+│                   if '=' in line:
+│                       left, right = line.split('=', 1)
+│                       lf = left.strip().upper()
+│                       if lf.endswith('N') or 'ALICE' in lf:
+│                           right = right.strip()
+│                           if right.startswith('0x'):
+│                               return int(right, 16)
+│                           if right.isdigit():
+│                               return int(right)
+│               for tok in text.replace('0x', ' ').split():
+│                   if tok.isdigit() and len(tok) > 100:
+│                       return int(tok)
+│           raise SystemExit('ALICE_N_NOT_FOUND')
+│       
+│       ALICE_N = get_alice_n()
+│       ALICE_E = 3
+│       print('ALICE_N_BITS', ALICE_N.bit_length())
+│       print('ALICE_N_HEX', hex(ALICE_N))
+│       
+│       target = b'VOTE FOR PEDRO'
+│       payload = b'\x00' + target
+│       mod = 1 << (8 * len(payload))
+│       m = bytes_to_long(payload)
+│       roots = nthroot_mod(m, 3, mod, all_roots=True)
+│       if not roots:
+│           print('NO_ROOTS')
+│           sys.exit(1)
+│       print('ROOT_COUNT', len(roots))
+│       sig = None
+│       for r in roots:
+│           cube = pow(r, 3)
+│           if cube < ALICE_N and
+│       long_to_bytes(cube).split(b'\x00')[-1] == target:
+│               sig = r
+│               print('SELECTED_SIG_HEX', hex(sig))
+│               print('CUBE_BITS', cube.bit_length())
+│               break
+│       if sig is None:
+│           print('NO_CANDIDATE_BELOW_N')
+│           sys.exit(1)
+│       assert pow(sig, 3) < ALICE_N
+│       assert long_to_bytes(pow(sig, 3)).split(b'\x00')[-1] == target
+│       print('LOCAL_VERIFY_OK')
+│       
+│       data_obj = {'option': 'vote', 'vote': f'{sig:x}'}
+│       print('SENDING', json.dumps(data_obj))
+│       s = socket.create_connection(('socket.cryptohack.org', 13375),
+│       timeout=15)
+│       s.settimeout(15)
+│       s.sendall(json.dumps(data_obj).encode() + b'
+│       ')
+│       resp = b''
+│       try:
+│           while True:
+│               chunk = s.recv(4096)
+│               if not chunk:
+│                   break
+│               resp += chunk
+│       except socket.timeout:
+│           pass
+│       print('RESPONSE_RAW', resp.decode(errors='replace'))
+│       if b'crypto{' in resp:
+│           start = resp.find(b'crypto{')
+│           end = resp.find(b'}', start) + 1
+│           print('FLAG_FOUND', resp[start:end].decode())
+│           sys.exit(0)
+│       print('FLAG_NOT_FOUND')
+│       sys.exit(1)
 │       PY
 │
 ● Verifying...                                                        [ Pass ]
