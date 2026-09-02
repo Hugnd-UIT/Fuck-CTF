@@ -17,6 +17,9 @@ from .core import memory
 from .core import sandbox as sb
 
 class Orchestrator:
+    def warning(self, msg: str):
+        state.alerts.append(f"[WARNING] {msg}")
+
     def __init__(self, config, container=None):
         # Extract config
         p = config.get("planner", {})

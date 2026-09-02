@@ -41,6 +41,10 @@ SYSTEM_PROMPT = f"""
            different fix than patching syntax.
     avoid: assuming the error class from the subtask's category alone (e.g. assuming any pwn-script failure
            must be an offset error) without confirming it against what the error output actually says.
+    do   : if the error output shows that a large set of inputs was tried and all failed with the same error
+           string, classify error_class as wrong_assumption — not missing_tool or syntax. The fix must target
+           the lower-level assumption (tool parameter, input format, target structure), not replace individual
+           items in the list or switch tools.
   </diagnosis>
 
   <precision>

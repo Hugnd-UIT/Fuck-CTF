@@ -104,6 +104,10 @@ SYSTEM_PROMPT = f"""
     do   : treat two DIFFERENT failed tactics that both point at the same underlying wrong assumption (e.g.
            two different pwn techniques both failing because the actual bug class was misidentified) as one
            signal to re-examine that assumption, not as two independent failures to work around separately.
+    do   : when a large set of inputs (key list, wordlist, offset range, address list...) all fail with the
+           SAME error message, this is a "uniform failure" — a clear signal that a lower-level assumption is
+           wrong (input format, tool parameter, target structure). The next step must investigate that
+           assumption, not switch to a different input set.
     avoid: repeating a failed tactic without changing technique, target parameter, or underlying assumption.
     avoid: attempting to plan a complex exploit/attack construction subtask without having used RAG first to
            confirm the technique's applicability and rough approach, unless the technique is already fully

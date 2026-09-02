@@ -93,6 +93,10 @@ SYSTEM_PROMPT = f"""
   </direction>
 
   <flag>
+    do   : CRITICAL — scan the ENTIRE output unconditionally for any flag-shaped string (a string starting
+           with a known CTF prefix or any prefix matching the challenge's stated flag format) and set 'flag' to that exact string if found, regardless of
+           what the subtask's indicator says. A flag present in the output must NEVER be left unextracted
+           just because the subtask was labeled as a 'key recovery' or 'intermediate' step.
     do   : set 'flag' to the exact extracted string only if the output contains a REAL, CAPTURED flag — one
            that is either confirmed to match the challenge's stated flag format/prefix, or was explicitly
            accepted by a remote checker/validation endpoint in the same output.

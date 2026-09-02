@@ -43,6 +43,7 @@ step = 0
 header(target, timeout_minutes)
 
 crashes = 0
+false_done = 0
 
 # Start loop
 while True:
@@ -70,9 +71,12 @@ while True:
             break
             
         if summary == "Goal Achieved":
-            elapsed = time.time() - start_time
-            noflag()
-            break
+            false_done += 1
+            if false_done >= 3:
+                elapsed = time.time() - start_time
+                noflag()
+                break
+            agent.warning("SYSTEM: No flag! Retry now!")
 
     # Handle interrupt
     except KeyboardInterrupt:
