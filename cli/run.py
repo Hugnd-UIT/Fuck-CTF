@@ -10,7 +10,7 @@ def crashes(crashes):
 
 # Log missing flag
 def noflag():
-    line("└─ [!] Goal achieved, but no flag was found in the output.", color="red")
+    line("└─ [!] Goal achieved, but no flag was found in the output!", color="red")
 
 # Log user interrupt
 def stop():

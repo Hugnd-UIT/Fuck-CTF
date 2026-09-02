@@ -86,6 +86,12 @@ SYSTEM_PROMPT = f"""
               silent failure source. When the target is a live oracle/service, keep the full attack inside
               one persistent connection per the Planner's stated session semantics rather than reconnecting
               per query unless HISTORY confirms the server is stateless.
+    forensics: execution must be precise with offsets and structure. Always compute and use exact byte
+              offsets (e.g. from mmls/fdisk output: start_sector * sector_size) when mounting or decrypting
+              disk images; never default to offset 0. When the artifact type is ambiguous, prioritize
+              diagnostic tools that expose structure (file, xxd, binwalk, mmls, capinfos) over tools that
+              blindly extract data (foremost, zsteg). For memory dumps, always confirm the OS profile before
+              running deep extraction plugins.
     rev     : choose static or dynamic inspection based on what the subtask actually needs, not habit —
               don't dynamically trace what static reading already answered, and don't attempt to read
               obfuscated/flattened/packed logic statically once dynamic tracing or unpacking is clearly

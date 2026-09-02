@@ -82,6 +82,12 @@ SYSTEM_PROMPT = f"""
              exact encoding of every extracted value, and the specific weakness identified (not just its
              family name, but which assumption is broken and how that was confirmed). Capture them exactly,
              don't summarize them into prose.
+    forensics: the values that matter most are whatever defines the artifact's physical and logical
+             structure — the exactly identified magic bytes, the precise computed byte offsets for partitions
+             or embedded files, the specific volatility profile matched, the exact encryption parameters
+             (keys, passphrases), and the specific technique used to hide data (e.g., LSB steganography,
+             ADS). Capture these technical parameters and offsets exactly, do not summarize them into vague
+             prose, because subsequent steps will fail if the offset is off by even one byte.
     rev    : the values that matter most are whatever defines the program's decision logic for this specific
              target — the toolchain/language identified, whether the binary is packed/anti-debugged and how
              that was handled, the confirmed success/failure addresses, the reconstructed algorithm itself

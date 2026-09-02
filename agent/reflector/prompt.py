@@ -68,6 +68,12 @@ SYSTEM_PROMPT = f"""
              provided and the actual bug in it was never precisely identified (only a generic named-attack
              was assumed), that is a strong candidate root cause. If the target is stateful and past attempts
              spanned multiple disconnected sessions, question whether continuity was wrongly assumed.
+    forensics: repeated failure almost always means the fundamental assumption about the artifact's
+             structure (byte offset, file format, presence of encryption, or memory profile) is wrong — not
+             that the specific extraction tool is buggy. Question your structural assumptions before blindly
+             trying more tools or wordlists. If every decryption key fails uniformly, or every carving tool
+             yields junk, the offset or format identification is almost certainly incorrect at the foundation,
+             and must be recalculated from scratch.
     rev    : repeated failure usually means the wrong lens is being used, or the reconstructed algorithm was
              never actually verified against runtime behavior and is simply incorrect — if static reading has
              stalled, propose observing runtime behavior instead (or vice versa if dynamic tracing alone has

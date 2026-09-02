@@ -85,6 +85,12 @@ SYSTEM_PROMPT = f"""
              re-encrypts to the known ciphertext, a forged signature/token that verifies — not just that a
              computation completed and printed some bytes. Garbage output from a computation that ran without
              a Python-level error is still a fail.
+    forensics: judge success strictly against whether the recovered data is functionally intact and
+             meaningful — a carved file that opens correctly without corruption, a decrypted volume that mounts
+             and contains a valid filesystem, a decoded network stream that yields human-readable text, or a
+             memory profile that produces a clean process list. Outputting corrupted files, incomplete chunks,
+             or raw unreadable bytes from a carving tool constitutes a failure, not a success. Do not accept
+             garbage data as 'progress'.
     rev    : judge success against whether the program's behavior/logic was genuinely demonstrated to be
              understood or satisfied — a reconstruction confirmed against an actual debugger observation, a
              derived input that the binary/checker actually accepted — not just that a disassembler or

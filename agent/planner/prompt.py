@@ -73,6 +73,12 @@ SYSTEM_PROMPT = f"""
              not plan an attack subtask until you can state which specific assumption is broken and why,
              grounded in the actual extracted parameters rather than a generic 'RSA is attackable' instinct.
              If the target is a live stateful service, plan around keeping a single session's worth of work
+    forensics: the goal is recovering hidden, embedded, or deleted data from an artifact — your very first
+             step MUST be to conclusively identify the artifact's format and structural boundaries (e.g. using
+             file, xxd, binwalk, or mmls/fdisk) before doing anything else. Never plan an extraction, carving,
+             or decryption subtask without explicitly determining the correct byte offset first. If dealing with
+             a disk image, extracting the partition table to find the real start sector is a hard prerequisite.
+             Do not assume offset 0. If it's a memory dump, identifying the exact OS profile is a prerequisite.
              together rather than spreading dependent queries across subtasks that might each reconnect.
     rev    : the goal is understanding the program's real decision logic well enough to satisfy or bypass
              it — judge whether static reading is enough or whether runtime observation is required (and

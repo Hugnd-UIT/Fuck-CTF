@@ -76,6 +76,12 @@ SYSTEM_PROMPT = f"""
              shape, not a wrong algorithm. If the target is a live stateful oracle, check whether the
              connection dropped and secrets were regenerated, which invalidates partially-completed progress
              entirely rather than being fixable by resuming.
+    forensics: before re-running a failed extraction or decryption, rigidly re-verify your structural
+             assumptions: did you use the correct byte offset? Are you sure it's the right volatility profile?
+             Is the file actually a polyglot? Many forensics failures (like valid BitLocker keys failing to
+             unlock) are caused by applying the right tool at the wrong byte offset or to the wrong data layer.
+             Do not simply swap to a new tool, guess a new key, or run a brute-forcer; fix the fundamental
+             parsing and offset assumptions first. A uniform failure across many keys means the offset is wrong.
     rev    : before re-running analysis, re-check that the tool is even looking at the right target
              (correct architecture/bitness, correct binary file if multiple were provided, an address/offset
              that is still valid for the exact build being analyzed) — stale addresses carried over from an
