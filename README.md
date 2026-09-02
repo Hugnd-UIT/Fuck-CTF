@@ -1,16 +1,16 @@
 <div align="center">
 
 <pre>
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║      ███████╗██╗   ██╗ ██████╗██╗  ██╗     ██████╗████████╗███████╗          ║
-║      ██╔════╝██║   ██║██╔════╝██║ ██╔╝    ██╔════╝╚══██╔══╝██╔════╝          ║
-║      █████╗  ██║   ██║██║     █████╔╝     ██║        ██║   █████╗            ║
-║      ██╔══╝  ██║   ██║██║     ██╔═██╗     ██║        ██║   ██╔══╝            ║
-║      ██║     ╚██████╔╝╚██████╗██║  ██╗    ╚██████╗   ██║   ██║               ║
-║      ╚═╝      ╚═════╝  ╚═════╝╚═╝  ╚═╝     ╚═════╝   ╚═╝   ╚═╝               ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                  ║
+║          ███████╗██╗   ██╗ ██████╗██╗  ██╗     ██████╗████████╗███████╗          ║
+║          ██╔════╝██║   ██║██╔════╝██║ ██╔╝    ██╔════╝╚══██╔══╝██╔════╝          ║
+║          █████╗  ██║   ██║██║     █████╔╝     ██║        ██║   █████╗            ║
+║          ██╔══╝  ██║   ██║██║     ██╔═██╗     ██║        ██║   ██╔══╝            ║
+║          ██║     ╚██████╔╝╚██████╗██║  ██╗    ╚██████╗   ██║   ██║               ║
+║          ╚═╝      ╚═════╝  ╚═════╝╚═╝  ╚═╝     ╚═════╝   ╚═╝   ╚═╝               ║
+║                                                                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
 </pre>
 
 ### Fuck CTF
@@ -19,7 +19,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-required-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/Hugnd-UIT)
-[![Firecrawl](https://img.shields.io/badge/Powered_by-Firecrawl-FF5C00?logo=firefox&logoColor=white)](https://www.firecrawl.dev/)
+[![Firecrawl](https://img.shields.io/badge/Firecrawl-FF5C00?logo=firefox&logoColor=white)](https://www.firecrawl.dev/)
 [![License](https://img.shields.io/badge/License-AGPLv3-blue)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Active-brightgreen)](#)
 
