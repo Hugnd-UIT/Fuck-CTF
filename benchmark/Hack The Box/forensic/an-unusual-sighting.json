@@ -48,15 +48,15 @@
         "tokens": 4096
     },
     "sandbox": "ctf",
-    "timeout": 180,
+    "timeout": 60,
     "limit": 2000,
-    "flag": "crypto{FLAG}",
+    "flag": "HTB{.*?}",
     "target": {
-        "category": "crypto",
-        "desc": "Let's Decrypt was too easy, let's do it again!",
+        "category": "forensic",
+        "desc": "As the preparations come to an end, and The Fray draws near each day, our newly established team has started work on refactoring the new CMS application for the competition. However, after some time we noticed that a lot of our work mysteriously has been disappearing! We managed to extract the SSH Logs and the Bash History from our dev server in question. The faction that manages to uncover the perpetrator will have a massive bonus come competition!",
         "dir": "/data",
-        "host": "socket.cryptohack.org",
-        "port": 13394
+        "host": "154.57.164.82",
+        "port": "31531"
     },
     "cmd_time": 30,
     "max_time": 600

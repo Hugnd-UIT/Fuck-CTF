@@ -154,29 +154,21 @@ SYSTEM_PROMPT = f"""
 
 
     <forensics>
-      - Goal: recover hidden, embedded, or deleted data from an artifact.
+      - Goal: recover hidden data or answer remote service questions.
 
-      - The FIRST step MUST conclusively identify:
-          * artifact format
-          * structural boundaries
+      - STRICT PRIORITY FOR REMOTE TARGETS (host and port are specified):
+          1. Once the challenge archive is extracted, IMMEDIATELY probe host:port.
+          2. Connect via socket or nc to check for interactive Q&A prompts/questions.
+          3. DO NOT search for the flag inside local log/pcap files — the flag only exists on the remote server!
+          4. Treat local files strictly as reference evidence to answer the server's questions.
+          5. Write a Python socket script to automate the interactive Q&A session and capture the flag.
 
-      - Prefer:
-          * file
-          * xxd
-          * binwalk
-          * mmls
-          * fdisk
-
-      - Never plan extraction, carving, or decryption
-        before determining the correct byte offset.
-
-      - For disk images:
-          → extracting the partition table to find the real
-            start sector is a hard prerequisite.
-          → never assume offset 0.
-
-      - For memory dumps:
-          → identifying the exact OS profile is a prerequisite.
+      - OFFLINE TARGETS (no remote host/port):
+          - The FIRST step MUST conclusively identify artifact format and structural boundaries.
+          - Prefer: file, xxd, binwalk, mmls, fdisk.
+          - Never plan extraction, carving, or decryption before determining the correct byte offset.
+          - For disk images: extracting partition table to find start sector is required.
+          - For memory dumps: identifying exact OS profile is required.
     </forensics>
 
 

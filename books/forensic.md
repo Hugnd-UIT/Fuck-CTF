@@ -1,4 +1,4 @@
-﻿# Forensics Playbook
+# Forensics Playbook
 
 ---
 
@@ -28,6 +28,7 @@ Forensics challenges provide one or more artifact files — disk images, memory 
 
 Terminal objectives, in order of typical prevalence:
 
+- **Interactive Remote Q&A / Questionnaire:** When a remote host/port is provided, interact with the service to answer forensic questions derived from evidence files (logs, pcaps) to obtain the flag.
 - **Hidden Data Recovery:** Extract a flag embedded in a file using steganography, metadata, or alternate data streams.
 - **File Carving:** Recover deleted or fragmented files from a raw disk image or memory dump.
 - **Network Traffic Decoding:** Reconstruct and decode a flag from a packet capture stream.
@@ -52,7 +53,11 @@ Before running any tool, identify the artifact type precisely using `file` and `
 ## 3. Master Workflow
 
 ```text
-Identify Artifact Type (file, xxd, binwalk)
+Identify Artifact Type / Extract Archive
+        |
+        +-- If Remote Target Provided (host & port) --> Probe Service (nc / socket)
+        |       |
+        |       +-- Interactive Q&A Detected --> Correlate Evidence Logs --> Submit Answers --> Flag
         |
 Inspect Container or Partition Structure
         |-- Disk image --> mmls / fdisk --> compute byte offset from start sector

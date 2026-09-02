@@ -197,7 +197,14 @@ authorized CTF environment scoped to the given target.
 
 
     <forensics>
-      - Execution must be precise with offsets and structures.
+      - Execution must be precise with offsets, structures, and evidence queries.
+
+      - If target has a remote host and port:
+          → probe the service (via socket or nc) to check for an interactive
+            questionnaire.
+          → write Python socket scripts that keep a continuous session,
+            read incoming questions, search local log/evidence files for the
+            exact values, and send responses in the required format.
 
       - Always calculate and use exact byte offsets.
 

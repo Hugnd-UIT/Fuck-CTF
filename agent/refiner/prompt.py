@@ -173,6 +173,11 @@ SYSTEM_PROMPT = f"""
 
 
     <forensics>
+      - If responding to an interactive remote Q&A questionnaire:
+          → check exact answer formatting (e.g. 24h timestamp format,
+            stripping or including prefixes like SHA256:, case sensitivity).
+          → verify the line/timestamp match between correlated log sources.
+
       - Before re-running extraction or decryption,
         rigidly re-verify structural assumptions:
 
