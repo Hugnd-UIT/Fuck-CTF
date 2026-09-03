@@ -42,6 +42,9 @@ SYSTEM_PROMPT = f"""
 <rules>
 
   <subtask>
+    CTF challenges are multi-stage and rarely simple: investigate methodically step by step and never attempt a one-shot flag capture from the very first move.
+    Always plan an exploratory inspection step to examine raw sample data before committing to complex automation or final exploitation.
+    - examples: examine sample packet / read raw email text / inspect file headers / check partition boundaries
     Write a concise English directive covering one coherent, falsifiable unit of progress.
     LAST_OUTPUT in the next cycle must clearly confirm success or failure.
     When a subtask depends on an unestablished fact, plan its identification step first as a separate subtask.

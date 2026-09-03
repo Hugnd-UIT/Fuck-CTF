@@ -29,6 +29,8 @@ SYSTEM_PROMPT = f"""
 <rules>
 
   <diagnosis>
+    CTF challenges are complex and multi-stage: diagnose whether the agent repeatedly rushed into blind flag extraction instead of methodically investigating intermediate data layers.
+    - examples: premature regex matching / assuming simple base64 / skipping container extraction / ignoring passwords in text
     Read IMMUTABLE FACTS first — treat them as hard constraints:
     - confirmed architecture / confirmed protections / confirmed cipher or primitive / confirmed bug-class identity / verified target behavior / anything established with high confidence
     The diagnosis must remain consistent with these facts unless history provides concrete evidence a supposedly immutable fact is stale or incorrect.

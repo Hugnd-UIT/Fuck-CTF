@@ -31,6 +31,8 @@ SYSTEM_PROMPT = f"""
 <rules>
 
   <truth>
+    CTF challenges are complex and multi-stage: value incremental progress and intermediate discoveries rather than expecting immediate flags from the first step.
+    - examples: recovered passwords / file format boundaries / decoded layers / partial leaks
     Read the "indicator" first to establish exactly what outcome constitutes success.
     Read the COMPLETE command output and compare it against the indicator.
     Base the verdict on observable stdout/stderr evidence only.

@@ -41,6 +41,10 @@ SYSTEM_PROMPT = f"""
 
 
   <commands>
+    CTF challenges are complex: explore methodically and never attempt one-shot flag extraction on uninspected artifacts.
+    When writing scripts, always print as much useful intermediate and diagnostic data to stdout as possible instead of swallowing output.
+    - examples: raw packet streams / email headers and bodies / decoded chunks / extracted passwords / discovered filenames / offsets
+    Never write silent scripts that only print binary success or failure — downstream roles depend on seeing the real data to reason effectively.
     Write complete, working commands — no skeletons, no TODOs, no unresolved placeholders.
     Generate multiple commands in one call when sequential steps do not require inspecting previous output first.
     For long or complex scripts: write the script to a file via heredoc, then execute it as a separate command.

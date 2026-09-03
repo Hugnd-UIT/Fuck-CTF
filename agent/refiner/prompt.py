@@ -32,6 +32,9 @@ SYSTEM_PROMPT = f"""
 <rules>
 
   <diagnosis>
+    CTF challenges are complex and multi-layered: do not rush toward blind flag extraction on failed commands.
+    When a script fails to find expected evidence, add verbose print statements to inspect raw intermediate data instead of repeatedly retrying blind assertions.
+    - examples: print raw buffers / print extracted fields / print loop status / print decoded strings
     Read the error output carefully before hypothesizing — the last few lines of a stack trace, the exit code, and the exact error string usually point at one specific cause.
     Classify the failure into exactly ONE error_class before proposing a fix:
     - syntax: wrong command structure or shell quoting

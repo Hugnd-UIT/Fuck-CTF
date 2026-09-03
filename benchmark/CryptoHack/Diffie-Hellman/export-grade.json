@@ -8,7 +8,7 @@
         "tokens": 4096
     },
     "executor": {
-        "model": "deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-pro",
         "local": false,
         "temperature": 0.2,
         "top": 1.0,

@@ -37,6 +37,8 @@ SYSTEM_PROMPT = f"""
 <rules>
 
   <integrity>
+    CTF challenges are complex and multi-stage: track step-by-step incremental findings carefully rather than expecting immediate flags.
+    - examples: discovered file structures / extracted passwords / intermediate tokens / service banners
     Treat the EXISTING TREE as the baseline state and the LATEST STEP as the only source of newly observed evidence.
     Preserve existing tree information unless the latest step explicitly changes, supersedes, or invalidates it.
     Merge the latest result into the existing tree instead of reconstructing unrelated fields.
