@@ -78,7 +78,7 @@ def node(title, right, color="blue"):
         return
         
     if not _first_node:
-        console.print(Text("│", style="bold blue"))
+        console.print(Text("│", style=f"bold {_current_color}"))
     _first_node = False
     _current_color = color
     _last_node = title
@@ -107,7 +107,7 @@ def line(content=None, tree="│", color=None):
             return
         _last_was_empty = True
         prefix = f"{tree}  │" if tree else "   │"
-        console.print(Text(prefix, style="bold blue"))
+        console.print(Text(prefix, style=f"bold {use_color}"))
         return
 
     _last_was_empty = False
@@ -153,12 +153,12 @@ def line(content=None, tree="│", color=None):
         prefix = f"{tree}  " if tree else "   "
         
         for chunk in wrapped:
-            console.print(Text(prefix, style="bold blue") + Text(chunk, style=f"bold {use_color}"))
+            console.print(Text(prefix, style=f"bold {use_color}") + Text(chunk, style=f"bold {use_color}"))
 
 # Print error message
 def error(msg):
     global _current_color
-    console.print(Text("│  ", style="bold blue") + Text(f"[Error]: {msg}", style="bold red"))
+    console.print(Text("│  ", style=f"bold {_current_color}") + Text(f"[Error]: {msg}", style="bold red"))
 
 # Print CLI footer
 def footer(flag, elapsed):

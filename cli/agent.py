@@ -63,13 +63,13 @@ def command(cmd, last):
     cont_prefix = "     " if last else "│    "
     for i, chunk in enumerate(head):
         prefix = cont_prefix if i > 0 else ""
-        console.print(Text("│  ", style="bold blue") + Text(f"{prefix}{chunk}", style=f"bold {_current_color}"))
+        console.print(Text("│  ", style=f"bold {_current_color}") + Text(f"{prefix}{chunk}", style=f"bold {_current_color}"))
 
     # Heredoc body
     for row in rows[1:]:
         wrapped = textwrap.wrap(row, width=wrap_width) or [""]
         for chunk in wrapped:
-            console.print(Text("│  ", style="bold blue") + Text(f"{cont_prefix}{chunk}", style=f"bold {_current_color}"))
+            console.print(Text("│  ", style=f"bold {_current_color}") + Text(f"{cont_prefix}{chunk}", style=f"bold {_current_color}"))
 
     from . import core
     core._last_was_empty = False
