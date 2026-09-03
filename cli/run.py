@@ -2,11 +2,11 @@ from .core import header as core_header, footer as core_footer, line
 
 # Log timeout error
 def timeout(time):
-    line(f"└─ [!] TIMEOUT: Reached {time} minutes.", color="red")
+    line(f"└─ [!] TIMEOUT: Reached {time} minutes!", color="red")
 
 # Log crash limit
 def crashes(crashes):
-    line(f"└─ [!] ABORTED: {crashes} consecutive crashes.", color="red")
+    line(f"└─ [!] ABORTED: {crashes} consecutive crashes!", color="red")
 
 # Log missing flag
 def noflag():

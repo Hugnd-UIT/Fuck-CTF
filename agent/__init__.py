@@ -110,8 +110,9 @@ class Orchestrator:
     def history(self):
         return state.history
 
-    def read(self, target, sandbox):
-        return sb.read(sandbox, target)
+    def read(self, target, sandbox, base_dir=None):
+        base = base_dir or getattr(self, "target_dir", "/data") or "/data"
+        return sb.read(sandbox, target, base_dir=base)
 
     def execute(self, target, sandbox, time_left=None):
         # Start execution
@@ -132,14 +133,15 @@ class Orchestrator:
 
         # Check workspace
         workspace = os.path.join(os.getcwd(), 'workspace')
-        target_dir = target.get("dir", "")
+        target_dir = target.get("dir", "/data") if isinstance(target, dict) else "/data"
+        self.target_dir = target_dir if target_dir and target_dir != "-" else "/data"
         
         if target_dir and target_dir != "-" and os.path.exists(workspace):
             files = os.listdir(workspace)
             if not files:
                 state.absorb({"Environment": "No local directory or files provided!"})
             else:
-                state.absorb({"Environment": f"Directory /data contains: {files}."})
+                state.absorb({"Environment": f"Directory {self.target_dir} contains: {files}."})
         else:
             state.absorb({"Environment": "No local directory or files provided!"})
 
@@ -325,11 +327,20 @@ class Orchestrator:
 
             # Handle read
             verif_read = verif.get("read")
-            if verif_read and str(verif_read).lower() not in ("none", "null", "", "false"):
-                agent_ui.read(verif_read, last=False)
-                read_out = self.read(verif_read, sandbox)
-                verif.setdefault("knowledge", []).append(f"File {verif_read}: {read_out[:400]}")
-                state.absorb({"Verified_File": read_out[:1000]})
+            if verif_read and str(verif_read).lower() not in ("none", "null", "", "false", "[]"):
+                if isinstance(verif_read, list):
+                    v_targets = [str(f).strip() for f in verif_read if str(f).strip()]
+                elif "," in str(verif_read):
+                    v_targets = [p.strip() for p in str(verif_read).split(",") if p.strip()]
+                else:
+                    v_targets = [str(verif_read).strip()]
+                v_targets = [t for t in v_targets if t and t.lower() not in ("none", "null", "", "false")]
+                if v_targets:
+                    agent_ui.read(v_targets, last=False)
+                    for t in v_targets:
+                        read_out = self.read(t, sandbox)
+                        verif.setdefault("knowledge", []).append(f"File {t}:\n{read_out[:2000]}")
+                        state.absorb({f"Verified_File ({t})": read_out[:8000]})
                 
             # Validate flag format
             flag = verif.get("flag", "")
@@ -370,10 +381,19 @@ class Orchestrator:
                     
                     retry = 0
                     while retry < 3:
-                        extra = "\n".join(verif.get("knowledge", []))
+                        extra_list = list(verif.get("knowledge", []))
+                        v_reason = verif.get("reason", {})
+                        if isinstance(v_reason, dict):
+                            if v_reason.get("analysis"):
+                                extra_list = [f"Analysis: {v_reason['analysis']}"] + extra_list
+                            if v_reason.get("unmet"):
+                                extra_list = [f"Unmet: {v_reason['unmet']}"] + extra_list
+                        extra = "\n".join(extra_list)
+
+                        data = {**state.tree.get("data", {}), **state.store}
                         discovered = (
                             "Findings:\n" + "\n".join(state.tree.get("findings", []))
-                            + "\nData:\n" + str(state.tree.get("data", {}))
+                            + "\nData:\n" + (json.dumps(data, indent=2) if data else "{}")
                             + ("\nNotes:\n" + extra if extra else "")
                         )
 
@@ -396,6 +416,34 @@ class Orchestrator:
                     r_cmds = r_data.get("commands", [])
                     r_abort = r_data.get("abort", False)
                     
+                    # Handle read
+                    r_read_files = r_data.get("read")
+                    if r_read_files and str(r_read_files).lower() not in ("none", "null", "", "false", "[]"):
+                        if isinstance(r_read_files, list):
+                            ref_targets = [str(f).strip() for f in r_read_files if str(f).strip()]
+                        elif "," in str(r_read_files):
+                            ref_targets = [p.strip() for p in str(r_read_files).split(",") if p.strip()]
+                        else:
+                            ref_targets = [str(r_read_files).strip()]
+                        ref_targets = [t for t in ref_targets if t and t.lower() not in ("none", "null", "", "false")]
+                        if ref_targets:
+                            agent_ui.read(ref_targets, last=False)
+                            read_snippets = []
+                            for t in ref_targets:
+                                read_out = self.read(t, sandbox)
+                                state.absorb({f"Inspection ({t})": read_out[:8000]})
+                                read_snippets.append(f"File {t}:\n{read_out[:4000]}")
+
+                            if not r_cmds and not r_abort:
+                                more_discovered = discovered + "\n\nGround Truth Files Inspected:\n" + "\n".join(read_snippets)
+                                r_res = self.refiner.refine(
+                                    target=target_str, subtask=sub, failed=cmds, error=out,
+                                    history=state.compressed, discovered=more_discovered
+                                )
+                                r_data = r_res.get("refine_data", {})
+                                r_cmds = r_data.get("commands", [])
+                                r_abort = r_data.get("abort", False)
+
                     r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
                     r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
                     if r_analysis:
@@ -403,7 +451,9 @@ class Orchestrator:
                     
                     if r_abort or not r_cmds:
                         if r_abort:
-                            verif.setdefault("knowledge", []).append("Refiner aborted: dead end detected.")
+                            err_reason = r_reason.get("error") or "dead end detected"
+                            agent_ui.abort(err_reason)
+                            verif.setdefault("knowledge", []).append(f"Refiner aborted: {err_reason}.")
                         else:
                             agent_ui.empty()
                         break
@@ -425,14 +475,23 @@ class Orchestrator:
                     else:
                         agent_ui.failed()
 
-                    # Handle read in refinement
+                    # Handle read
                     r_read = verif.get("read")
-                    if r_read and str(r_read).lower() not in ("none", "null", "", "false"):
-                        know_check = verif.get("knowledge", [])
-                        agent_ui.read(r_read, last=not bool(know_check))
-                        read_out = self.read(r_read, sandbox)
-                        verif.setdefault("knowledge", []).append(f"File {r_read}: {read_out[:400]}")
-                        state.absorb({"Verified_File": read_out[:1000]})
+                    if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
+                        if isinstance(r_read, list):
+                            v_targets = [str(f).strip() for f in r_read if str(f).strip()]
+                        elif "," in str(r_read):
+                            v_targets = [p.strip() for p in str(r_read).split(",") if p.strip()]
+                        else:
+                            v_targets = [str(r_read).strip()]
+                        v_targets = [t for t in v_targets if t and t.lower() not in ("none", "null", "", "false")]
+                        if v_targets:
+                            know_check = verif.get("knowledge", [])
+                            agent_ui.read(v_targets, last=not bool(know_check))
+                            for t in v_targets:
+                                read_out = self.read(t, sandbox)
+                                verif.setdefault("knowledge", []).append(f"File {t}:\n{read_out[:2000]}")
+                                state.absorb({f"Verified_File ({t})": read_out[:8000]})
                     
                     know = verif.get("knowledge", [])
                     if know:

@@ -331,7 +331,7 @@ For non-x86 targets, run and debug through `qemu-user` with the correct `-g` GDB
 ## 17. Exploit Engineering Practices
 
 - Parameterize the exploit for both local and remote execution from a single script; never hardcode addresses that differ between environments.
-- Compute all offsets programmatically using `pwntools` `cyclic`/`cyclic_find` rather than guessing from a hex dump.
+- Compute offsets with pwntools `cyclic`/`cyclic_find` when buffer length is unrestricted. If read length is bounded or stack variables (e.g. loop index `i`) sit between buffer and return address, determine offsets statically from disassembly (e.g. `rbp - offset`) or GDB frame layout.
 - Validate every leak immediately after obtaining it — print it, sanity-check it against expected alignment, e.g. libc addresses ending in a predictable low nibble, before using it in further computation.
 - Build the exploit as a sequence of independently testable stages; confirm each stage's postcondition under GDB before writing the next stage.
 - Always use the exact libc and loader supplied by the challenge when testing locally; patch the binary's interpreter and rpath with `patchelf` or `pwninit` so local testing matches remote behavior precisely.
@@ -408,7 +408,7 @@ Is the vulnerability on the heap?
 | Symptom | Likely cause | Resolution |
 |---|---|---|
 | Works locally, fails or hangs remotely | Wrong libc version, environment mismatch | Use the exact libc/loader supplied by the challenge; patch and retest locally against that exact libc |
-| Crash at an unexpected address | Miscalculated overflow offset | Recompute offset with `cyclic`/`cyclic_find` rather than trusting a prior manual guess |
+| Crash at an unexpected address | Miscalculated overflow offset | Recompute offset with `cyclic`/`cyclic_find`, or inspect stack frame disassembly (`rbp` offsets) if cyclic pattern corrupts adjacent locals |
 | Canary value differs every run | Expected behavior of a properly randomized canary | Requires an explicit leak primitive, or brute force only if the process forks with a stable canary across attempts |
 | No usable gadgets found | Binary too small, heavily stripped, or too few instructions | Search the paired libc, or use `ret2csu`, or search for gadgets that cross function boundaries in raw disassembly |
 | Format string leak returns garbage or zero | Wrong positional offset | Re-derive the offset using the marker technique in section 8.1 before attempting the real leak |

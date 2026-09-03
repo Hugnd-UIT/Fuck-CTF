@@ -29,7 +29,6 @@ def subtask(sub, rag=False):
     else:
         prefix = "├─ "
         line(f"{prefix}Searching \"{sub}\"...")
-        line("│")
 
 # Log reading phase
 def read(target, last=False):
@@ -107,6 +106,11 @@ def retry(ret):
 # Log missing commands
 def empty():
     line("└─ Failed to produce new commands")
+
+# Log refiner abort / dead end
+def abort(reason=None):
+    msg = f"└─ Aborted: {reason}" if reason else "└─ Aborted: dead end detected"
+    line(msg)
 
 # Log summarize phase
 def summarize(elapsed):

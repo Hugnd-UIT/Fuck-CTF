@@ -17,7 +17,7 @@ _schema = json.dumps(
             "target": "file/url/port",
             "tool": "tool name",
             "hint": "specific flags/mode/technique the Executor should lean toward, else null",
-            "read": "file path or list of file paths in /data to inspect format, headers, archives, or source code before deciding subtask, else null",
+            "read": "file path or list of file paths (relative to target directory or absolute) to inspect format, headers, archives, or source code before deciding subtask, else null",
             "rag": "search query here if needed, else null",
             "reflect": False,
             "avoids": "step_id or none",
@@ -43,7 +43,7 @@ SYSTEM_PROMPT = f"""
 <rules>
   - Investigate methodically step by step; never attempt a one-shot flag capture on uninspected artifacts.
   - Plan an exploratory inspection step to examine raw data or structure before committing to complex automation or exploitation.
-  - Ground Truth First: If source code, decompilation, headers, or configs (.c, .h, .py, .js, .go, .java, .php, .sql, Dockerfile) exist in /data, you MUST prioritize reading them thoroughly using "read" BEFORE planning dynamic fuzzing or offset guessing.
+  - Ground Truth First: If source code, decompilation, headers, or configs (.c, .h, .py, .js, .go, .java, .php, .sql, Dockerfile) exist in the challenge workspace directory (see target.dir) or /data, you MUST prioritize reading them thoroughly using "read" BEFORE planning dynamic fuzzing or offset guessing.
   - Each subtask must be a concise English directive covering exactly one coherent, verifiable unit of progress.
   - When a subtask depends on an unestablished fact, plan its identification or inspection first.
   - Never bundle unrelated tactics; prioritize the single highest-probability branch per cycle.
@@ -56,11 +56,9 @@ SYSTEM_PROMPT = f"""
 
 <guidelines>
   pwn:
-    - If source code is provided (e.g. source.c), read the entire source code to understand logic, buffer sizes, structs, and control flow before attempting dynamic fuzzing or offset calculation.
-    - Identify binary architecture, security protections, and the interactive interface before selecting an exploit vector.
-    - Confirm the vulnerability mechanism through disassembly or a reproducible crash before planning payload construction.
-    - When NX is disabled, prioritize direct shellcode execution via register jumps (e.g. jmp/call rsi, rsp) over complex ROP chains.
-    - For small or assembly binaries without main, analyze directly from _start and trace raw syscalls.
+    - Determine binary architecture, protections (NX, PIE, Canary, RELRO), and symbols before crafting input payloads.
+    - Identify the specific vulnerability mechanism before guessing payload offsets.
+    - Reconstruct expected inputs or protocol states directly from disassembly before sending complex data.
 
   crypto:
     - Identify the mathematical primitive, key parameters, and specific broken assumption before planning attacks.

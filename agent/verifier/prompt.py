@@ -10,7 +10,7 @@ _schema = json.dumps(
         },
         "result": "success | partial | fail",
         "knowledge": ["concise fact 1", "concise fact 2"],
-        "read": "file path in /data to inspect if an output or extracted file was created and needs content verification, else null",
+        "read": "file path or list of file paths (relative to challenge directory or absolute) to inspect if output or extracted files were created and need content verification, else null",
         "rag": "search query if external lookup is needed to interpret an unfamiliar error/output, else null",
         "contradiction": False,
         "flag": "extracted flag string or false",
@@ -35,6 +35,7 @@ SYSTEM_PROMPT = f"""
     - success: indicator fully satisfied by direct evidence; the subtask objective was demonstrably achieved.
     - partial: concrete technical progress or partial indicator satisfaction, but the complete objective was not demonstrated.
     - fail: no usable progress, crashed before yielding evidence, timed out, or hypothesis directly disproved.
+  - File Content Verification: When inspecting created or extracted files with "read", specify all relevant files to inspect their full contents for verification.
   - Flag validation (STRICT):
     - Scan output for genuine flags matching the challenge format. If no real flag was captured, set "flag" to false.
     - NEVER accept dummy, fake, or placeholder flags (e.g. flags containing 'fake', 'f4k3', 'test', 't3st', 'dummy', 'placeholder', 'local', 'example', or mock values).
@@ -55,7 +56,7 @@ SYSTEM_PROMPT = f"""
     - reason.unmet: When result is partial or fail, state exactly what evidence the indicator required that was missing.
 
   actions:
-    - read: Specify file paths in /data to inspect generated artifacts (decrypted archives, carved files, binaries) for direct content verification.
+    - read: Specify file paths (relative to target directory or absolute) to inspect generated artifacts (decrypted archives, carved files, binaries) for direct content verification.
     - rag: Use search queries ONLY when an unfamiliar error message, crash signal, or tool output prevents reliable interpretation.
 
   flags:

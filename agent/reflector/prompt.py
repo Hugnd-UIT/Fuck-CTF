@@ -11,7 +11,7 @@ _schema = json.dumps(
         },
         "tactic": "completely new tactic to break out of the loop — specific enough that it is clearly not a variant of what already failed",
         "advice": "specific directive for the Planner on how to proceed, including what to verify first before committing further effort",
-        "read": "file path or list of file paths in /data to inspect ground truth (e.g. source.c, Dockerfile, headers, configs), else null",
+        "read": "file path or list of file paths (relative to challenge directory or absolute) to inspect ground truth (e.g. source.c, Dockerfile, headers, configs), else null",
         "repeat": "the specific technique/assumption that should be excluded from consideration going forward, and why",
     },
     indent=2,
@@ -45,7 +45,7 @@ SYSTEM_PROMPT = f"""
     - rev: If static analysis contradicts runtime behavior, prioritize dynamic execution to break the analytical deadlock.
 
   actions:
-    - read: Specify file paths (single string or list) in /data to inspect source code (source.c, routes, configs, headers) to verify actual ground truth whenever dynamic attempts fail or hit dead ends.
+    - read: Specify file paths (single string or list, relative to target directory or absolute) to inspect source code (source.c, routes, configs, headers) to verify actual ground truth whenever dynamic attempts fail or hit dead ends.
 </guidelines>
 
 

@@ -29,7 +29,7 @@ def run(sandbox, commands, category, timeout=30):
         output += f"--- Output of '{cmd}' ---\n{out}\n"
     return output
 
-def read(sandbox, target):
+def read(sandbox, target, base_dir=None):
     if not target or not isinstance(target, str):
         return "Invalid read target."
 
@@ -41,12 +41,13 @@ def read(sandbox, target):
     if not target:
         return "Empty read target."
 
-    path = target if target.startswith("/") else f"/data/{target}"
+    base = base_dir.strip().rstrip("/") if base_dir and isinstance(base_dir, str) and base_dir.strip() and base_dir.strip() != "-" else "/data"
+    path = target if target.startswith("/") else f"{base}/{target}"
 
     script = f'''
         if [ ! -e "{path}" ]; then
             echo "File '{path}' does not exist."
-            echo "Available in /data: $(ls -m /data 2>/dev/null)"
+            echo "Available in {base}: $(ls -m "{base}" 2>/dev/null)"
             exit 0
         fi
 

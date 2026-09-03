@@ -1,0 +1,63 @@
+{
+    "planner": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 0.9,
+        "sample": true,
+        "tokens": 4096
+    },
+    "executor": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "verifier": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.1,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "refiner": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "summarizer": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.3,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "reflector": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "sandbox": "ctf",
+    "timeout": 60,
+    "limit": 2000,
+    "flag": "HTB{.*?}",
+    "target": {
+        "category": "pwn",
+        "desc": "A firmware update has been released for the router. We've managed to extract it - it seems the previously exploited bug has been patched, but a new web service has been added which we believe may have security holes. Can you regain entry to the system?",
+        "dir": "/data",
+        "host": "154.57.164.82",
+        "port": "31826"
+    },
+    "cmd_time": 30,
+    "max_time": 600
+}

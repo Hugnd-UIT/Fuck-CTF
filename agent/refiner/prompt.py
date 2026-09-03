@@ -14,6 +14,7 @@ _schema = json.dumps(
             "fixed command 1",
             "fixed command 2 if needed",
         ],
+        "read": "file path or list of file paths (relative to challenge directory or absolute) to inspect (e.g. source code, headers, configs) if failure stemmed from wrong assumption or unknown protocol before writing commands, else null",
         "timeout": "integer, dynamic based on time_left and task type (e.g. 1800 for brute-force)",
         "success": "expected pattern in stdout/stderr that proves the fix actually worked, not just that it ran without error",
     },
@@ -41,6 +42,7 @@ SYSTEM_PROMPT = f"""
     - permissions: insufficient file or execution privileges.
     - ambiguous: failure cause cannot be definitively diagnosed from available output.
   - If the failure reveals a dead end, fundamentally wrong assumption, or unfixable environment issue, set "abort": true with "commands": [] to trigger early backtracking.
+  - Ground Truth Verification: If a command failed due to wrong_assumption, unexpected exit code, or unknown protocol format, DO NOT guess parameters or protocols blindly. Cross-check ground-truth source code provided in facts/Data or specify source files in "read" to inspect before finalizing commands.
   - Fix the underlying cause rather than suppressing error symptoms; never silence stderr or hide failures.
   - Preserve working core logic and confirmed values; never rewrite functional code without evidence it is broken.
   - When scripts fail to find evidence, add diagnostic print statements to inspect raw intermediate data.

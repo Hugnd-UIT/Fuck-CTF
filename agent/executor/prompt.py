@@ -52,7 +52,7 @@ SYSTEM_PROMPT = f"""
     - Separate installation, verification, and execution into sequential commands.
 
   domains:
-    - pwn: Script interactions deterministically; when inspecting small or stripped binaries, avoid filtering for unconfirmed functions like "main" and inspect from _start; base payloads directly on confirmed architecture, protections, and offsets from HISTORY.
+    - pwn: Script interactions deterministically; when inspecting small or stripped binaries, avoid filtering for unconfirmed functions like "main" and inspect from _start; base payloads directly on confirmed architecture, protections, and offsets from HISTORY. When debugging binaries in GDB, feed input via redirection (run < /path/to/payload). Prefer standalone pwntools scripts over embedded in-GDB Python scripts.
     - crypto: Prefer standard cryptographic libraries over manual arithmetic; maintain persistent socket sessions for live oracles.
     - forensics: For remote interactive services, script continuous socket interactions; calculate exact byte offsets when inspecting or extracting container artifacts.
     - rev: Choose static or dynamic inspection based on subtask; bypass anti-debug or packing blockers before dynamic tracing; verify solver outputs.
