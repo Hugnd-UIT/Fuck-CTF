@@ -73,8 +73,8 @@ def read(sandbox, target):
                 tshark -r "{path}" -c 20 2>&1 || tcpdump -r "{path}" -c 20 2>&1
                 ;;
             text/*|application/json|application/x-sh|application/javascript|application/xml)
-                echo "[TEXT PREVIEW (first 250 lines)]"
-                head -n 250 "{path}"
+                echo "[CONTENT]"
+                head -n 600 "{path}"
                 ;;
             *)
                 case "{path}" in
@@ -86,9 +86,9 @@ def read(sandbox, target):
                         echo "[PCAP PACKET SUMMARY]"
                         tshark -r "{path}" -c 20 2>&1 || tcpdump -r "{path}" -c 20 2>&1
                         ;;
-                    *.txt|*.py|*.c|*.cpp|*.sh|*.php|*.html|*.log|*.dis)
-                        echo "[TEXT PREVIEW (first 250 lines)]"
-                        head -n 250 "{path}"
+                    *.txt|*.py|*.c|*.cpp|*.h|*.sh|*.php|*.html|*.log|*.dis|*.go|*.java|*.json|*.yml|*.yaml|*.sql|*.md|*.env|*Makefile*|*Dockerfile*)
+                        echo "[CONTENT]"
+                        head -n 600 "{path}"
                         ;;
                     *)
                         echo "[HEX/HEADER (first 256 bytes)]"
@@ -103,8 +103,8 @@ def read(sandbox, target):
     try:
         res = sandbox.exec_run(["/bin/bash", "-c", script], stdout=True, stderr=True)
         out = res.output.decode("utf-8", errors="ignore").strip()
-        if len(out) > 3000:
-            out = out[:3000] + "\n...[TRUNCATED]"
+        if len(out) > 15000:
+            out = out[:15000] + "\n...[TRUNCATED]"
         return out
     except Exception as e:
         return f"Failed to read '{target}': {e}"

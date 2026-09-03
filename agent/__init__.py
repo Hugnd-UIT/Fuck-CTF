@@ -198,23 +198,37 @@ class Orchestrator:
 
         # Handle read
         plan_read = plan_dict.get("read") or plan.get("read")
-        if plan_read and str(plan_read).lower() not in ("none", "null", "", "false"):
-            read_key = f"read_{plan_read}"
-            state.attempts[read_key] = state.attempts.get(read_key, 0) + 1
-            if state.attempts[read_key] <= 2:
-                agent_ui.read(plan_read, last=False)
-                read_out = self.read(plan_read, sandbox)
-                state.absorb({"Inspection": read_out})
-                id = f"step_{len(state.history) + 1}"
-                state.history.append({
-                    "step_id": id,
-                    "tactic": "Inspection",
-                    "plan": f"Read {plan_read}",
-                    "observation": read_out[:1500],
-                    "result": "pass",
-                    "raw": read_out[:3000]
-                })
-                return "Read completed!", {"commands": [], "success": "none"}
+        if plan_read and str(plan_read).lower() not in ("none", "null", "", "false", "[]"):
+            if isinstance(plan_read, list):
+                read_targets = [str(f).strip() for f in plan_read if str(f).strip()]
+            elif "," in str(plan_read):
+                read_targets = [p.strip() for p in str(plan_read).split(",") if p.strip()]
+            else:
+                read_targets = [str(plan_read).strip()]
+
+            read_targets = [t for t in read_targets if t and t.lower() not in ("none", "null", "", "false")]
+            if read_targets:
+                read_key = "read_" + "_".join(read_targets)
+                state.attempts[read_key] = state.attempts.get(read_key, 0) + 1
+                if state.attempts[read_key] <= 2:
+                    agent_ui.read(read_targets, last=False)
+                    combined_obs = []
+                    for t in read_targets:
+                        out_t = self.read(t, sandbox)
+                        state.absorb({f"Inspection ({t})": out_t})
+                        combined_obs.append(f"[{t}]\n{out_t}")
+
+                    read_summary = "\n\n".join(combined_obs)
+                    id = f"step_{len(state.history) + 1}"
+                    state.history.append({
+                        "step_id": id,
+                        "tactic": "Inspection",
+                        "plan": f"Read {', '.join(read_targets)}",
+                        "observation": read_summary[:8000],
+                        "result": "pass",
+                        "raw": read_summary[:15000]
+                    })
+                    return "Read completed!", {"commands": [], "success": "none"}
 
         # Handle RAG
         plan_rag = plan_dict.get("rag")
@@ -525,13 +539,25 @@ class Orchestrator:
             adv = review.get("advice", "")
             tac = review.get("tactic", "")
             ref_read = review.get("read")
-            has_read = bool(ref_read and str(ref_read).lower() not in ("none", "null", "", "false"))
+            if ref_read and str(ref_read).lower() not in ("none", "null", "", "false", "[]"):
+                if isinstance(ref_read, list):
+                    ref_targets = [str(f).strip() for f in ref_read if str(f).strip()]
+                elif "," in str(ref_read):
+                    ref_targets = [p.strip() for p in str(ref_read).split(",") if p.strip()]
+                else:
+                    ref_targets = [str(ref_read).strip()]
+            else:
+                ref_targets = []
 
-            agent_ui.reflect(ref_time, read=ref_read if has_read else None)
+            ref_targets = [t for t in ref_targets if t and t.lower() not in ("none", "null", "", "false")]
+            has_read = bool(ref_targets)
+
+            agent_ui.reflect(ref_time, read=ref_targets if has_read else None)
 
             if has_read:
-                read_out = self.read(ref_read, sandbox)
-                state.alerts.append(f"[REFLECTOR READ] {ref_read}: {read_out[:1000]}")
+                for t in ref_targets:
+                    read_out = self.read(t, sandbox)
+                    state.alerts.append(f"[REFLECTOR READ] {t}:\n{read_out[:8000]}")
             
             if adv or tac:
                 state.alerts.append(f"[ADVICE] {tac} - {adv}")

@@ -11,7 +11,7 @@ _schema = json.dumps(
         },
         "tactic": "completely new tactic to break out of the loop — specific enough that it is clearly not a variant of what already failed",
         "advice": "specific directive for the Planner on how to proceed, including what to verify first before committing further effort",
-        "read": "file path in /data to inspect if you suspect the team misdiagnosed the input file format, headers, or archive, else null",
+        "read": "file path or list of file paths in /data to inspect ground truth (e.g. source.c, Dockerfile, headers, configs), else null",
         "repeat": "the specific technique/assumption that should be excluded from consideration going forward, and why",
     },
     indent=2,
@@ -39,13 +39,13 @@ SYSTEM_PROMPT = f"""
 
 <guidelines>
   domains:
-    - pwn: If multiple exploits failed, question the assumed bug class, binary identity, or libc version; re-verify base addresses and ASLR.
-    - crypto: If attacks fail uniformly, question primitive identification, encoding, byte order, or key lengths before testing new ciphers.
+    - pwn: If multiple exploits failed, inspect ground truth source code (source.c) or disassembly; question the assumed bug class, binary identity, or libc version.
+    - crypto: If attacks fail uniformly, inspect source code or question primitive identification, encoding, byte order, or key lengths before testing new ciphers.
     - forensics: Consistent garbage output across multiple tools indicates an incorrect container boundary or byte offset, not a tool failure.
     - rev: If static analysis contradicts runtime behavior, prioritize dynamic execution to break the analytical deadlock.
 
   actions:
-    - read: Specify file paths in /data to inspect headers, container structures, or raw evidence when you suspect the team misdiagnosed the input format.
+    - read: Specify file paths (single string or list) in /data to inspect source code (source.c, routes, configs, headers) to verify actual ground truth whenever dynamic attempts fail or hit dead ends.
 </guidelines>
 
 

@@ -17,10 +17,20 @@ def init(config):
 		start = time.time()
 		sandbox_ui.create(config['sandbox'])
 		
-		# Config container
-		image = client.images.pull('kalilinux/kali-rolling')
+		# Check or build image
+		image = config.get("image", "fuckctf:latest")
+		try:
+			client.images.get(image)
+		except Exception:
+			if os.path.exists("Dockerfile"):
+				image = "fuckctf:latest"
+				client.images.build(path=".", tag=image, rm=True)
+			else:
+				client.images.pull("kalilinux/kali-rolling")
+				image = "kalilinux/kali-rolling"
+
 		container = client.containers.run(
-			'kalilinux/kali-rolling',
+			image,
 			detach=True,
 			tty=True,
 			name=config["sandbox"],
@@ -32,20 +42,20 @@ def init(config):
 		)
 
 		# Set up container
-		commands = (
-			'apt update && '
-			'apt -y install kali-linux-headless sshpass curl && '
-			'ssh-keyscan -p 2220 bandit.labs.overthewire.org >> ~/.ssh/known_hosts && '
-			'ssh-keyscan -p 2231 krypton.labs.overthewire.org >> ~/.ssh/known_hosts && '
-			'ssh-keyscan -p 2223 leviathan.labs.overthewire.org >> ~/.ssh/known_hosts'
-		)
-		result = container.exec_run(f'/bin/bash -c "{commands}"', stdout=True, stderr=True)
-		sandbox_ui.output(result.output.decode()) 
+		if image == "kalilinux/kali-rolling":
+			commands = (
+				'apt update && '
+				'apt -y install kali-linux-headless sshpass curl && '
+				'ssh-keyscan -p 2220 bandit.labs.overthewire.org >> ~/.ssh/known_hosts && '
+				'ssh-keyscan -p 2231 krypton.labs.overthewire.org >> ~/.ssh/known_hosts && '
+				'ssh-keyscan -p 2223 leviathan.labs.overthewire.org >> ~/.ssh/known_hosts'
+			)
+			result = container.exec_run(f'/bin/bash -c "{commands}"', stdout=True, stderr=True)
+			sandbox_ui.output(result.output.decode()) 
 
-		# Verify installation
-		check = container.exec_run('which curl')
-		if check.exit_code != 0:
-			sandbox_ui.curlerr()
+			check = container.exec_run('which curl')
+			if check.exit_code != 0:
+				sandbox_ui.curlerr()
 
 		container.stop()
 		sandbox_ui.success()

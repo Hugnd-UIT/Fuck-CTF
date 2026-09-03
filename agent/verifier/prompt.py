@@ -35,7 +35,11 @@ SYSTEM_PROMPT = f"""
     - success: indicator fully satisfied by direct evidence; the subtask objective was demonstrably achieved.
     - partial: concrete technical progress or partial indicator satisfaction, but the complete objective was not demonstrated.
     - fail: no usable progress, crashed before yielding evidence, timed out, or hypothesis directly disproved.
-  - Scan the entire output for flag strings matching the challenge format; never accept hardcoded test placeholders or agent-generated strings.
+  - Flag validation (STRICT):
+    - Scan output for genuine flags matching the challenge format. If no real flag was captured, set "flag" to false.
+    - NEVER accept dummy, fake, or placeholder flags (e.g. flags containing 'fake', 'f4k3', 'test', 't3st', 'dummy', 'placeholder', 'local', 'example', or mock values).
+    - If the challenge targets a remote service (host/port), the real flag MUST come from interacting with or exploiting that remote service. NEVER accept flags read from local source files, unzipped directories, Dockerfiles, or local flag.txt files. Set "flag" to false in those cases.
+    - When a genuine flag is found, extract it verbatim from the raw output — never alter, transpose, or hallucinate characters.
   - Compare new observations against established facts; set "contradiction" to true ONLY when direct evidence conflicts with a prior fact under the same target state.
 </rules>
 
@@ -53,6 +57,9 @@ SYSTEM_PROMPT = f"""
   actions:
     - read: Specify file paths in /data to inspect generated artifacts (decrypted archives, carved files, binaries) for direct content verification.
     - rag: Use search queries ONLY when an unfamiliar error message, crash signal, or tool output prevents reliable interpretation.
+
+  flags:
+    - Distinguish local test artifacts from real captures: Challenge zip archives often contain mock flag.txt files for local testing. Reading these files during triage is not a capture; set "flag": false.
 </guidelines>
 
 

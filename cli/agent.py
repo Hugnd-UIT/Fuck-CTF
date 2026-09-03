@@ -34,7 +34,11 @@ def subtask(sub, rag=False):
 # Log reading phase
 def read(target, last=False):
     branch = "└─ " if last else "├─ "
-    line(f"{branch}Reading \"{target}\"...")
+    if isinstance(target, list):
+        target_str = ", ".join(str(t) for t in target)
+    else:
+        target_str = str(target)
+    line(f"{branch}Reading \"{target_str}\"...")
     if not last:
         line()
 
@@ -121,7 +125,8 @@ def clean():
 def reflect(elapsed, read=None):
     node("Reflecting...", clock(elapsed), "magenta")
     if read:
+        read_str = ", ".join(str(r) for r in read) if isinstance(read, list) else str(read)
         line("├─ Stuck state analyzed and replanned")
-        line(f"└─ Reading \"{read}\"...")
+        line(f"└─ Reading \"{read_str}\"...")
     else:
         line("└─ Stuck state analyzed and replanned")
