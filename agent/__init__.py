@@ -103,6 +103,7 @@ class Orchestrator:
         # Initialize state
         state.init(self.book)
         memory.init()
+        self.fails = 0
 
     # Get history
     @property
@@ -168,6 +169,7 @@ class Orchestrator:
             sub = "Thinking..."
 
         rag_query = plan_dict.get("rag", "") or plan.get("rag", "")
+        plan_reflect = plan_dict.get("reflect", False) or plan.get("reflect", False)
 
         # Check completion
         if plan_dict.get("finished", False) or plan.get("finished", False):
@@ -228,12 +230,14 @@ class Orchestrator:
         # Track attempts
         norm = state.normalize(sub)
         state.attempts[norm] = state.attempts.get(norm, 0) + 1
+        r_abort = False
         
         # Trigger circuit breaker
         if state.attempts[norm] > 3:
             agent_ui.breaker(state.attempts[norm])
             
             state.fails[tactic] = state.fails.get(tactic, 0) + 1
+            self.fails += 1
             exec_json = {"commands": [], "success": "none"}
             verif = {"result": "fail", "knowledge": ["subtask repeated too many times!"]}
             out = "[SKIPPED]"
@@ -376,14 +380,18 @@ class Orchestrator:
 
                     r_data = r_res.get("refine_data", {})
                     r_cmds = r_data.get("commands", [])
+                    r_abort = r_data.get("abort", False)
                     
                     r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
                     r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
                     if r_analysis:
                         agent_ui.think(r_analysis, header=False)
                     
-                    if not r_cmds:
-                        agent_ui.empty()
+                    if r_abort or not r_cmds:
+                        if r_abort:
+                            verif.setdefault("knowledge", []).append("Refiner aborted: dead end detected.")
+                        else:
+                            agent_ui.empty()
                         break
 
                     for i, cmd in enumerate(r_cmds):
@@ -449,8 +457,10 @@ class Orchestrator:
 
             if verif.get("result") == "fail":
                 state.fails[tactic] = state.fails.get(tactic, 0) + 1
+                self.fails += 1
             elif verif.get("result") in ("pass", "success", "partial"):
                 state.fails[tactic] = 0
+                self.fails = 0
 
         # Summarize step
         sum_start = time.time()
@@ -503,26 +513,29 @@ class Orchestrator:
         fails = max(state.fails.values()) if state.fails else 0
         
         # Reflect if stuck
-        if count in [2, 4, 6, 8] and fails >= 1:
+        should_reflect = plan_reflect or r_abort or (self.fails >= 2) or (count in [2, 4, 6, 8] and fails >= 1) or (count > 8 and count % 3 == 0 and (fails >= 1 or self.fails >= 1))
+        if should_reflect:
             used = str(int(3600 - (time_left or 3600)))
             ref_start = time.time()
             
             ref_res = self.reflector.review(history=state.history, facts=state.store, target=target_str, time_used=used, time_total="3600", tree=state.tree)
             
             ref_time = time.time() - ref_start
-            agent_ui.reflect(ref_time)
-            
             review = ref_res["review_data"]
             adv = review.get("advice", "")
             tac = review.get("tactic", "")
             ref_read = review.get("read")
+            has_read = bool(ref_read and str(ref_read).lower() not in ("none", "null", "", "false"))
 
-            if ref_read and str(ref_read).lower() not in ("none", "null", "", "false"):
-                agent_ui.read(ref_read, last=False)
+            agent_ui.reflect(ref_time, read=ref_read if has_read else None)
+
+            if has_read:
                 read_out = self.read(ref_read, sandbox)
-                state.alerts.append(f"[REFLECTOR_READ] {ref_read}: {read_out[:1000]}")
+                state.alerts.append(f"[REFLECTOR READ] {ref_read}: {read_out[:1000]}")
             
             if adv or tac:
                 state.alerts.append(f"[ADVICE] {tac} - {adv}")
+            
+            self.fails = 0
 
         return sum_data.get("summary", ""), exec_json

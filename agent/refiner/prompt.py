@@ -9,6 +9,7 @@ _schema = json.dumps(
             "strategy": "what exactly to change, and why that specific change addresses the diagnosed error_class",
             "risk": "what could still go wrong with this fix, if anything non-trivial",
         },
+        "abort": False,
         "commands": [
             "fixed command 1",
             "fixed command 2 if needed",
@@ -39,6 +40,7 @@ SYSTEM_PROMPT = f"""
     - timeout: execution duration exceeded time limit.
     - permissions: insufficient file or execution privileges.
     - ambiguous: failure cause cannot be definitively diagnosed from available output.
+  - If the failure reveals a dead end, fundamentally wrong assumption, or unfixable environment issue, set "abort": true with "commands": [] to trigger early backtracking.
   - Fix the underlying cause rather than suppressing error symptoms; never silence stderr or hide failures.
   - Preserve working core logic and confirmed values; never rewrite functional code without evidence it is broken.
   - When scripts fail to find evidence, add diagnostic print statements to inspect raw intermediate data.

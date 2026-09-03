@@ -1,0 +1,63 @@
+{
+    "planner": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 0.9,
+        "sample": true,
+        "tokens": 4096
+    },
+    "executor": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "verifier": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.1,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "refiner": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "summarizer": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.3,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "reflector": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "sandbox": "ctf",
+    "timeout": 60,
+    "limit": 2000,
+    "flag": "HTB{.*?}",
+    "target": {
+        "category": "pwn",
+        "desc": "Nothing much changes from day to day. Famine, conflict, hatred - it's all part and parcel of the lives we live now. We've grown used to the animosity that we experience every day, and that's why it's so nice to have a useful program that asks how I'm doing. It's not the most talkative, though, but it's the highest level of tech most of us will ever see...",
+        "dir": "/data",
+        "host": "154.57.164.72",
+        "port": "32156"
+    },
+    "cmd_time": 30,
+    "max_time": 600
+}

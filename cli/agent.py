@@ -29,7 +29,7 @@ def subtask(sub, rag=False):
     else:
         prefix = "├─ "
         line(f"{prefix}Searching \"{sub}\"...")
-        line()
+        line("│")
 
 # Log reading phase
 def read(target, last=False):
@@ -118,6 +118,10 @@ def clean():
     line("└─ ✓ No contradictions detected")
 
 # Log reflection phase
-def reflect(elapsed):
+def reflect(elapsed, read=None):
     node("Reflecting...", clock(elapsed), "magenta")
-    line("└─ Stuck state analyzed and replanned")
+    if read:
+        line("├─ Stuck state analyzed and replanned")
+        line(f"└─ Reading \"{read}\"...")
+    else:
+        line("└─ Stuck state analyzed and replanned")

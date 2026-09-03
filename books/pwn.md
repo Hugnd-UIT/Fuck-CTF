@@ -129,6 +129,7 @@ If a Dockerfile or source is provided, read it fully before touching the binary 
 |---|---|---|
 | Canary | Stack cookie placed before saved return address | Overflow past canary requires either a leak of its exact value or a target that bypasses the check entirely, e.g. overwriting a function pointer inside the same frame before the epilogue runs |
 | NX / DEP | Stack and heap non-executable | Injected shellcode on stack/heap will not execute; use ROP, ret2libc, or mprotect-based shellcode reactivation |
+| NX Disabled | Stack/heap is executable | Injected shellcode executes directly. Check for direct register jumps (jmp/call rsp, jmp/call rsi, etc.) or preserved buffer pointers before attempting ROP |
 | PIE | Binary base randomized per run | All internal addresses require a leaked binary-relative pointer before use; compute base as `leaked_addr - known_offset` |
 | ASLR | Heap, stack, and shared library bases randomized | Any libc or heap address requires its own leak; a leak of one region does not imply knowledge of another unless a fixed offset relationship exists |
 | RELRO Partial | GOT writable | GOT overwrite is viable as a control-flow hijack primitive |
@@ -267,6 +268,9 @@ When no libc is provided or the binary is statically linked:
 - Direct syscalls are frequently the only viable path to `execve` or ORW, since no dynamic `system` symbol exists to call.
 - Tools: `ROPgadget --binary ./chall` across the full binary, and manual identification of a `syscall` instruction reachable via a controllable gadget chain.
 - `ret2dlresolve` does not apply to statically linked binaries, since there is no dynamic linker involved.
+- Pure Assembly / Minimalist Binaries (< 20KB): These binaries contain NO embedded glibc code, NO complex ROP gadgets (e.g. no `pop rdi; ret`), and execution starts directly at `_start` without a `main` function. Disassemble the entire binary (`objdump -d ./chall`) — it is typically only 20-50 instructions.
+  - If NX is disabled: The primary intended exploit is direct shellcode execution. Look for `jmp/call <reg>` gadgets (`jmp rsi`, `jmp rsp`, `call rax`) or register pointers to the input buffer retained upon return.
+  - If NX is enabled: Look for `syscall` instruction to set up SROP (Sigreturn Oriented Programming).
 
 ---
 

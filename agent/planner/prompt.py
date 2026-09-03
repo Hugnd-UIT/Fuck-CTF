@@ -19,6 +19,7 @@ _schema = json.dumps(
             "hint": "specific flags/mode/technique the Executor should lean toward, else null",
             "read": "file path in /data to inspect format, headers, or archive contents before deciding subtask, else null",
             "rag": "search query here if needed, else null",
+            "reflect": False,
             "avoids": "step_id or none",
             "safety": "safe/destructive",
             "evidence": "the specific fact/value this subtask should produce, used to judge success next cycle",
@@ -47,6 +48,7 @@ SYSTEM_PROMPT = f"""
   - Never bundle unrelated tactics; prioritize the single highest-probability branch per cycle.
   - Treat LAST_OUTPUT as ground truth to diagnose whether the prior step succeeded, partially succeeded, or failed.
   - If the same tactic fails 2 or more times, pivot to an alternative category and document the reasoning in "alternatives".
+  - If previous steps repeated errors or hit an analytical dead end, set "reflect": true to immediately trigger the Reflector for strategic review.
   - Time allocation: when time >50%, explore broadly; when 20-50%, focus on the primary lead; when <20%, pursue direct extraction.
 </rules>
 
@@ -55,6 +57,8 @@ SYSTEM_PROMPT = f"""
   pwn:
     - Identify binary architecture, security protections, and the interactive interface before selecting an exploit vector.
     - Confirm the vulnerability mechanism through disassembly or a reproducible crash before planning payload construction.
+    - When NX is disabled, prioritize direct shellcode execution via register jumps (e.g. jmp/call rsi, rsp) over complex ROP chains.
+    - For small or assembly binaries without main, analyze directly from _start and trace raw syscalls.
 
   crypto:
     - Identify the mathematical primitive, key parameters, and specific broken assumption before planning attacks.
