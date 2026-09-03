@@ -11,6 +11,7 @@ _schema = json.dumps(
         },
         "tactic": "completely new tactic to break out of the loop — specific enough that it is clearly not a variant of what already failed",
         "advice": "specific directive for the Planner on how to proceed, including what to verify first before committing further effort",
+        "read": "file path in /data to inspect if you suspect the team misdiagnosed the input file format, headers, or archive, else null",
         "repeat": "the specific technique/assumption that should be excluded from consideration going forward, and why",
     },
     indent=2,
@@ -56,6 +57,12 @@ SYSTEM_PROMPT = f"""
     Never contradict IMMUTABLE FACTS without explicitly explaining why the fact is now considered unreliable.
     Never invent evidence that does not exist in FACTS or HISTORY.
   </diagnosis>
+
+
+  <read>
+    Use read to inspect files in /data when you suspect the team is stuck due to a misidentified file format, archive structure, or missed parameter:
+    - the inspected data will be returned directly in alerts alongside your advice to help the Planner pivot.
+  </read>
 
 
   <precision>

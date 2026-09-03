@@ -10,6 +10,7 @@ _schema = json.dumps(
         },
         "result": "success | partial | fail",
         "knowledge": ["concise fact 1", "concise fact 2"],
+        "read": "file path in /data to inspect if an output or extracted file was created and needs content verification, else null",
         "rag": "search query if external lookup is needed to interpret an unfamiliar error/output, else null",
         "contradiction": False,
         "flag": "extracted flag string or false",
@@ -94,6 +95,12 @@ SYSTEM_PROMPT = f"""
       Prefer runtime evidence, accepted inputs, observed branches, or confirmed values when the indicator requires validation.
       Never treat decompiler/disassembler output itself as proof the reverse-engineering objective was completed.
   </direction>
+
+
+  <read>
+    Use read to inspect generated or extracted files on disk:
+    - when a command produced a new file (e.g. decrypted payload, carved archive, binary, PDF), specify its path in "read" to verify its contents/format directly.
+  </read>
 
 
   <flag>

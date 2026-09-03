@@ -17,6 +17,7 @@ _schema = json.dumps(
             "target": "file/url/port",
             "tool": "tool name",
             "hint": "specific flags/mode/technique the Executor should lean toward, if the Planner already has a strong reason to prefer one, else null",
+            "read": "file path in /data to inspect (e.g., 'phreaky.zip', 'stream.txt') to examine format, headers, or archive contents before deciding subtask, else null",
             "rag": "search query here if needed, else null",
             "avoids": "step_id or none",
             "safety": "safe/destructive",
@@ -90,6 +91,15 @@ SYSTEM_PROMPT = f"""
       If category is unclear, plan a short classification step first.
       Track the currently active sub-goal when the challenge spans multiple categories.
   </direction>
+
+
+  <read>
+    Use read to inspect file contents, archives, headers, and metadata in /data:
+    - inspect archives (.zip/.tar) to see file listings, file counts, and encryption flags.
+    - inspect pcaps to check protocols and sample packets.
+    - inspect raw scripts/text/configs to read key parameters or passwords.
+    - read will examine the target in the sandbox and return content to your history.
+  </read>
 
 
   <tactics>

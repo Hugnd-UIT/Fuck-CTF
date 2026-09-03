@@ -25,6 +25,10 @@ def subtask(sub, rag=False):
         prefix = "├─ "
         line(f"{prefix}Searching \"{sub}\"...")
 
+# Log reading phase
+def read(target):
+    line(f"├─ Reading \"{target}\"...")
+
 # Log circuit breaker
 def breaker(attempts):
     error(f"Guard: subtask repeated {attempts}x — skipped")
