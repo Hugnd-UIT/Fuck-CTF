@@ -197,7 +197,7 @@ class Orchestrator:
         # Handle read
         plan_read = plan_dict.get("read") or plan.get("read")
         if plan_read and str(plan_read).lower() not in ("none", "null", "", "false"):
-            agent_ui.read(plan_read)
+            agent_ui.read(plan_read, last=True)
             read_out = self.read(plan_read, sandbox)
             state.absorb({"Inspection": read_out})
             id = f"step_{len(state.history) + 1}"
@@ -296,19 +296,20 @@ class Orchestrator:
             
             v_time = time.time() - v_start
 
-            # Handle read
-            verif_read = verif.get("read")
-            if verif_read and str(verif_read).lower() not in ("none", "null", "", "false"):
-                agent_ui.read(verif_read)
-                read_out = self.read(verif_read, sandbox)
-                verif.setdefault("knowledge", []).append(f"File {verif_read}: {read_out[:400]}")
-                state.absorb({"Verified_File": read_out[:1000]})
-            
             # Print verification status
             if verif.get("result") in ("pass", "success"):
                 agent_ui.passed()
             else:
                 agent_ui.failed()
+
+            # Handle read
+            verif_read = verif.get("read")
+            if verif_read and str(verif_read).lower() not in ("none", "null", "", "false"):
+                know_check = verif.get("knowledge", [])
+                agent_ui.read(verif_read, last=not bool(know_check))
+                read_out = self.read(verif_read, sandbox)
+                verif.setdefault("knowledge", []).append(f"File {verif_read}: {read_out[:400]}")
+                state.absorb({"Verified_File": read_out[:1000]})
                 
             # Validate flag format
             flag = verif.get("flag", "")
@@ -403,7 +404,8 @@ class Orchestrator:
                     # Handle read in refinement
                     r_read = verif.get("read")
                     if r_read and str(r_read).lower() not in ("none", "null", "", "false"):
-                        agent_ui.read(r_read)
+                        know_check = verif.get("knowledge", [])
+                        agent_ui.read(r_read, last=not bool(know_check))
                         read_out = self.read(r_read, sandbox)
                         verif.setdefault("knowledge", []).append(f"File {r_read}: {read_out[:400]}")
                         state.absorb({"Verified_File": read_out[:1000]})
@@ -514,7 +516,7 @@ class Orchestrator:
             ref_read = review.get("read")
 
             if ref_read and str(ref_read).lower() not in ("none", "null", "", "false"):
-                agent_ui.read(ref_read)
+                agent_ui.read(ref_read, last=True)
                 read_out = self.read(ref_read, sandbox)
                 state.alerts.append(f"[REFLECTOR_READ] {ref_read}: {read_out[:1000]}")
             

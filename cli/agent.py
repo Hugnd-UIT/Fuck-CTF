@@ -26,8 +26,9 @@ def subtask(sub, rag=False):
         line(f"{prefix}Searching \"{sub}\"...")
 
 # Log reading phase
-def read(target):
-    line(f"├─ Reading \"{target}\"...")
+def read(target, last=True):
+    branch = "└─ " if last else "├─ "
+    line(f"{branch}Reading \"{target}\"...")
 
 # Log circuit breaker
 def breaker(attempts):
