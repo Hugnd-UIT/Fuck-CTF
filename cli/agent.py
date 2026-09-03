@@ -8,8 +8,13 @@ def plan(elapsed):
 def think(rationale=None, header=True):
     if header:
         line("├─ Thinking...")
-    if rationale:
-        line(f"├─ {rationale}")
+        if rationale:
+            line(f"│  {rationale}")
+            line()
+    else:
+        if rationale:
+            line(f"├─ {rationale}")
+            line()
 
 # Log verifying phase
 def verify(elapsed):
@@ -18,17 +23,20 @@ def verify(elapsed):
 # Log current subtask
 def subtask(sub, rag=False):
     if not rag:
-        line("│")
+        line()
         prefix = "└─ "
         line(f"{prefix}{sub}")
     else:
         prefix = "├─ "
         line(f"{prefix}Searching \"{sub}\"...")
+        line()
 
 # Log reading phase
-def read(target, last=True):
+def read(target, last=False):
     branch = "└─ " if last else "├─ "
     line(f"{branch}Reading \"{target}\"...")
+    if not last:
+        line()
 
 # Log circuit breaker
 def breaker(attempts):
@@ -62,6 +70,11 @@ def command(cmd, last):
         wrapped = textwrap.wrap(row, width=wrap_width) or [""]
         for chunk in wrapped:
             console.print(Text("│  ", style="bold blue") + Text(f"{cont_prefix}{chunk}", style=f"bold {_current_color}"))
+
+    from . import core
+    core._last_was_empty = False
+    if not last:
+        line()
 
 # Log verification success
 def passed():

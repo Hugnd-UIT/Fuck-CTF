@@ -73,8 +73,8 @@ def read(sandbox, target):
                 tshark -r "{path}" -c 20 2>&1 || tcpdump -r "{path}" -c 20 2>&1
                 ;;
             text/*|application/json|application/x-sh|application/javascript|application/xml)
-                echo "[TEXT PREVIEW (first 60 lines)]"
-                head -n 60 "{path}"
+                echo "[TEXT PREVIEW (first 250 lines)]"
+                head -n 250 "{path}"
                 ;;
             *)
                 case "{path}" in
@@ -86,9 +86,9 @@ def read(sandbox, target):
                         echo "[PCAP PACKET SUMMARY]"
                         tshark -r "{path}" -c 20 2>&1 || tcpdump -r "{path}" -c 20 2>&1
                         ;;
-                    *.txt|*.py|*.c|*.cpp|*.sh|*.php|*.html|*.log)
-                        echo "[TEXT PREVIEW (first 60 lines)]"
-                        head -n 60 "{path}"
+                    *.txt|*.py|*.c|*.cpp|*.sh|*.php|*.html|*.log|*.dis)
+                        echo "[TEXT PREVIEW (first 250 lines)]"
+                        head -n 250 "{path}"
                         ;;
                     *)
                         echo "[HEX/HEADER (first 256 bytes)]"

@@ -1,0 +1,63 @@
+{
+    "planner": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 0.9,
+        "sample": true,
+        "tokens": 4096
+    },
+    "executor": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "verifier": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.1,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "refiner": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.2,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "summarizer": {
+        "model": "deepseek/deepseek-v4-flash",
+        "local": false,
+        "temperature": 0.3,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "reflector": {
+        "model": "deepseek/deepseek-v4-pro",
+        "local": false,
+        "temperature": 0.7,
+        "top": 1.0,
+        "sample": false,
+        "tokens": 4096
+    },
+    "sandbox": "ctf",
+    "timeout": 180,
+    "limit": 2000,
+    "flag": "HTB{.*?}",
+    "target": {
+        "category": "reverse",
+        "desc": "Within Vault 8707 are located master keys used to access any vault in the country. Unfortunately, the entrance was caved in long ago. There are decades old rumors that the few survivors managed to tunnel out deep underground and make their way to safety. Can you uncover their tunnel and break back into the vault?",
+        "dir": "/data",
+        "host": "154.57.164.82",
+        "port": "31228"
+    },
+    "cmd_time": 30,
+    "max_time": 600
+}

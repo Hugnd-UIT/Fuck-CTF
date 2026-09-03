@@ -95,15 +95,22 @@ def node(title, right, color="blue"):
 
 import textwrap
 
+_last_was_empty = False
+
 # Print timeline line
-def line(content, tree="│", color=None):
-    global _current_color
+def line(content=None, tree="│", color=None):
+    global _current_color, _last_was_empty
     use_color = color if color else _current_color
 
-    if content is None:
-        prefix = f"{tree}  " if tree else "   "
+    if content is None or content == "" or content == "│":
+        if _last_was_empty:
+            return
+        _last_was_empty = True
+        prefix = f"{tree}  │" if tree else "   │"
         console.print(Text(prefix, style="bold blue"))
         return
+
+    _last_was_empty = False
         
     import shutil
     term = shutil.get_terminal_size().columns
@@ -111,10 +118,15 @@ def line(content, tree="│", color=None):
 
     base = ""
     for i, text in enumerate(content.split("\n")):
-        if "├─ " in text or "└─ " in text:
-            pos = text.find("─ ") + 2
-            pref = text[:pos]
-            base = pref.replace("├─ ", "│  ").replace("└─ ", "   ")
+        if "├─ " in text or "└─ " in text or text.startswith("│  "):
+            if "─ " in text:
+                pos = text.find("─ ") + 2
+                pref = text[:pos]
+                base = pref.replace("├─ ", "│  ").replace("└─ ", "   ")
+            else:
+                pos = 3
+                pref = "│  "
+                base = "│  "
             
             # Extract the actual text body
             body = text[pos:]

@@ -197,19 +197,22 @@ class Orchestrator:
         # Handle read
         plan_read = plan_dict.get("read") or plan.get("read")
         if plan_read and str(plan_read).lower() not in ("none", "null", "", "false"):
-            agent_ui.read(plan_read, last=True)
-            read_out = self.read(plan_read, sandbox)
-            state.absorb({"Inspection": read_out})
-            id = f"step_{len(state.history) + 1}"
-            state.history.append({
-                "step_id": id,
-                "tactic": "Inspection",
-                "plan": f"Read {plan_read}",
-                "observation": read_out[:1500],
-                "result": "pass",
-                "raw": read_out[:3000]
-            })
-            return "Read completed!", {"commands": [], "success": "none"}
+            read_key = f"read_{plan_read}"
+            state.attempts[read_key] = state.attempts.get(read_key, 0) + 1
+            if state.attempts[read_key] <= 2:
+                agent_ui.read(plan_read, last=False)
+                read_out = self.read(plan_read, sandbox)
+                state.absorb({"Inspection": read_out})
+                id = f"step_{len(state.history) + 1}"
+                state.history.append({
+                    "step_id": id,
+                    "tactic": "Inspection",
+                    "plan": f"Read {plan_read}",
+                    "observation": read_out[:1500],
+                    "result": "pass",
+                    "raw": read_out[:3000]
+                })
+                return "Read completed!", {"commands": [], "success": "none"}
 
         # Handle RAG
         plan_rag = plan_dict.get("rag")
@@ -305,8 +308,7 @@ class Orchestrator:
             # Handle read
             verif_read = verif.get("read")
             if verif_read and str(verif_read).lower() not in ("none", "null", "", "false"):
-                know_check = verif.get("knowledge", [])
-                agent_ui.read(verif_read, last=not bool(know_check))
+                agent_ui.read(verif_read, last=False)
                 read_out = self.read(verif_read, sandbox)
                 verif.setdefault("knowledge", []).append(f"File {verif_read}: {read_out[:400]}")
                 state.absorb({"Verified_File": read_out[:1000]})
@@ -516,7 +518,7 @@ class Orchestrator:
             ref_read = review.get("read")
 
             if ref_read and str(ref_read).lower() not in ("none", "null", "", "false"):
-                agent_ui.read(ref_read, last=True)
+                agent_ui.read(ref_read, last=False)
                 read_out = self.read(ref_read, sandbox)
                 state.alerts.append(f"[REFLECTOR_READ] {ref_read}: {read_out[:1000]}")
             
