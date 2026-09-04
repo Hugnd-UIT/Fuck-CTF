@@ -137,11 +137,19 @@ class Orchestrator:
         self.target_dir = target_dir if target_dir and target_dir != "-" else "/data"
         
         if target_dir and target_dir != "-" and os.path.exists(workspace):
-            files = os.listdir(workspace)
-            if not files:
+            all_files = []
+            for root, dirs, filenames in os.walk(workspace):
+                dirs[:] = [d for d in dirs if d != ".git" and d != "__pycache__"]
+                for f in filenames:
+                    if f == ".gitignore" or f.endswith(".pyc"):
+                        continue
+                    rel_path = os.path.relpath(os.path.join(root, f), workspace).replace("\\", "/")
+                    all_files.append(rel_path)
+
+            if not all_files:
                 state.absorb({"Environment": "No local directory or files provided!"})
             else:
-                state.absorb({"Environment": f"Directory {self.target_dir} contains: {files}."})
+                state.absorb({"Environment": f"Workspace directory {self.target_dir} full tree:\n" + "\n".join(f"- {f}" for f in all_files)})
         else:
             state.absorb({"Environment": "No local directory or files provided!"})
 
@@ -294,7 +302,7 @@ class Orchestrator:
                 agent_ui.command(cmd, i == len(cmds) - 1)
 
             # Run commands in sandbox
-            out = sb.run(sandbox, cmds, category, exec_json.get("timeout", 30))
+            out = sb.run(sandbox, cmds, category, exec_json.get("timeout", 30), workdir=self.target_dir)
 
             # Verify results
             v_start = time.time()
@@ -464,7 +472,7 @@ class Orchestrator:
                     # Execute refined commands
                     cmds = r_cmds
                     
-                    out = sb.run(sandbox, cmds, category, r_data.get("timeout", exec_json.get("timeout", 30)))
+                    out = sb.run(sandbox, cmds, category, r_data.get("timeout", exec_json.get("timeout", 30)), workdir=self.target_dir)
 
                     # Verify refined output
                     v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
@@ -616,6 +624,7 @@ class Orchestrator:
             if has_read:
                 for t in ref_targets:
                     read_out = self.read(t, sandbox)
+                    state.absorb({f"Inspection ({t})": read_out[:8000]})
                     state.alerts.append(f"[REFLECTOR READ] {t}:\n{read_out[:8000]}")
             
             if adv or tac:

@@ -43,7 +43,7 @@ SYSTEM_PROMPT = f"""
 <rules>
   - Investigate methodically step by step; never attempt a one-shot flag capture on uninspected artifacts.
   - Plan an exploratory inspection step to examine raw data or structure before committing to complex automation or exploitation.
-  - Ground Truth First: If source code, decompilation, headers, or configs (.c, .h, .py, .js, .go, .java, .php, .sql, Dockerfile) exist in the challenge workspace directory (see target.dir) or /data, you MUST prioritize reading them thoroughly using "read" BEFORE planning dynamic fuzzing or offset guessing.
+  - Ground Truth First: Review the full file tree in Environment. If challenge files exist (source code, configs, captures, binaries, or scripts), you MUST prioritize inspecting relevant files using "read" to establish ground truth BEFORE planning dynamic fuzzing, brute-forcing, or payload guessing.
   - Each subtask must be a concise English directive covering exactly one coherent, verifiable unit of progress.
   - When a subtask depends on an unestablished fact, plan its identification or inspection first.
   - Never bundle unrelated tactics; prioritize the single highest-probability branch per cycle.

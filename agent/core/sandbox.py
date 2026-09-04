@@ -1,5 +1,6 @@
-def run(sandbox, commands, category, timeout=30):
+def run(sandbox, commands, category, timeout=30, workdir="/data"):
     output = ""
+    wd = workdir.strip() if workdir and isinstance(workdir, str) and workdir.strip() and workdir.strip() != "-" else "/data"
     for cmd in commands:
         try:
             limit = 3600 if category == "crypto" else 120
@@ -18,7 +19,7 @@ def run(sandbox, commands, category, timeout=30):
                 "-c",
                 cmd
             ]
-            res = sandbox.exec_run(wrap, stdout=True, stderr=True)
+            res = sandbox.exec_run(wrap, stdout=True, stderr=True, workdir=wd)
             out = res.output.decode("utf-8", errors="ignore")
 
             if res.exit_code == 124:

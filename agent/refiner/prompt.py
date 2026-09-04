@@ -43,6 +43,7 @@ SYSTEM_PROMPT = f"""
     - ambiguous: failure cause cannot be definitively diagnosed from available output.
   - If the failure reveals a dead end, fundamentally wrong assumption, or unfixable environment issue, set "abort": true with "commands": [] to trigger early backtracking.
   - Ground Truth Verification: If a command failed due to wrong_assumption, unexpected exit code, or unknown protocol format, DO NOT guess parameters or protocols blindly. Cross-check ground-truth source code provided in facts/Data or specify source files in "read" to inspect before finalizing commands.
+  - Working Directory: All commands execute inside the challenge directory. Keep scripts and payloads in the current working directory; do not write to /tmp or create nested wrapper scripts.
   - Fix the underlying cause rather than suppressing error symptoms; never silence stderr or hide failures.
   - Preserve working core logic and confirmed values; never rewrite functional code without evidence it is broken.
   - When scripts fail to find evidence, add diagnostic print statements to inspect raw intermediate data.

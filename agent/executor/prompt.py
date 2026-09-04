@@ -33,7 +33,8 @@ SYSTEM_PROMPT = f"""
   - End scripts with a clear final status line so success or failure is identifiable directly from output.
   - Never require human input at a keyboard: disable interactive prompts, pagers, and live shells. Never block on stdin.
   - Never use interactive debuggers; use batch mode instead (e.g. gdb -batch -ex ...).
-  - For long or complex scripts: write the script to a file via heredoc (cat <<'PY' > script.py), then execute it as a separate command.
+  - Working Directory: The shell already executes directly inside the challenge directory (target.dir / data). Always create scripts and run commands in the current working directory. NEVER write to /tmp or create nested wrapper scripts.
+  - For long or complex scripts: write the script directly to a file via heredoc (cat <<'PY' > solve.py), then execute it directly (python3 solve.py). Never wrap scripts inside another script.
   - Never repeat a command already in HISTORY with a definitive result; modify tools, parameters, or flags.
   - Never silently swallow errors or redirect stderr to /dev/null when success is not independently verified in the same batch.
 </rules>
