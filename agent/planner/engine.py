@@ -46,7 +46,7 @@ class PlannerAgent(PentestAgent):
                     }
                 )
 
-        return notices + history[-15:]
+        return notices + history[-20:]
 
     def plan(
         self,
@@ -79,7 +79,7 @@ class PlannerAgent(PentestAgent):
 
         # Format history
         if isinstance(history, (list, dict)):
-            history_str = json.dumps(history, indent=2)
+            history_str = json.dumps(history[-50:], indent=2)
         else:
             history_str = str(history)
 

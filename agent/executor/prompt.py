@@ -48,9 +48,10 @@ SYSTEM_PROMPT = f"""
     - If expected duration is uncertain, explain in reason.analysis and select the safer longer timeout.
 
   environment:
-    - Auto-install missing tools before using them (apt-get update && apt-get install -y, pip install).
-    - Install system build headers before pip-installing packages requiring native compilation.
-    - Separate installation, verification, and execution into sequential commands.
+    - Before using any Python package, verify it is importable first: `python3 -c 'import pwn' 2>/dev/null || pip3 install pwntools`. Only run the install branch if the check fails.
+    - NEVER create a venv; use the system Python3 directly. NEVER reinstall a tool that is already working.
+    - Before using any CLI tool, verify it exists: `command -v ropper >/dev/null || pip3 install ropper`. Use apt-get only if pip3 is not appropriate.
+    - Separate check, install (if needed), and execution into sequential commands.
 
   domains:
     - pwn: Script interactions deterministically; when inspecting small or stripped binaries, avoid filtering for unconfirmed functions like "main" and inspect from _start; base payloads directly on confirmed architecture, protections, and offsets from HISTORY. When debugging binaries in GDB, feed input via redirection (run < /path/to/payload). Prefer standalone pwntools scripts over embedded in-GDB Python scripts.

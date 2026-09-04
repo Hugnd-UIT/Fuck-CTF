@@ -559,12 +559,11 @@ class Orchestrator:
                 state.fails[tactic] = 0
                 self.fails = 0
 
-        # Summarize step
-        sum_start = time.time()
-        
-        step = {"subtask": sub, "commands": cmds, "output_summary": out[-8000:], "verification": verif}
-        sum_res = self.summarizer.summarize(tree=state.tree, step=step)
-        sum_data = sum_res["summary_data"]
+        t0 = time.time()
+        t_out = out if not out.startswith("[TIMEOUT]") else "[TIMEOUT] Command timed out — no output produced. Treat this step as failed.\n" + out
+        step = {"subtask": sub, "commands": cmds, "output_summary": t_out[-8000:], "verification": verif}
+        res = self.summarizer.summarize(tree=state.tree, step=step)
+        sum_data = res["summary_data"]
 
         state.tree = sum_data.get("tree", state.tree)
         new_tree = sum_data.get("tree", {})
@@ -579,8 +578,7 @@ class Orchestrator:
         state.absorb(new_data)   
         state.snap()
 
-        sum_time = time.time() - sum_start
-        agent_ui.summarize(sum_time)
+        agent_ui.summarize(time.time() - t0)
 
         # Print alerts
         if state.alerts:
@@ -609,9 +607,9 @@ class Orchestrator:
         count = len(state.history)
         fails = max(state.fails.values()) if state.fails else 0
         
-        # Reflect if stuck
-        should_reflect = plan_reflect or r_abort or (self.fails >= 2) or (count in [2, 4, 6, 8] and fails >= 1) or (count > 8 and count % 3 == 0 and (fails >= 1 or self.fails >= 1))
-        if should_reflect:
+        # Reflect only when genuinely stuck
+        reflect = plan_reflect or (r_abort and count > 3) or (self.fails >= 3) or (count > 5 and count % 4 == 0 and fails >= 2)
+        if reflect:
             used = str(int(3600 - (time_left or 3600)))
             ref_start = time.time()
             

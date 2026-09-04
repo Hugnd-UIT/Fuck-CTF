@@ -41,7 +41,7 @@ class ExecutorAgent(PentestAgent):
                 k: v for k, v in entry.items()
                 if k != "raw"
             }
-            for entry in (history[-10:] if isinstance(history, list) else [])
+            for entry in (history[-20:] if isinstance(history, list) else [])
         ]
         if isinstance(slim_history, (list, dict)):
             history_str = json.dumps(slim_history, indent=2)
