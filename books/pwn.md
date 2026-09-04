@@ -120,6 +120,7 @@ Extract from this pass:
 Decompile with Ghidra, IDA Pro, or Binary Ninja. Read in this order: `main`, functions directly reachable from `main`, then any unreferenced function reachable only via a computed call, symbol table entry, or leftover debug path — a common location for an intentional `win` function.
 
 If a Dockerfile or source is provided, read it fully before touching the binary — it frequently reveals the seccomp policy, the exact libc version, file permissions, and the flag's exact path.
+Beware of auxiliary credential files (.creds, passwords.txt, user:pass): in Pwn challenges, these are local development mockups. Remote deployments randomize credentials (often generated via `/dev/urandom` in the Dockerfile). Never plan benign logins or credential guessing; the target must be solved through binary vulnerability exploitation.
 
 ---
 

@@ -31,7 +31,8 @@ class ExecutorAgent(PentestAgent):
         target,
         subtask,
         tool_hint,
-        history
+        history,
+        facts=None
     ):
 
         # Format history
@@ -47,9 +48,12 @@ class ExecutorAgent(PentestAgent):
         else:
             history_str = str(slim_history)
 
+        facts_str = json.dumps(facts, indent=2) if isinstance(facts, dict) else (str(facts) if facts else "{}")
+
         # Format user prompt
         user_content = USER_PROMPT.format(
             target=target,
+            facts=facts_str,
             subtask=subtask,
             tool_hint=tool_hint,
             history=history_str

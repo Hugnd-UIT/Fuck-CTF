@@ -118,19 +118,6 @@ class Orchestrator:
         # Start execution
         start = time.time()
         
-        # Parse target
-        category = target.get("category", "") if isinstance(target, dict) else ""
-        
-        if isinstance(target, dict):
-            clean = {k: v for k, v in target.items() if v}
-            if "host" not in clean and "port" not in clean:
-                clean["network"] = "This is a local challenge!"
-            target_str = json.dumps(clean, indent=2)
-        else:
-            target_str = str(target)
-        
-        desc = target.get("description", "") if isinstance(target, dict) else str(target)
-
         # Check workspace
         workspace = os.path.join(os.getcwd(), 'workspace')
         target_dir = target.get("dir", "/data") if isinstance(target, dict) else "/data"
@@ -149,9 +136,37 @@ class Orchestrator:
             if not all_files:
                 state.absorb({"Environment": "No local directory or files provided!"})
             else:
-                state.absorb({"Environment": f"Workspace directory {self.target_dir} full tree:\n" + "\n".join(f"- {f}" for f in all_files)})
+                if self.target_dir == "/data":
+                    subdirs = set()
+                    for f in all_files:
+                        if "/" in f:
+                            subdirs.add(os.path.dirname(f).replace("\\", "/"))
+                    if subdirs:
+                        def score(s):
+                            count = sum(1 for f in all_files if f.startswith(s + "/"))
+                            bonus = sum(2 for f in all_files if f.startswith(s + "/") and any(f.endswith(ext) for ext in (".c", ".cpp", ".py", ".sh", ".txt", ".bin", "")))
+                            return (s.count("/"), count + bonus)
+                        best_sub = max(subdirs, key=score)
+                        self.target_dir = f"/data/{best_sub}"
+
+                file_list = "\n".join(f"- /data/{f}" for f in all_files)
+                state.absorb({"Environment": f"Workspace challenge working directory: {self.target_dir}\nAll files in container (/data):\n{file_list}"})
         else:
             state.absorb({"Environment": "No local directory or files provided!"})
+
+        # Parse target
+        category = target.get("category", "") if isinstance(target, dict) else ""
+        
+        if isinstance(target, dict):
+            clean = {k: v for k, v in target.items() if v}
+            clean["dir"] = self.target_dir
+            if "host" not in clean and "port" not in clean:
+                clean["network"] = "This is a local challenge!"
+            target_str = json.dumps(clean, indent=2)
+        else:
+            target_str = str(target)
+        
+        desc = target.get("description", "") if isinstance(target, dict) else str(target)
 
         # Build memory query
         next_str = " ".join(state.tree.get("next", [])) if isinstance(state.tree.get("next"), list) else str(state.tree.get("next", ""))
@@ -272,7 +287,8 @@ class Orchestrator:
             exec_start = time.time()
             
             tool_hint = plan_dict.get("hint", "") or plan.get("hint", "") or plan_dict.get("tool", "") or plan.get("tool", "")
-            exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=tool_hint, history=state.history)
+            data = {**state.tree.get("data", {}), **state.store}
+            exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=tool_hint, history=state.history, facts=data)
             
             exec_json = exec_res["exec_data"]
             

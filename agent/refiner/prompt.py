@@ -41,7 +41,7 @@ SYSTEM_PROMPT = f"""
     - timeout: execution duration exceeded time limit.
     - permissions: insufficient file or execution privileges.
     - ambiguous: failure cause cannot be definitively diagnosed from available output.
-  - If the failure reveals a dead end, fundamentally wrong assumption, or unfixable environment issue, set "abort": true with "commands": [] to trigger early backtracking.
+  - If the failure reveals a dead end, fundamentally wrong assumption, or unfixable environment issue, set "abort": true with "commands": [] to trigger early backtracking. Never fix authentication failures by tweaking delays (sleep), whitespace, or line endings (\r, \n); remote credentials are unknown or randomized. Set "abort": true immediately.
   - Ground Truth Verification: If a command failed due to wrong_assumption, unexpected exit code, or unknown protocol format, DO NOT guess parameters or protocols blindly. Cross-check ground-truth source code provided in facts/Data or specify source files in "read" to inspect before finalizing commands.
   - Working Directory: All commands execute inside the challenge directory. Keep scripts and payloads in the current working directory; do not write to /tmp or create nested wrapper scripts.
   - Fix the underlying cause rather than suppressing error symptoms; never silence stderr or hide failures.
@@ -64,7 +64,7 @@ SYSTEM_PROMPT = f"""
     - Install system development headers before pip-installing packages requiring native compilation.
 
   domains:
-    - pwn: Re-verify architecture, endianness, and base addresses; re-derive offsets from fresh crash dumps rather than guessing.
+    - pwn: Re-verify architecture, endianness, and base addresses; re-derive offsets from fresh crash dumps rather than guessing. If authentication or credential login fails against a remote pwn service, do NOT tweak delays, encodings, or line terminators (\r/\n); immediately classify as wrong_assumption with "abort": true to pivot to memory corruption / vulnerability exploitation.
     - crypto: Check byte encodings, endianness, string-to-byte conversions, and slicing offsets before assuming the algorithm is wrong.
     - forensics: For remote interactive services, verify exact expected response formatting; re-verify container byte offsets.
     - rev: Verify tools target the correct binary build and architecture; inspect intermediate variables during solver runs.
