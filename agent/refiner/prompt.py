@@ -14,8 +14,9 @@ _schema = json.dumps(
             "fixed command 1",
             "fixed command 2 if needed",
         ],
+        "done": True,
         "read": "file path or list of file paths (relative to challenge directory or absolute) to inspect (e.g. source code, headers, configs) if failure stemmed from wrong assumption or unknown protocol before writing commands, else null",
-        "timeout": "integer, dynamic based on time_left and task type (e.g. 1800 for brute-force)",
+        "timeout": 30,
         "success": "expected pattern in stdout/stderr that proves the fix actually worked, not just that it ran without error",
     },
     indent=2,
@@ -47,6 +48,9 @@ SYSTEM_PROMPT = f"""
   - Fix the underlying cause rather than suppressing error symptoms; never silence stderr or hide failures.
   - Preserve working core logic and confirmed values; never rewrite functional code without evidence it is broken.
   - When scripts fail to find evidence, add diagnostic print statements to inspect raw intermediate data.
+  - Direct CLI inspection: Never write nested Python scripts with subprocess or regex to parse assembly or search offsets. Never write fragile 4-stage pipeline grep commands that fail on minor formatting variations. Run direct bash inspection commands (e.g. objdump -d -M intel <bin> | grep -A 40 '<func>:', checksec --file=<bin>) directly to inspect the actual assembly.
+  - ReAct refinement: If you need to inspect raw state, dump disassembly, or run GDB before constructing the full fix, output the inspection command with "done": false. You will receive its output under <observation> to complete the fix.
+  - Never set "abort": true on buffer overflow tasks simply because an internal python regex or offset parser failed. Inspect assembly directly or run the binary in GDB with pattern.
 </rules>
 
 
@@ -86,13 +90,15 @@ USER_PROMPT = """
   failed_commands = {failed}
   error_output    = {error}
   history         = {history}
-  time_left       = {time_left} s
+  time_left       = {time_left} s{observation}
 </input>
 
 
 <instruction>
   Analyze the error and return corrected command(s).
   Address the diagnosed root cause, not only the visible symptom.
+  If previous command output is provided under <observation>, analyze it to calibrate your next action.
+  Set "done": true when the corrective command(s) are executed. Only set "done": false if you explicitly need an immediate follow-up action based on output.
   Return exactly ONE JSON object.
 </instruction>
 """

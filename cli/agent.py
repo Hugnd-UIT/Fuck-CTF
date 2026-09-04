@@ -5,16 +5,10 @@ def plan(elapsed):
     node("Planning...", clock(elapsed), "cyan")
 
 # Log thinking phase
-def think(rationale=None, header=True):
-    if header:
-        line("├─ Thinking...")
-        if rationale:
-            line(f"│  {rationale}")
-            line()
-    else:
-        if rationale:
-            line(f"├─ {rationale}")
-            line()
+def think(rationale=None, header=False):
+    if rationale:
+        line(f"├─ {rationale}")
+        line()
 
 # Log verifying phase
 def verify(elapsed):
@@ -96,8 +90,11 @@ def evaluated(count):
     line(f"└─ Evaluated {count} command(s)")
 
 # Log refine phase
-def refine(retry, total):
-    node("Refining...", f"Retry {retry} / {total}", "yellow")
+def refine(retry=None, total=None):
+    if retry and total and total > 1:
+        node("Refining...", f"Retry {retry} / {total}", "yellow")
+    else:
+        node("Refining...", "", "yellow")
 
 # Log API retry
 def retry(ret):

@@ -38,11 +38,13 @@ class PlannerAgent(PentestAgent):
                         "plan": "N/A",
                         "observation": (
                             f"Tactic '{tactic}' has failed "
-                            f"{streak} times in a row. "
-                            "You are FORBIDDEN from proposing "
-                            "this tactic next."
+                            f"{streak} times with current approach. "
+                            "Do NOT repeat the exact same payload or command. "
+                            "Pivot strategy: re-examine binary/source layout, "
+                            "verify multi-stage data flow, inspect stack/heap, "
+                            "or use GDB dynamic tracing."
                         ),
-                        "result": "forced_block"
+                        "result": "pivot_required"
                     }
                 )
 

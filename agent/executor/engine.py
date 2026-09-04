@@ -32,31 +32,33 @@ class ExecutorAgent(PentestAgent):
         subtask,
         tool_hint,
         history,
-        facts=None
+        facts=None,
+        tree=None,
+        obs=None
     ):
 
         # Format history
-        slim_history = [
+        slim = [
             {
                 k: v for k, v in entry.items()
                 if k != "raw"
             }
             for entry in (history[-20:] if isinstance(history, list) else [])
         ]
-        if isinstance(slim_history, (list, dict)):
-            history_str = json.dumps(slim_history, indent=2)
-        else:
-            history_str = str(slim_history)
-
+        history_str = json.dumps(slim, indent=2) if isinstance(slim, (list, dict)) else str(slim)
         facts_str = json.dumps(facts, indent=2) if isinstance(facts, dict) else (str(facts) if facts else "{}")
+        tree_str = json.dumps(tree, indent=2) if isinstance(tree, (dict, list)) else (str(tree) if tree else "{}")
+        obs_str = f"\n<observation>\n  {obs}\n</observation>" if obs else ""
 
         # Format user prompt
-        user_content = USER_PROMPT.format(
+        user = USER_PROMPT.format(
             target=target,
+            tree=tree_str,
             facts=facts_str,
             subtask=subtask,
             tool_hint=tool_hint,
-            history=history_str
+            history=history_str,
+            observation=obs_str
         )
 
         messages = [
@@ -66,12 +68,32 @@ class ExecutorAgent(PentestAgent):
             },
             {
                 "role": "user",
-                "content": user_content
+                "content": user
             }
         ]
 
         # Call model
         text, in_tokens, out_tokens = self.call(messages)
+
+        # Check API error
+        if text.startswith("[!] API Exception"):
+            exec_data = {
+                "reason": {
+                    "analysis": text,
+                    "construction": "API error",
+                    "scope": "none"
+                },
+                "commands": [],
+                "done": True,
+                "timeout": 10,
+                "success": "false"
+            }
+            return {
+                "exec_data": exec_data,
+                "in_tokens": 0,
+                "out_tokens": 0,
+                "raw": text
+            }
 
         # Parse JSON
         try:

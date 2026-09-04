@@ -8,7 +8,7 @@
         "tokens": 4096
     },
     "executor": {
-        "model": "deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-pro",
         "local": false,
         "temperature": 0.2,
         "top": 1.0,
@@ -55,8 +55,8 @@
         "category": "pwn",
         "desc": "Abyss is a secret collective of tech wizards with the single-minded aim of reintroducing the technology of old to the society of today. They are so indoctrinated to this faith that they will eradicate all that stand within their way. They are now going around, mumbling something about file transfers and spreading unrealistic lies about unattainable goals - can you analyse their work and see what they're up to?",
         "dir": "/data",
-        "host": "154.57.164.77",
-        "port": "30340"
+        "host": "154.57.164.82",
+        "port": "32497"
     },
     "cmd_time": 30,
     "max_time": 600

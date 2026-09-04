@@ -112,7 +112,43 @@ class Orchestrator:
 
     def read(self, target, sandbox, base_dir=None):
         base = base_dir or getattr(self, "target_dir", "/data") or "/data"
+        if any(bad in str(target).lower() for bad in ("venv", ".venv", "site-packages", "node_modules")):
+            return "Cannot read virtual environment or dependency packages. Inspect only challenge files."
         return sb.read(sandbox, target, base_dir=base)
+
+    def sniff(self, out, target):
+        if not out or not isinstance(out, str):
+            return None
+
+        # Check expected flag
+        expected = target.get("flag", "") if isinstance(target, dict) else ""
+        prefix = ""
+        if expected and "{" in expected:
+            prefix = expected.split("{")[0] + "{"
+
+        # Search candidates
+        pats = []
+        if prefix:
+            pats.append(re.escape(prefix) + r"[A-Za-z0-9_\-!@#$%^&*+=?.,:]+\}")
+        pats.extend([
+            r"(?:HTB|flag|CTF|picoCTF|DUCTF|CSCG|seccon|hitcon)\{[A-Za-z0-9_\-!@#$%^&*+=?.,:]+\}",
+            r"[A-Za-z0-9_]{3,15}\{[A-Za-z0-9_\-!@#$%^&*+=?.,:]+\}"
+        ])
+
+        for pat in pats:
+            for hit in re.findall(pat, out, re.IGNORECASE):
+                lower = hit.lower()
+                # Skip invalid flags
+                skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example", "mock"))
+                if expected:
+                    if prefix and not hit.startswith(prefix):
+                        skip = True
+                    if hit == expected and any(c in expected for c in ("*", "?", "...")):
+                        skip = True
+                if not skip:
+                    return hit
+
+        return None
 
     def execute(self, target, sandbox, time_left=None):
         # Start execution
@@ -125,13 +161,16 @@ class Orchestrator:
         
         if target_dir and target_dir != "-" and os.path.exists(workspace):
             all_files = []
+            ignored = {".git", "__pycache__", "venv", ".venv", "env", ".env", "node_modules", "site-packages", ".idea", ".vscode"}
             for root, dirs, filenames in os.walk(workspace):
-                dirs[:] = [d for d in dirs if d != ".git" and d != "__pycache__"]
+                dirs[:] = [d for d in dirs if d not in ignored and not d.endswith(".dist-info") and not d.endswith(".egg-info")]
+                if any(part in ignored or part.endswith(".dist-info") or part.endswith(".egg-info") for part in root.replace("\\", "/").split("/")):
+                    continue
                 for f in filenames:
-                    if f == ".gitignore" or f.endswith(".pyc"):
+                    if f == ".gitignore" or f.endswith(".pyc") or f.endswith(".pyo"):
                         continue
-                    rel_path = os.path.relpath(os.path.join(root, f), workspace).replace("\\", "/")
-                    all_files.append(rel_path)
+                    rel = os.path.relpath(os.path.join(root, f), workspace).replace("\\", "/")
+                    all_files.append(rel)
 
             if not all_files:
                 state.absorb({"Environment": "No local directory or files provided!"})
@@ -143,11 +182,25 @@ class Orchestrator:
                             subdirs.add(os.path.dirname(f).replace("\\", "/"))
                     if subdirs:
                         def score(s):
-                            count = sum(1 for f in all_files if f.startswith(s + "/"))
-                            bonus = sum(2 for f in all_files if f.startswith(s + "/") and any(f.endswith(ext) for ext in (".c", ".cpp", ".py", ".sh", ".txt", ".bin", "")))
-                            return (s.count("/"), count + bonus)
-                        best_sub = max(subdirs, key=score)
-                        self.target_dir = f"/data/{best_sub}"
+                            direct = [f for f in all_files if os.path.dirname(f) == s]
+                            exts = ('.c', '.cpp', '.py', '.sh', '.bin', '.elf', '.asm')
+                            bonus = 0
+                            for f in direct:
+                                base = os.path.basename(f)
+                                _, ext = os.path.splitext(base)
+                                if base.lower() in ('dockerfile', 'makefile', 'readme', 'readme.md', 'license'):
+                                    bonus += 1
+                                elif ext in exts:
+                                    bonus += 5
+                                elif ext == '' and not base.startswith('.'):
+                                    bonus += 10
+                                else:
+                                    bonus += 1
+                            if any(k in s.lower().split('/') for k in ('challenge', 'src', 'app', 'bin')):
+                                bonus += 3
+                            return bonus
+                        best = max(subdirs, key=score)
+                        self.target_dir = f"/data/{best}"
 
                 file_list = "\n".join(f"- /data/{f}" for f in all_files)
                 state.absorb({"Environment": f"Workspace challenge working directory: {self.target_dir}\nAll files in container (/data):\n{file_list}"})
@@ -191,7 +244,7 @@ class Orchestrator:
         plan_dict = plan.get("plan", {}) if isinstance(plan.get("plan"), dict) else {}
         sub = plan_dict.get("subtask", "") or plan.get("subtask", "")
         if not sub:
-            sub = "Thinking..."
+            sub = "Analyzing next step..."
 
         rag_query = plan_dict.get("rag", "") or plan.get("rag", "")
         plan_reflect = plan_dict.get("reflect", False) or plan.get("reflect", False)
@@ -283,42 +336,98 @@ class Orchestrator:
             cmds = []
             
         else:
-            # Execute plan
+            # Execute plan via ReAct
             exec_start = time.time()
             
             tool_hint = plan_dict.get("hint", "") or plan.get("hint", "") or plan_dict.get("tool", "") or plan.get("tool", "")
             data = {**state.tree.get("data", {}), **state.store}
-            exec_res = self.executor.execute_plan(target=target_str, subtask=sub, tool_hint=tool_hint, history=state.history, facts=data)
             
-            exec_json = exec_res["exec_data"]
-            
-            # Handle RAG
-            exec_rag = exec_json.get("rag")
-            if exec_rag and str(exec_rag).lower() not in ("none", "null", ""):
+            # ReAct setup
+            cmds = []
+            out = ""
+            obs = ""
+            prev = ""
+            stagnant = 0
+            exec_json = {}
+            ind = ""
+            turn = 0
+
+            while True:
+                exec_res = self.executor.execute_plan(
+                    target=target_str, subtask=sub, tool_hint=tool_hint,
+                    history=state.history, facts=data, tree=state.tree,
+                    obs=obs if turn > 0 else None
+                )
+                exec_json = exec_res["exec_data"]
+
+                # Check API error
+                exec_reason = exec_json.get("reason", {}) if isinstance(exec_json.get("reason"), dict) else {}
+                if not exec_json.get("commands") and exec_reason.get("construction") == "API error":
+                    agent_ui.error(exec_reason.get("analysis", "API error occurred!"))
+                    break
+
+                # Handle RAG
+                exec_rag = exec_json.get("rag")
+                if exec_rag and str(exec_rag).lower() not in ("none", "null", ""):
+                    exec_time = time.time() - exec_start
+                    agent_ui.execute(exec_time)
+                    agent_ui.subtask(exec_rag, rag=True)
+                    rag_out = memory.execute(exec_rag, len(state.history))
+                    if rag_out:
+                        state.history.append(rag_out)
+                    return "RAG completed!", {"commands": [], "success": "none"}
+
+                new_cmds = exec_json.get("commands", [])
+                if not new_cmds:
+                    break
+
+                cmds.extend(new_cmds)
+                ind = exec_json.get("success", "")
+
                 exec_time = time.time() - exec_start
-                agent_ui.execute(exec_time)
-                agent_ui.subtask(exec_rag, rag=True)
-                rag_out = memory.execute(exec_rag, len(state.history))
-                if rag_out:
-                    state.history.append(rag_out)
-                return "RAG completed!", {"commands": [], "success": "none"}
-                
-            cmds = exec_json.get("commands", [])
-            ind = exec_json.get("success", "")
+                if turn == 0:
+                    agent_ui.execute(exec_time)
 
-            exec_time = time.time() - exec_start
-            agent_ui.execute(exec_time)
-            
-            exec_reason = exec_json.get("reason", {}) if isinstance(exec_json.get("reason"), dict) else {}
-            exec_analysis = exec_reason.get("analysis", "") or exec_reason.get("construction", "")
-            if exec_analysis:
-                agent_ui.think(exec_analysis, header=False)
-            
-            for i, cmd in enumerate(cmds):
-                agent_ui.command(cmd, i == len(cmds) - 1)
+                exec_analysis = exec_reason.get("analysis", "") or exec_reason.get("construction", "")
+                if exec_analysis:
+                    agent_ui.think(exec_analysis)
 
-            # Run commands in sandbox
-            out = sb.run(sandbox, cmds, category, exec_json.get("timeout", 30), workdir=self.target_dir)
+                done = exec_json.get("done", False)
+                for i, cmd in enumerate(new_cmds):
+                    last = (i == len(new_cmds) - 1) and done and not exec_rag
+                    agent_ui.command(cmd, last)
+
+                # Run commands in sandbox
+                out = sb.run(sandbox, new_cmds, category, exec_json.get("timeout", 30), workdir=self.target_dir)
+
+                # Check deterministic flag
+                fast_flag = self.sniff(out, target)
+                if fast_flag:
+                    agent_ui.passed()
+                    return fast_flag, {"captured": fast_flag}
+
+                # Timeout stops loop
+                if out.startswith("[TIMEOUT]"):
+                    break
+
+                # Circuit breaker: stagnation check
+                cur = out.strip()
+                if cur and cur == prev:
+                    stagnant += 1
+                    if stagnant >= 2:
+                        break
+                else:
+                    stagnant = 0
+                prev = cur
+
+                # Stop if done
+                done = exec_json.get("done", False)
+                if done:
+                    break
+
+                # Set observation for next turn
+                obs = out[-3000:] if out.strip() else "[Command executed with empty output / no stdout]"
+                turn += 1
 
             # Verify results
             v_start = time.time()
@@ -400,9 +509,13 @@ class Orchestrator:
 
             # Refine commands if failed
             if verif.get("result") == "fail":
-                for tries in range(2):
-                    agent_ui.refine(tries + 1, 2)
-                    
+                agent_ui.refine()
+                
+                r_obs = ""
+                r_prev = ""
+                r_stagnant = 0
+                r_turn = 0
+                while True:
                     retry = 0
                     while retry < 3:
                         extra_list = list(verif.get("knowledge", []))
@@ -424,7 +537,7 @@ class Orchestrator:
                         # Request refinement
                         r_res = self.refiner.refine(
                             target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
-                            discovered=discovered
+                            discovered=discovered, obs=r_obs if r_turn > 0 else None
                         )
                     
                         raw = r_res.get("raw", "")
@@ -462,7 +575,8 @@ class Orchestrator:
                                 more_discovered = discovered + "\n\nGround Truth Files Inspected:\n" + "\n".join(read_snippets)
                                 r_res = self.refiner.refine(
                                     target=target_str, subtask=sub, failed=cmds, error=out,
-                                    history=state.compressed, discovered=more_discovered
+                                    history=state.compressed, discovered=more_discovered,
+                                    obs=r_obs if r_turn > 0 else None
                                 )
                                 r_data = r_res.get("refine_data", {})
                                 r_cmds = r_data.get("commands", [])
@@ -471,7 +585,7 @@ class Orchestrator:
                     r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
                     r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
                     if r_analysis:
-                        agent_ui.think(r_analysis, header=False)
+                        agent_ui.think(r_analysis)
                     
                     if r_abort or not r_cmds:
                         if r_abort:
@@ -482,75 +596,102 @@ class Orchestrator:
                             agent_ui.empty()
                         break
 
+                    r_done = r_data.get("done", False)
                     for i, cmd in enumerate(r_cmds):
-                        agent_ui.command(cmd, i == len(r_cmds) - 1)
+                        r_last = (i == len(r_cmds) - 1) and r_done
+                        agent_ui.command(cmd, r_last)
 
                     # Execute refined commands
                     cmds = r_cmds
                     
                     out = sb.run(sandbox, cmds, category, r_data.get("timeout", exec_json.get("timeout", 30)), workdir=self.target_dir)
 
-                    # Verify refined output
-                    v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
-                    verif = v_res.get("verify_data", verif)
-                    
-                    if verif.get("result") in ("pass", "success"):
+                    # Check deterministic flag
+                    fast_flag = self.sniff(out, target)
+                    if fast_flag:
                         agent_ui.passed()
-                    else:
-                        agent_ui.failed()
+                        return fast_flag, {"captured": fast_flag}
 
-                    # Handle read
-                    r_read = verif.get("read")
-                    if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
-                        if isinstance(r_read, list):
-                            v_targets = [str(f).strip() for f in r_read if str(f).strip()]
-                        elif "," in str(r_read):
-                            v_targets = [p.strip() for p in str(r_read).split(",") if p.strip()]
-                        else:
-                            v_targets = [str(r_read).strip()]
-                        v_targets = [t for t in v_targets if t and t.lower() not in ("none", "null", "", "false")]
-                        if v_targets:
-                            know_check = verif.get("knowledge", [])
-                            agent_ui.read(v_targets, last=not bool(know_check))
-                            for t in v_targets:
-                                read_out = self.read(t, sandbox)
-                                verif.setdefault("knowledge", []).append(f"File {t}:\n{read_out[:2000]}")
-                                state.absorb({f"Verified_File ({t})": read_out[:8000]})
-                    
-                    know = verif.get("knowledge", [])
-                    if know:
-                        agent_ui.knowledge(know[0])
-                    else:
-                        agent_ui.evaluated(len(cmds))
-                        
-                    flag = verif.get("flag", "")
-                    if flag and isinstance(flag, str):
-                        lower = flag.lower()
-                        skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
-                        
-                        if not skip:
-                            expected = target.get("flag", "")
-                            if expected:
-                                # Check prefix
-                                if "{" in expected:
-                                    prefix = expected.split("{")[0] + "{"
-                                    if not flag.startswith(prefix):
-                                        state.absorb({"Invalid": f"The flag '{flag}' is INVALID. It must start with '{prefix}'!"})
-                                        skip = True
-                                
-                                # Check placeholder
-                                if not skip and flag == expected:
-                                    state.absorb({"Invalid": f"The flag '{flag}' is INVALID. You printed the placeholder instead of the real flag!"})
-                                    skip = True
-
-                        if not skip:
-                            return flag, {"captured": flag}
-
-                    strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
-                    verif.setdefault("knowledge", []).append(f"strategy: {strat}")
-                    
-                    if verif.get("result") in ("pass", "success"):
+                    # Timeout stops loop
+                    if out.startswith("[TIMEOUT]"):
                         break
+
+                    # Circuit breaker: stagnation check
+                    r_cur = out.strip()
+                    if r_cur and r_cur == r_prev:
+                        r_stagnant += 1
+                        if r_stagnant >= 2:
+                            break
+                    else:
+                        r_stagnant = 0
+                    r_prev = r_cur
+
+                    # Stop refinement turn
+                    r_done = r_data.get("done", False)
+                    if r_done:
+                        break
+
+                    r_obs = out[-3000:] if out.strip() else "[Command executed with empty output / no match]"
+                    r_turn += 1
+
+                # Verify refined output
+                v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
+                verif = v_res.get("verify_data", verif)
+                
+                if verif.get("result") in ("pass", "success"):
+                    agent_ui.passed()
+                else:
+                    agent_ui.failed()
+
+                # Handle read
+                r_read = verif.get("read")
+                if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
+                    if isinstance(r_read, list):
+                        v_targets = [str(f).strip() for f in r_read if str(f).strip()]
+                    elif "," in str(r_read):
+                        v_targets = [p.strip() for p in str(r_read).split(",") if p.strip()]
+                    else:
+                        v_targets = [str(r_read).strip()]
+                    v_targets = [t for t in v_targets if t and t.lower() not in ("none", "null", "", "false")]
+                    if v_targets:
+                        know_check = verif.get("knowledge", [])
+                        agent_ui.read(v_targets, last=not bool(know_check))
+                        for t in v_targets:
+                            read_out = self.read(t, sandbox)
+                            verif.setdefault("knowledge", []).append(f"File {t}:\n{read_out[:2000]}")
+                            state.absorb({f"Verified_File ({t})": read_out[:8000]})
+                
+                know = verif.get("knowledge", [])
+                if know:
+                    agent_ui.knowledge(know[0])
+                else:
+                    agent_ui.evaluated(len(cmds))
+                    
+                flag = verif.get("flag", "")
+                if flag and isinstance(flag, str):
+                    lower = flag.lower()
+                    skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
+                    
+                    if not skip:
+                        expected = target.get("flag", "")
+                        if expected:
+                            # Check prefix
+                            if "{" in expected:
+                                prefix = expected.split("{")[0] + "{"
+                                if not flag.startswith(prefix):
+                                    state.absorb({"Invalid": f"The flag '{flag}' is INVALID. It must start with '{prefix}'!"})
+                                    skip = True
+                            
+                            # Check placeholder
+                            if not skip and flag == expected:
+                                state.absorb({"Invalid": f"The flag '{flag}' is INVALID. You printed the placeholder instead of the real flag!"})
+                                skip = True
+
+                    if not skip:
+                        return flag, {"captured": flag}
+
+                strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
+                verif.setdefault("knowledge", []).append(f"strategy: {strat}")
 
             if verif.get("result") == "fail":
                 state.fails[tactic] = state.fails.get(tactic, 0) + 1
@@ -565,7 +706,6 @@ class Orchestrator:
         res = self.summarizer.summarize(tree=state.tree, step=step)
         sum_data = res["summary_data"]
 
-        state.tree = sum_data.get("tree", state.tree)
         new_tree = sum_data.get("tree", {})
         new_data = new_tree.get("data", {})
 
@@ -574,8 +714,9 @@ class Orchestrator:
         alerts_t = state.guard()
         state.alerts = alerts_d + alerts_t
 
-        # Absorb new knowledge
-        state.absorb(new_data)   
+        # Merge tree & absorb new knowledge
+        state.merge(new_tree)
+        state.update(task=sub, status=verif.get("result", "unknown"), data=new_data)
         state.snap()
 
         agent_ui.summarize(time.time() - t0)

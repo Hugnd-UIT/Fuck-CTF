@@ -1,4 +1,5 @@
 import json
+import re
 import json_repair
 
 from agent.pentest import PentestAgent
@@ -26,6 +27,51 @@ class VerifierAgent(PentestAgent):
             tokens=tokens
         )
 
+    def quick(self, subtask, commands, indicator, output):
+        # Quick timeout check
+        if not output or output.startswith("[TIMEOUT]"):
+            data = {
+                "reason": {
+                    "analysis": "Command produced no output or timed out",
+                    "discovery": "none",
+                    "unmet": "No output observed"
+                },
+                "result": "fail",
+                "knowledge": ["Execution produced no output or hit timeout."],
+                "flag": False
+            }
+            return {"verify_data": data, "in_tokens": 0, "out_tokens": 0, "raw": "[FAST_FAIL]"}
+
+        # Quick indicator match
+        if indicator and len(indicator) >= 3 and indicator.lower() in output.lower():
+            data = {
+                "reason": {
+                    "analysis": f"Indicator matched verbatim in output: {indicator[:80]}",
+                    "discovery": indicator[:120],
+                    "unmet": ""
+                },
+                "result": "success",
+                "knowledge": [f"Indicator confirmed: {indicator[:120]}"],
+                "flag": False
+            }
+            return {"verify_data": data, "in_tokens": 0, "out_tokens": 0, "raw": "[FAST_MATCH]"}
+
+        # Quick crash check
+        if "segmentation fault" in output.lower() or "sigsegv" in output.lower():
+            data = {
+                "reason": {
+                    "analysis": "Process crashed with SIGSEGV (memory corruption / buffer overflow triggered)",
+                    "discovery": "SIGSEGV crash observed",
+                    "unmet": ""
+                },
+                "result": "success" if ("crash" in str(subtask).lower() or "overflow" in str(subtask).lower() or "offset" in str(subtask).lower()) else "partial",
+                "knowledge": ["Binary crashed with SIGSEGV (memory corruption)."],
+                "flag": False
+            }
+            return {"verify_data": data, "in_tokens": 0, "out_tokens": 0, "raw": "[FAST_CRASH]"}
+
+        return None
+
     def verify(
         self,
         subtask,
@@ -35,6 +81,11 @@ class VerifierAgent(PentestAgent):
         hypothesis=None,
         facts=None
     ):
+        # Fast verification
+        fast = self.quick(subtask, commands, indicator, output)
+        if fast:
+            return fast
+
         hyp = (
             json.dumps(hypothesis, indent=2)
             if hypothesis

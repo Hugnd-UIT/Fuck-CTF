@@ -59,7 +59,7 @@ SYSTEM_PROMPT = f"""
     - Determine binary architecture, protections (NX, PIE, Canary, RELRO), and symbols before crafting input payloads.
     - Identify the specific vulnerability mechanism before guessing payload offsets.
     - Reconstruct expected inputs or protocol states directly from disassembly before sending complex data.
-    - In Pwn challenges, NEVER rely on benign authentication or credentials found in local challenge files. Remote services randomize secrets (e.g. in Dockerfile). Always solve via memory corruption / binary exploitation (buffer overflow, ROP, format string), never legitimate login.
+    - Prioritize analyzing the binary for software vulnerabilities and memory corruption (buffer overflow, ROP, format strings, logic flaws) to bypass restrictions or gain control.
 
   crypto:
     - Identify the mathematical primitive, key parameters, and specific broken assumption before planning attacks.

@@ -3,6 +3,7 @@ import re
 history = []
 compressed = ""
 tree = {}
+nodes = {}
 hashes = set()
 fails = {}
 attempts = {}
@@ -13,20 +14,113 @@ seen = {}
 done = []
 
 def init(playbook):
-    global tree
+    global tree, nodes, store, done, fails, attempts, alerts, locked, seen
     
     # Set stage
     stage = "Reconnaissance"
-    next_steps = ["Follow workflow in the playbook!"]
+    step = ["Follow workflow in the playbook!"]
 
     # Init tree
     tree = {
         "stage": stage,
         "done": [],
         "findings": ["Initial target mapped"],
-        "next": next_steps,
-        "failed": []
+        "next": step,
+        "failed": [],
+        "data": {}
     }
+    nodes = {}
+    done = []
+
+def link(task: str, kind: str = "task", parent: str = None, status: str = "todo", data: dict = None) -> str:
+    global nodes
+    if not task:
+        return ""
+    # Link node
+    node = str(len(nodes) + 1)
+    nodes[node] = {
+        "id": node,
+        "task": task,
+        "kind": kind,
+        "parent": parent,
+        "status": status,
+        "data": data or {}
+    }
+    return node
+
+def update(task: str, status: str, data: dict = None):
+    global tree, nodes
+    if not task:
+        return
+    # Find node
+    hit = None
+    for item in nodes.values():
+        if item.get("task") == task:
+            hit = item
+            break
+    if not hit:
+        link(task=task, status=status, data=data)
+    else:
+        hit["status"] = status
+        if data:
+            hit.setdefault("data", {}).update(data)
+
+    # Update tree status
+    if status in ("done", "pass", "success"):
+        if task not in tree["done"]:
+            tree["done"].append(task)
+        if task in tree.get("next", []):
+            tree["next"].remove(task)
+    elif status == "fail":
+        if task not in tree["failed"]:
+            tree["failed"].append(task)
+    if data:
+        tree.setdefault("data", {}).update(data)
+        absorb(data)
+
+def merge(new_tree: dict):
+    global tree
+    if not isinstance(new_tree, dict):
+        return
+
+    # Merge stage
+    stage = new_tree.get("stage")
+    if stage:
+        tree["stage"] = stage
+
+    # Merge done
+    raw_done = new_tree.get("done", [])
+    if isinstance(raw_done, list):
+        for item in raw_done:
+            if item and item not in tree["done"]:
+                tree["done"].append(item)
+
+    # Merge findings
+    raw_find = new_tree.get("findings", [])
+    if isinstance(raw_find, list):
+        for item in raw_find:
+            if item and item not in tree["findings"]:
+                tree["findings"].append(item)
+
+    # Merge failed
+    raw_fail = new_tree.get("failed", [])
+    if isinstance(raw_fail, list):
+        for item in raw_fail:
+            if item and item not in tree["failed"]:
+                tree["failed"].append(item)
+
+    # Merge next
+    raw_next = new_tree.get("next", [])
+    if isinstance(raw_next, list):
+        valid = [item for item in raw_next if item and item not in tree["done"]]
+        if valid:
+            tree["next"] = valid
+
+    # Merge data
+    raw_data = new_tree.get("data", {})
+    if isinstance(raw_data, dict):
+        tree.setdefault("data", {}).update(raw_data)
+        absorb(raw_data)
 
 def normalize(text: str) -> str:
     # Format text
@@ -45,12 +139,10 @@ def absorb(data: dict):
             store[k] = real
             locked.discard(k)
             seen[k] = 1
-            
         # Store data
         elif k not in store or store[k] is None:
             store[k] = v
             seen[k] = 1
-            
         # Lock confirmed
         elif store[k] == v:
             count = seen.get(k, 1) + 1
@@ -77,6 +169,8 @@ def diff(data: dict) -> list:
         old = store.get(k)
         if old is None or old == v:
             continue
+        if normalize(str(old)) == normalize(str(v)):
+            continue
             
         # Flag changes
         level = "CRITICAL" if k in locked else "WARNING"
@@ -96,8 +190,7 @@ def guard() -> list:
         if missing:
             out.append(
                 f"[WARNING] done list shrunk: {len(missing)} item(s) "
-                f"lost: {list(missing)[:3]}. "
-                "New server connection reset the state!"
+                f"lost: {list(missing)[:3]}."
             )
     return out
 
@@ -107,4 +200,15 @@ def snap():
     # Snapshot state
     dn = tree.get("done", [])
     if isinstance(dn, list):
-        done = list(set(done) | set(dn))
+        done = list(dict.fromkeys(done + dn))
+
+def view() -> str:
+    # Format view
+    lines = [f"Stage: {tree.get('stage', 'Unknown')}"]
+    lines.append("Done: " + (", ".join(tree.get("done", [])) or "None"))
+    lines.append("Next: " + (", ".join(tree.get("next", [])) or "None"))
+    lines.append("Failed: " + (", ".join(tree.get("failed", [])) or "None"))
+    facts = tree.get("data", {})
+    if facts:
+        lines.append("Facts: " + str(facts))
+    return "\n".join(lines)
