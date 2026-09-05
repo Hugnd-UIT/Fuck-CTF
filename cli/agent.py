@@ -40,8 +40,26 @@ def breaker(attempts):
     error(f"Guard: subtask repeated {attempts}x — skipped")
 
 # Log execution phase
-def execute(elapsed):
-    node("Executing...", clock(elapsed), "magenta")
+def execute(elapsed=None):
+    node("Executing...", clock(elapsed) if elapsed else "", "magenta")
+
+# Log react phase
+def react(turn=None, total=None):
+    if turn and total and total > 1:
+        node("Executing...", f"Step {turn} / {total}", "magenta")
+    else:
+        node("Executing...", "", "magenta")
+
+# Log action phase
+def action(act):
+    if act:
+        text = act if act.lower().startswith("action:") else f"Action: {act}"
+        line(f"├─ {text}")
+        line()
+
+# Log stagnant execution
+def stagnant(attempts):
+    error(f"Guard: commands repeated {attempts}x — stopped")
 
 # Log executed command
 def command(cmd, last):
