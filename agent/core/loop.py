@@ -166,7 +166,7 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
 
     # Start ReAct loop
     while turn < cap:
-        agent_ui.react(turn + 1, cap)
+        agent_ui.execute()
 
         # Call executor agent
         res = executor.execute(

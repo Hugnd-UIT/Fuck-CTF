@@ -40,15 +40,8 @@ def breaker(attempts):
     error(f"Guard: subtask repeated {attempts}x — skipped")
 
 # Log execution phase
-def execute(elapsed=None):
-    node("Executing...", clock(elapsed) if elapsed else "", "magenta")
-
-# Log react phase
-def react(turn=None, total=None):
-    if turn and total and total > 1:
-        node("Executing...", f"Step {turn} / {total}", "magenta")
-    else:
-        node("Executing...", "", "magenta")
+def execute():
+    node("Executing...", "", "magenta")
 
 # Log action phase
 def action(act):
