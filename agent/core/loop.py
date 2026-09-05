@@ -289,25 +289,26 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
     r_turn = 0
     r_cap = 5
     r_abort = False
+    r_data = {}
+    last_cmds = cmds
+    last_out = out
 
     # Start refinement loop
+    agent_ui.refine()
     while r_turn < r_cap:
-        agent_ui.refine(r_turn + 1, r_cap)
-
         # Prepare discovered context
-        extra_list = list(verif.get("knowledge", [])) if "verif" in locals() else []
+        findings = state.tree.get("findings", [])
         data = {**state.tree.get("data", {}), **state.store}
         slim_data = {
             k: (str(v)[:500] + "...[truncated]") if len(str(v)) > 500 else v
             for k, v in data.items()
         }
         discovered = (
-            "Findings:\n" + "\n".join(state.tree.get("findings", []))
+            "Findings:\n" + "\n".join(findings)
             + "\nData:\n" + (json.dumps(slim_data, indent=2) if slim_data else "{}")
-            + ("\nNotes:\n" + "\n".join(extra_list) if extra_list else "")
         )
 
-        # Call refiner with retry
+        # Call refiner agent
         retry = 0
         while retry < 3:
             r_res = refiner.refine(
@@ -361,7 +362,7 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                 agent_ui.abort(err_reason)
             else:
                 agent_ui.empty()
-            break
+            return last_cmds, last_out, {"result": "fail"}, None, r_abort
 
         # Display refined commands
         is_last_rturn = r_done or (r_turn >= r_cap - 1)
@@ -369,58 +370,62 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
             agent_ui.command(cmd, is_last_rturn and (i == len(r_cmds) - 1))
 
         # Execute refined commands
-        cmds = r_cmds
+        last_cmds = r_cmds
         timeout = r_data.get("timeout", exec_json.get("timeout", 30))
-        out = sb.run(sandbox, cmds, category, timeout, workdir=target_dir)
+        last_out = sb.run(sandbox, last_cmds, category, timeout, workdir=target_dir)
 
         # Sniff fast flag
-        fast_flag = sniff(out, target)
+        fast_flag = sniff(last_out, target)
         if fast_flag:
             agent_ui.passed()
-            return cmds, out, {"result": "pass"}, fast_flag, False
+            return last_cmds, last_out, {"result": "pass"}, fast_flag, False
 
-        # Verify refined execution
-        hypothesis = plan.get("reason", {}).get("hypothesis", {}) if isinstance(plan.get("reason"), dict) else {}
-        v_res = verifier.verify(
-            subtask=sub, commands=cmds, indicator=ind,
-            output=out, hypothesis=hypothesis, facts=state.store
-        )
-        verif = v_res.get("verify_data", {})
-
-        # Display verification verdict
-        if verif.get("result") in ("pass", "success"):
-            know = verif.get("knowledge", [])
-            agent_ui.passed(know[0] if know else None)
-        else:
-            v_reason = verif.get("reason", {}) if isinstance(verif.get("reason"), dict) else {}
-            err_msg = v_reason.get("unmet") or v_reason.get("analysis")
-            agent_ui.failed(err_msg)
-
-        # Handle read verification
-        vr_read = verif.get("read")
-        if vr_read and str(vr_read).lower() not in ("none", "null", "", "false", "[]"):
-            out_map = read(sandbox, vr_read, target_dir, role="Verifier")
-            for t, text in out_map.items():
-                verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:2000]}")
-                state.absorb({f"Verified file ({t})": text[:8000]})
-
-        # Check flag validity
-        flag = verif.get("flag", "")
-        if flag and valid(flag, target, state):
-            return cmds, out, verif, flag, False
-
-        # Record refinement strategy
-        strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
-        verif.setdefault("knowledge", []).append(f"strategy: {strat}")
-
-        # Break if passed
-        if verif.get("result") in ("pass", "success"):
+        # Check done status
+        if r_done:
             break
 
-        r_obs = out[-3000:] if out.strip() else "[Command produced empty output]"
+        r_obs = last_out[-3000:] if last_out.strip() else "[Command produced empty output]"
         r_turn += 1
 
-    return cmds, out, locals().get("verif", {"result": "fail"}), None, r_abort
+    # Verify refined execution
+    hypothesis = plan.get("reason", {}).get("hypothesis", {}) if isinstance(plan.get("reason"), dict) else {}
+    v_res = verifier.verify(
+        subtask=sub, commands=last_cmds, indicator=ind,
+        output=last_out, hypothesis=hypothesis, facts=state.store
+    )
+    verif = v_res.get("verify_data", {})
+    if isinstance(verif, list):
+        verif = verif[0]
+    if not isinstance(verif, dict):
+        verif = {}
+
+    # Display verification verdict
+    if verif.get("result") in ("pass", "success"):
+        know = verif.get("knowledge", [])
+        agent_ui.passed(know[0] if know else None)
+    else:
+        v_reason = verif.get("reason", {}) if isinstance(verif.get("reason"), dict) else {}
+        err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+        agent_ui.failed(err_msg)
+
+    # Handle read verification
+    vr_read = verif.get("read")
+    if vr_read and str(vr_read).lower() not in ("none", "null", "", "false", "[]"):
+        out_map = read(sandbox, vr_read, target_dir, role="Verifier")
+        for t, text in out_map.items():
+            verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:2000]}")
+            state.absorb({f"Verified file ({t})": text[:8000]})
+
+    # Check flag validity
+    flag = verif.get("flag", "")
+    if flag and valid(flag, target, state):
+        return last_cmds, last_out, verif, flag, False
+
+    # Record refinement strategy
+    strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
+    verif.setdefault("knowledge", []).append(f"strategy: {strat}")
+
+    return last_cmds, last_out, verif, None, r_abort
 
 
 def sum_loop(summarizer, sub, cmds, out, verif, tactic, state):

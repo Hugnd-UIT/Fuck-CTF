@@ -1,4 +1,14 @@
+import sys
+import shutil
 import re
+import textwrap
+
+if hasattr(sys.stdout, 'reconfigure') and getattr(sys.stdout, 'encoding', '').lower() != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -57,9 +67,11 @@ def header(target, minutes):
     content = Text(art, style="bold cyan") + Text("\n") + Text(info)
     
     from rich import box
+    term = shutil.get_terminal_size().columns
+    width = max(60, min(term - 2, 78)) if term > 20 else 78
     panel = Panel(
         content,
-        width=78,
+        width=width,
         border_style="cyan",
         padding=(0, 0),
         box=box.DOUBLE
@@ -69,7 +81,6 @@ def header(target, minutes):
 _first_node = True
 _current_color = "blue"
 _last_node = ""
-_last_right = ""
 
 # Print timeline node
 def node(title, right="", color="blue"):
