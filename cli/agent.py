@@ -56,26 +56,27 @@ def stagnant(attempts):
 
 # Log executed command
 def command(cmd, last):
-    from .core import console, _current_color
+    from .core import console, _current_color, line
     from rich.text import Text
     import shutil, textwrap
 
-    cmd = cmd.strip().replace('\\n', '\n').replace('\\t', '\t')
+    cmd = cmd.strip()
     rows = cmd.split('\n')
     branch = "└─ " if last else "├─ "
-    
-    wrap_width = min(shutil.get_terminal_size().columns - 10, 62)
+    cont_prefix = "     " if last else "│    "
+
+    term_cols = shutil.get_terminal_size().columns
+    wrap_width = max(68, min(term_cols - 10, 80))
 
     # First line
-    head = textwrap.wrap(f"{branch}$ {rows[0]}", width=wrap_width)
-    cont_prefix = "     " if last else "│    "
+    head = textwrap.wrap(f"{branch}$ {rows[0]}", width=wrap_width) or [f"{branch}$ {rows[0]}"]
     for i, chunk in enumerate(head):
         prefix = cont_prefix if i > 0 else ""
         console.print(Text("│  ", style=f"bold {_current_color}") + Text(f"{prefix}{chunk}", style=f"bold {_current_color}"))
 
     # Heredoc body
     for row in rows[1:]:
-        wrapped = textwrap.wrap(row, width=wrap_width) or [""]
+        wrapped = textwrap.wrap(row, width=wrap_width, drop_whitespace=False) or [""]
         for chunk in wrapped:
             console.print(Text("│  ", style=f"bold {_current_color}") + Text(f"{cont_prefix}{chunk}", style=f"bold {_current_color}"))
 

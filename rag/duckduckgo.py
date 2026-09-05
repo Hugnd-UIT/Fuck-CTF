@@ -6,8 +6,10 @@ import cli.rag as rag_ui
 
 _search_cache = {}
 
-def search_web(query: str, results: int = 5) -> dict:
-    
+def search_web(query: str, max_results: int = 5, results: int = None) -> dict:
+    if results is not None:
+        max_results = results
+
     # Check cache
     if query in _search_cache:
         return _search_cache[query]
@@ -15,8 +17,8 @@ def search_web(query: str, results: int = 5) -> dict:
     rag_ui.duckduckgo(query)
 
     try:
-        results = DDGS().text(query, max_results=results)
-        urls = [r.get("href") for r in results if r.get("href")]
+        raw_results = DDGS().text(query, max_results=max_results)
+        urls = [r.get("href") for r in raw_results if r.get("href")]
     except Exception as e:
         rag_ui.fail('DuckDuckGo error', e)
         return {"error": str(e)}
@@ -26,7 +28,7 @@ def search_web(query: str, results: int = 5) -> dict:
         rag_ui.fail('DuckDuckGo', 'No URLs found')
         return {"error": "No URLs found from DuckDuckGo"}
 
-    urls = urls[:results]
+    urls = urls[:max_results]
     total = 0
     previews = ""
     docs = []
@@ -52,7 +54,7 @@ def search_web(query: str, results: int = 5) -> dict:
 
     # Scrape URLs
     with concurrent.futures.ThreadPoolExecutor(
-        max_workers=results
+        max_workers=max_results
     ) as executor:
         scrape_results = list(executor.map(scrape_web, urls))
 

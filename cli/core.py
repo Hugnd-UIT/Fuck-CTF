@@ -69,12 +69,13 @@ def header(target, minutes):
 _first_node = True
 _current_color = "blue"
 _last_node = ""
+_last_right = ""
 
 # Print timeline node
-def node(title, right, color="blue"):
-    global _first_node, _current_color, _last_node
+def node(title, right="", color="blue"):
+    global _first_node, _current_color, _last_node, _last_right
     
-    if _last_node == title:
+    if _last_node == title and _last_right == right:
         return
         
     if not _first_node:
@@ -82,6 +83,7 @@ def node(title, right, color="blue"):
     _first_node = False
     _current_color = color
     _last_node = title
+    _last_right = right
     
     left_part = Text(f"● {title}", style=f"bold {color}")
     right_part = Text(right, style="dim white")

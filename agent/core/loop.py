@@ -194,8 +194,9 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
             break
 
         # Display commands UI
+        is_last_turn = exec_json.get("done", True) or (turn >= cap - 1)
         for i, cmd in enumerate(cmds):
-            agent_ui.command(cmd, i == len(cmds) - 1)
+            agent_ui.command(cmd, is_last_turn and (i == len(cmds) - 1))
 
         # Check stagnant commands
         cur_str = json.dumps(cmds)
@@ -360,8 +361,9 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
             break
 
         # Display refined commands
+        is_last_rturn = r_done or (r_turn >= r_cap - 1)
         for i, cmd in enumerate(r_cmds):
-            agent_ui.command(cmd, i == len(r_cmds) - 1)
+            agent_ui.command(cmd, is_last_rturn and (i == len(r_cmds) - 1))
 
         # Execute refined commands
         cmds = r_cmds

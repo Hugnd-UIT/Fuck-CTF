@@ -21,7 +21,7 @@
         "temperature": 0.1,
         "top": 1.0,
         "sample": false,
-        "tokens": 4096
+        "tokens": 1024
     },
     "refiner": {
         "model": "deepseek/deepseek-v4-flash",
@@ -37,7 +37,7 @@
         "temperature": 0.3,
         "top": 1.0,
         "sample": false,
-        "tokens": 4096
+        "tokens": 1024
     },
     "reflector": {
         "model": "deepseek/deepseek-v4-pro",
