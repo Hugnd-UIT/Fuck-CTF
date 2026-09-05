@@ -86,12 +86,16 @@ def command(cmd, last):
         line()
 
 # Log verification success
-def passed():
-    node("Verifying...", "[ Pass ]", "red")
+def passed(know=None):
+    node("Verifying...", "[ Pass ]", "green")
+    if know:
+        line(f"└─ {know}")
 
 # Log verification failure
-def failed():
+def failed(reason=None):
     node("Verifying...", "[ Fail ]", "red")
+    if reason:
+        line(f"└─ {reason}")
 
 # Log verified knowledge
 def knowledge(know):

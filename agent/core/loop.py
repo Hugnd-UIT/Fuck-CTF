@@ -253,10 +253,12 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
 
     # Display verification result
     v_time = time.time() - v_start
+    v_reason = verif.get("reason", {}) if isinstance(verif.get("reason"), dict) else {}
     if verif.get("result") in ("pass", "success"):
         agent_ui.passed()
     else:
-        agent_ui.failed()
+        err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+        agent_ui.failed(err_msg)
 
     # Handle read verification
     v_read = verif.get("read")
@@ -272,11 +274,12 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
         return verif, flag, False
 
     # Display evaluated knowledge
-    know = verif.get("knowledge", [])
-    if know:
-        agent_ui.knowledge(know[0])
-    else:
-        agent_ui.evaluated(len(cmds))
+    if verif.get("result") in ("pass", "success"):
+        know = verif.get("knowledge", [])
+        if know:
+            agent_ui.knowledge(know[0])
+        else:
+            agent_ui.evaluated(len(cmds))
 
     return verif, None, False
 
@@ -386,9 +389,12 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
 
         # Display verification verdict
         if verif.get("result") in ("pass", "success"):
-            agent_ui.passed()
+            know = verif.get("knowledge", [])
+            agent_ui.passed(know[0] if know else None)
         else:
-            agent_ui.failed()
+            v_reason = verif.get("reason", {}) if isinstance(verif.get("reason"), dict) else {}
+            err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+            agent_ui.failed(err_msg)
 
         # Handle read verification
         vr_read = verif.get("read")
