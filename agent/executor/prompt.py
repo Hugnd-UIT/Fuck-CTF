@@ -4,8 +4,6 @@ _schema = json.dumps(
     {
         "reason": {
             "analysis": "subtask and environment analysis",
-            "construction": "tool, flags, and arguments explanation",
-            "scope": "confirm targeting only authorized assets",
         },
         "commands": [
             "bash command 1",
@@ -56,7 +54,7 @@ SYSTEM_PROMPT = f"""
     - Separate check, install (if needed), and execution into sequential commands.
 
   domains:
-    - pwn: Script interactions deterministically; in buffer overflow challenges, first inspect source and memory layout for adjacent stack variables, array bounds, and loop index variables before generating payloads. Never blindly spray cyclic patterns if input structure requires multi-stage interaction (e.g. USER then PASS). Base payloads directly on confirmed architecture, protections, and offsets from HISTORY. When debugging binaries in GDB, feed input via redirection (run < /path/to/payload). Prefer standalone pwntools scripts over embedded in-GDB Python scripts.
+    - pwn: Script interactions deterministically; in buffer overflow challenges, first inspect source and memory layout for adjacent stack variables, array bounds, and loop index variables before generating payloads. Never blindly spray cyclic patterns if input structure requires multi-stage interaction (e.g. USER then PASS). Base payloads directly on confirmed architecture, protections, and offsets from HISTORY. For binary-protocol binaries: NEVER use 'run < payload_file' in GDB — GDB reads payload bytes as GDB commands causing 'Invalid command' spam. Instead, use standalone python3 pwntools scripts (process(), gdb.attach()) or pipe via python3 with proper protocol framing. Prefer standalone pwntools scripts over embedded in-GDB Python scripts.
     - crypto: Prefer standard cryptographic libraries over manual arithmetic; maintain persistent socket sessions for live oracles.
     - forensics: For remote interactive services, script continuous socket interactions; calculate exact byte offsets when inspecting or extracting container artifacts.
     - rev: Choose static or dynamic inspection based on subtask; bypass anti-debug or packing blockers before dynamic tracing; verify solver outputs.

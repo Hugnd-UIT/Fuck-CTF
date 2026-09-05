@@ -31,10 +31,12 @@ SYSTEM_PROMPT = f"""
 <rules>
   - Base your verdict strictly on observable stdout/stderr evidence, not on intent, assumptions, or expectations.
   - Never treat a zero exit code or a script's self-proclaimed success message as proof of success.
+  - Search and Enumeration Tasks: For subtasks searching for gadgets, symbols, functions, files, credentials, or patterns, finding 0 matches or returning empty output is a "fail", even if the tool ran cleanly or exited with code 0. Never judge a search as "success" unless the target items were actually found in the output.
+  - Authentic Evidence: The indicator must be satisfied by genuine tool execution output, never by an artificial shell echo or print statement (e.g. echo 'indicator: success').
   - Return exactly ONE result value:
     - success: indicator fully satisfied by direct evidence; the subtask objective was demonstrably achieved.
-    - partial: concrete technical progress or partial indicator satisfaction, but the complete objective was not demonstrated.
-    - fail: no usable progress, crashed before yielding evidence, timed out, or hypothesis directly disproved.
+    - partial: concrete technical progress or partial indicator satisfaction, but the complete objective was not demonstrated. In pwn overflow/exploitation tasks: SIGSEGV, Segmentation fault, or crash confirms memory corruption was achieved — mark as at minimum "partial" (or "success" if the subtask was finding offset / triggering crash), never mark as "fail" merely due to non-zero exit code.
+    - fail: no usable progress, timed out, or hypothesis directly disproved (including empty search results).
   - File Content Verification: When inspecting created or extracted files with "read", specify all relevant files to inspect their full contents for verification.
   - Flag validation (STRICT):
     - Scan output for genuine flags matching the challenge format. If no real flag was captured, set "flag" to false.
@@ -48,12 +50,14 @@ SYSTEM_PROMPT = f"""
 <guidelines>
   knowledge:
     - Extract concise, exact technical facts (addresses, offsets, keys, hashes, credentials, protocol parameters) verbatim.
+    - When source code or disassembly is inspected: extract and record in knowledge[]: input protocol format (binary vs text, opcode prefix, struct layout, endianness), buffer sizes and adjacent stack variable layout, and specific vulnerability mechanisms.
+    - When a search returns 0 results or an expected primitive does not exist, record this explicit negative fact (e.g. '0 matching gadgets found in binary') so downstream roles pivot.
     - Keep each entry self-contained and reusable by downstream roles; never record unverified hypotheses as facts.
 
   reasoning:
-    - reason.analysis: Compare actual output against the indicator line by line when the verdict is non-obvious.
+    - reason.analysis: Compare actual output against the indicator line by line when the verdict is non-obvious. Verify that reported matches are authentic items, not empty searches.
     - reason.discovery: Record incidental technical findings independently of whether the subtask succeeded.
-    - reason.unmet: When result is partial or fail, state exactly what evidence the indicator required that was missing.
+    - reason.unmet: When result is partial or fail, state exactly what evidence the indicator required that was missing (e.g. 'search returned 0 gadgets', 'login failed', 'no crash at offset').
 
   actions:
     - read: Specify file paths (relative to target directory or absolute) to inspect generated artifacts (decrypted archives, carved files, binaries) for direct content verification.

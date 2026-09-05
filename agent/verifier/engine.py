@@ -92,7 +92,14 @@ class VerifierAgent(PentestAgent):
             else "None"
         )
 
-        fct = json.dumps(facts, indent=2) if facts else "None"
+        if isinstance(facts, dict) and facts:
+            slim_facts = {
+                k: (str(v)[:500] + "...[truncated]") if len(str(v)) > 500 else v
+                for k, v in facts.items()
+            }
+            fct = json.dumps(slim_facts, indent=2)
+        else:
+            fct = json.dumps(facts, indent=2) if facts else "None"
 
         # Format user prompt
         text = USER_PROMPT.format(

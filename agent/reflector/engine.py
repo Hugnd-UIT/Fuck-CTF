@@ -34,7 +34,14 @@ class ReflectorAgent(PentestAgent):
         
         recent = history[-10:] if len(history) > 10 else history
         history_str = json.dumps(recent, indent=2)
-        facts_str = json.dumps(facts, indent=2) if facts else "None"
+        if isinstance(facts, dict) and facts:
+            slim_facts = {
+                k: (str(v)[:500] + "...[truncated]") if len(str(v)) > 500 else v
+                for k, v in facts.items()
+            }
+            facts_str = json.dumps(slim_facts, indent=2)
+        else:
+            facts_str = json.dumps(facts, indent=2) if facts else "None"
         target_str = json.dumps(target, indent=2) if isinstance(target, dict) else str(target)
         tree_str = json.dumps(tree, indent=2) if tree else "None"
         

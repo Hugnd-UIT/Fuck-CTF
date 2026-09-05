@@ -43,10 +43,17 @@ class ExecutorAgent(PentestAgent):
                 k: v for k, v in entry.items()
                 if k != "raw"
             }
-            for entry in (history[-20:] if isinstance(history, list) else [])
+            for entry in (history[-5:] if isinstance(history, list) else [])
         ]
         history_str = json.dumps(slim, indent=2) if isinstance(slim, (list, dict)) else str(slim)
-        facts_str = json.dumps(facts, indent=2) if isinstance(facts, dict) else (str(facts) if facts else "{}")
+        if isinstance(facts, dict) and facts:
+            slim_facts = {
+                k: (str(v)[:500] + "...[truncated]") if len(str(v)) > 500 else v
+                for k, v in facts.items()
+            }
+            facts_str = json.dumps(slim_facts, indent=2)
+        else:
+            facts_str = json.dumps(facts, indent=2) if isinstance(facts, dict) else (str(facts) if facts else "{}")
         tree_str = json.dumps(tree, indent=2) if isinstance(tree, (dict, list)) else (str(tree) if tree else "{}")
         obs_str = f"\n<observation>\n  {obs}\n</observation>" if obs else ""
 

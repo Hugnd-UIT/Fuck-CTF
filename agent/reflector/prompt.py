@@ -39,7 +39,7 @@ SYSTEM_PROMPT = f"""
 
 <guidelines>
   domains:
-    - pwn: If multiple exploits failed, inspect ground truth source code (source.c) or disassembly; question the assumed bug class, binary identity, or libc version. Reject benign authentication; in Pwn, credentials in local files (.creds) are mockups and remote secrets are randomized.
+    - pwn: If multiple exploits failed, inspect ground truth source code or disassembly; question the assumed bug class, binary architecture, protections (NX, Canary, PIE), or libc version. In Pwn challenges, local credential or token files are mockups and remote credentials cannot be guessed; prioritize software vulnerability analysis and memory corruption.
     - crypto: If attacks fail uniformly, inspect source code or question primitive identification, encoding, byte order, or key lengths before testing new ciphers.
     - forensics: Consistent garbage output across multiple tools indicates an incorrect container boundary or byte offset, not a tool failure.
     - rev: If static analysis contradicts runtime behavior, prioritize dynamic execution to break the analytical deadlock.

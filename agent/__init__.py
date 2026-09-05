@@ -351,8 +351,9 @@ class Orchestrator:
             exec_json = {}
             ind = ""
             turn = 0
+            cap = 4
 
-            while True:
+            while turn < cap:
                 exec_res = self.executor.execute_plan(
                     target=target_str, subtask=sub, tool_hint=tool_hint,
                     history=state.history, facts=data, tree=state.tree,
@@ -362,7 +363,7 @@ class Orchestrator:
 
                 # Check API error
                 exec_reason = exec_json.get("reason", {}) if isinstance(exec_json.get("reason"), dict) else {}
-                if not exec_json.get("commands") and exec_reason.get("construction") == "API error":
+                if not exec_json.get("commands") and (exec_reason.get("construction") == "API error" or exec_reason.get("error") == "API error" or str(exec_reason.get("analysis", "")).startswith("[!] API Exception")):
                     agent_ui.error(exec_reason.get("analysis", "API error occurred!"))
                     break
 
@@ -394,7 +395,7 @@ class Orchestrator:
 
                 done = exec_json.get("done", False)
                 for i, cmd in enumerate(new_cmds):
-                    last = (i == len(new_cmds) - 1) and done and not exec_rag
+                    last = (i == len(new_cmds) - 1) and (done or turn == cap - 1) and not exec_rag
                     agent_ui.command(cmd, last)
 
                 # Run commands in sandbox
@@ -509,40 +510,44 @@ class Orchestrator:
 
             # Refine commands if failed
             if verif.get("result") == "fail":
-                agent_ui.refine()
-                
-                r_obs = ""
-                r_prev = ""
-                r_stagnant = 0
+                r_obs = None
                 r_turn = 0
-                while True:
+                r_cap = 4
+
+                while r_turn < r_cap:
+                    agent_ui.refine(r_turn + 1, r_cap)
+
+                    # Build discovered context
+                    extra_list = list(verif.get("knowledge", []))
+                    v_reason = verif.get("reason", {})
+                    if isinstance(v_reason, dict):
+                        if v_reason.get("analysis"):
+                            extra_list = [f"Analysis: {v_reason['analysis']}"] + extra_list
+                        if v_reason.get("unmet"):
+                            extra_list = [f"Unmet: {v_reason['unmet']}"] + extra_list
+                    extra = "\n".join(extra_list)
+
+                    data = {**state.tree.get("data", {}), **state.store}
+                    slim_data = {
+                        k: (str(v)[:500] + "...[truncated]") if len(str(v)) > 500 else v
+                        for k, v in data.items()
+                    }
+                    discovered = (
+                        "Findings:\n" + "\n".join(state.tree.get("findings", []))
+                        + "\nData:\n" + (json.dumps(slim_data, indent=2) if slim_data else "{}")
+                        + ("\nNotes:\n" + extra if extra else "")
+                    )
+
+                    # Rate-limit retry wrapper
                     retry = 0
                     while retry < 3:
-                        extra_list = list(verif.get("knowledge", []))
-                        v_reason = verif.get("reason", {})
-                        if isinstance(v_reason, dict):
-                            if v_reason.get("analysis"):
-                                extra_list = [f"Analysis: {v_reason['analysis']}"] + extra_list
-                            if v_reason.get("unmet"):
-                                extra_list = [f"Unmet: {v_reason['unmet']}"] + extra_list
-                        extra = "\n".join(extra_list)
-
-                        data = {**state.tree.get("data", {}), **state.store}
-                        discovered = (
-                            "Findings:\n" + "\n".join(state.tree.get("findings", []))
-                            + "\nData:\n" + (json.dumps(data, indent=2) if data else "{}")
-                            + ("\nNotes:\n" + extra if extra else "")
-                        )
-
-                        # Request refinement
                         r_res = self.refiner.refine(
-                            target=target_str, subtask=sub, failed=cmds, error=out, history=state.compressed,
-                            discovered=discovered, obs=r_obs if r_turn > 0 else None
+                            target=target_str, subtask=sub, failed=cmds, error=out,
+                            history=state.compressed, discovered=discovered,
+                            obs=r_obs
                         )
-                    
                         raw = r_res.get("raw", "")
-                        
-                        if "429" in ind:
+                        if "429" in raw:
                             agent_ui.retry(retry + 1)
                             retry += 1
                             time.sleep(2 * retry)
@@ -552,7 +557,8 @@ class Orchestrator:
                     r_data = r_res.get("refine_data", {})
                     r_cmds = r_data.get("commands", [])
                     r_abort = r_data.get("abort", False)
-                    
+                    r_done = r_data.get("done", True)  
+
                     # Handle read
                     r_read_files = r_data.get("read")
                     if r_read_files and str(r_read_files).lower() not in ("none", "null", "", "false", "[]"):
@@ -576,17 +582,18 @@ class Orchestrator:
                                 r_res = self.refiner.refine(
                                     target=target_str, subtask=sub, failed=cmds, error=out,
                                     history=state.compressed, discovered=more_discovered,
-                                    obs=r_obs if r_turn > 0 else None
+                                    obs=r_obs
                                 )
                                 r_data = r_res.get("refine_data", {})
                                 r_cmds = r_data.get("commands", [])
                                 r_abort = r_data.get("abort", False)
+                                r_done = r_data.get("done", True)
 
                     r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
                     r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
                     if r_analysis:
                         agent_ui.think(r_analysis)
-                    
+
                     if r_abort or not r_cmds:
                         if r_abort:
                             err_reason = r_reason.get("error") or "dead end detected"
@@ -596,14 +603,11 @@ class Orchestrator:
                             agent_ui.empty()
                         break
 
-                    r_done = r_data.get("done", False)
                     for i, cmd in enumerate(r_cmds):
-                        r_last = (i == len(r_cmds) - 1) and r_done
-                        agent_ui.command(cmd, r_last)
+                        agent_ui.command(cmd, i == len(r_cmds) - 1)
 
                     # Execute refined commands
                     cmds = r_cmds
-                    
                     out = sb.run(sandbox, cmds, category, r_data.get("timeout", exec_json.get("timeout", 30)), workdir=self.target_dir)
 
                     # Check deterministic flag
@@ -612,86 +616,66 @@ class Orchestrator:
                         agent_ui.passed()
                         return fast_flag, {"captured": fast_flag}
 
-                    # Timeout stops loop
-                    if out.startswith("[TIMEOUT]"):
-                        break
+                    # Verify refined output
+                    v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
+                    verif = v_res.get("verify_data", verif)
 
-                    # Circuit breaker: stagnation check
-                    r_cur = out.strip()
-                    if r_cur and r_cur == r_prev:
-                        r_stagnant += 1
-                        if r_stagnant >= 2:
-                            break
+                    if verif.get("result") in ("pass", "success"):
+                        agent_ui.passed()
                     else:
-                        r_stagnant = 0
-                    r_prev = r_cur
+                        agent_ui.failed()
 
-                    # Stop refinement turn
-                    r_done = r_data.get("done", False)
-                    if r_done:
-                        break
+                    # Handle verifier read
+                    r_read = verif.get("read")
+                    if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
+                        if isinstance(r_read, list):
+                            v_targets = [str(f).strip() for f in r_read if str(f).strip()]
+                        elif "," in str(r_read):
+                            v_targets = [p.strip() for p in str(r_read).split(",") if p.strip()]
+                        else:
+                            v_targets = [str(r_read).strip()]
+                        v_targets = [t for t in v_targets if t and t.lower() not in ("none", "null", "", "false")]
+                        if v_targets:
+                            know_check = verif.get("knowledge", [])
+                            agent_ui.read(v_targets, last=not bool(know_check))
+                            for t in v_targets:
+                                read_out = self.read(t, sandbox)
+                                verif.setdefault("knowledge", []).append(f"File {t}:\n{read_out[:2000]}")
+                                state.absorb({f"Verified_File ({t})": read_out[:8000]})
 
-                    r_obs = out[-3000:] if out.strip() else "[Command executed with empty output / no match]"
-                    r_turn += 1
-
-                # Verify refined output
-                v_res = self.verifier.verify(subtask=sub, commands=cmds, indicator=ind, output=out, hypothesis=plan.get("reason", {}).get("hypothesis", {}), facts=state.store)
-                verif = v_res.get("verify_data", verif)
-                
-                if verif.get("result") in ("pass", "success"):
-                    agent_ui.passed()
-                else:
-                    agent_ui.failed()
-
-                # Handle read
-                r_read = verif.get("read")
-                if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
-                    if isinstance(r_read, list):
-                        v_targets = [str(f).strip() for f in r_read if str(f).strip()]
-                    elif "," in str(r_read):
-                        v_targets = [p.strip() for p in str(r_read).split(",") if p.strip()]
+                    know = verif.get("knowledge", [])
+                    if know:
+                        agent_ui.knowledge(know[0])
                     else:
-                        v_targets = [str(r_read).strip()]
-                    v_targets = [t for t in v_targets if t and t.lower() not in ("none", "null", "", "false")]
-                    if v_targets:
-                        know_check = verif.get("knowledge", [])
-                        agent_ui.read(v_targets, last=not bool(know_check))
-                        for t in v_targets:
-                            read_out = self.read(t, sandbox)
-                            verif.setdefault("knowledge", []).append(f"File {t}:\n{read_out[:2000]}")
-                            state.absorb({f"Verified_File ({t})": read_out[:8000]})
-                
-                know = verif.get("knowledge", [])
-                if know:
-                    agent_ui.knowledge(know[0])
-                else:
-                    agent_ui.evaluated(len(cmds))
-                    
-                flag = verif.get("flag", "")
-                if flag and isinstance(flag, str):
-                    lower = flag.lower()
-                    skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
-                    
-                    if not skip:
-                        expected = target.get("flag", "")
-                        if expected:
-                            # Check prefix
-                            if "{" in expected:
-                                prefix = expected.split("{")[0] + "{"
-                                if not flag.startswith(prefix):
-                                    state.absorb({"Invalid": f"The flag '{flag}' is INVALID. It must start with '{prefix}'!"})
+                        agent_ui.evaluated(len(cmds))
+
+                    flag = verif.get("flag", "")
+                    if flag and isinstance(flag, str):
+                        lower = flag.lower()
+                        skip = any(w in lower for w in ("dummy", "test", "fake", "local", "placeholder", "example"))
+                        if not skip:
+                            expected = target.get("flag", "")
+                            if expected:
+                                if "{" in expected:
+                                    prefix = expected.split("{")[0] + "{"
+                                    if not flag.startswith(prefix):
+                                        state.absorb({"Invalid": f"The flag '{flag}' is INVALID. It must start with '{prefix}'!"})
+                                        skip = True
+                                if not skip and flag == expected:
+                                    state.absorb({"Invalid": f"The flag '{flag}' is INVALID. You printed the placeholder instead of the real flag!"})
                                     skip = True
-                            
-                            # Check placeholder
-                            if not skip and flag == expected:
-                                state.absorb({"Invalid": f"The flag '{flag}' is INVALID. You printed the placeholder instead of the real flag!"})
-                                skip = True
+                        if not skip:
+                            return flag, {"captured": flag}
 
-                    if not skip:
-                        return flag, {"captured": flag}
+                    strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
+                    verif.setdefault("knowledge", []).append(f"strategy: {strat}")
 
-                strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
-                verif.setdefault("knowledge", []).append(f"strategy: {strat}")
+                    if verif.get("result") in ("pass", "success"):
+                        break
+
+                    # Feed last output as obs for next retry turn
+                    r_obs = out[-3000:] if out.strip() else "[Command produced empty output]"
+                    r_turn += 1
 
             if verif.get("result") == "fail":
                 state.fails[tactic] = state.fails.get(tactic, 0) + 1
@@ -702,7 +686,26 @@ class Orchestrator:
 
         t0 = time.time()
         t_out = out if not out.startswith("[TIMEOUT]") else "[TIMEOUT] Command timed out — no output produced. Treat this step as failed.\n" + out
-        step = {"subtask": sub, "commands": cmds, "output_summary": t_out[-8000:], "verification": verif}
+        
+        # Deduplicate repeated lines (e.g. repeated GDB command errors or banner loops)
+        lines = t_out.splitlines()
+        deduped = []
+        prev_line = None
+        rep = 0
+        for l in lines:
+            if l == prev_line:
+                rep += 1
+            else:
+                if rep > 0:
+                    deduped.append(f"... [repeated {rep} more times] ...")
+                deduped.append(l)
+                prev_line = l
+                rep = 0
+        if rep > 0:
+            deduped.append(f"... [repeated {rep} more times] ...")
+        clean_t_out = "\n".join(deduped)
+
+        step = {"subtask": sub, "commands": cmds, "output_summary": clean_t_out[-3000:], "verification": verif}
         res = self.summarizer.summarize(tree=state.tree, step=step)
         sum_data = res["summary_data"]
 
@@ -718,6 +721,7 @@ class Orchestrator:
         state.merge(new_tree)
         state.update(task=sub, status=verif.get("result", "unknown"), data=new_data)
         state.snap()
+        state.prune_store()
 
         agent_ui.summarize(time.time() - t0)
 
@@ -736,7 +740,7 @@ class Orchestrator:
             "plan": sub,
             "observation": sum_data.get("summary", ""),
             "result": verif.get("result", "unknown"),
-            "raw": out[:3000]
+            "raw": out[-3000:]
         })
 
         obs = sum_data.get("summary", "")
@@ -749,12 +753,12 @@ class Orchestrator:
         fails = max(state.fails.values()) if state.fails else 0
         
         # Reflect only when genuinely stuck
-        reflect = plan_reflect or (r_abort and count > 3) or (self.fails >= 3) or (count > 5 and count % 4 == 0 and fails >= 2)
+        reflect = plan_reflect or (r_abort and count > 3) or (self.fails >= 5) or (count > 8 and count % 8 == 0 and fails >= 3)
         if reflect:
             used = str(int(3600 - (time_left or 3600)))
             ref_start = time.time()
             
-            ref_res = self.reflector.review(history=state.history, facts=state.store, target=target_str, time_used=used, time_total="3600", tree=state.tree)
+            ref_res = self.reflector.review(history=state.history, facts=state.get_slim_store(), target=target_str, time_used=used, time_total="3600", tree=state.tree)
             
             ref_time = time.time() - ref_start
             review = ref_res["review_data"]

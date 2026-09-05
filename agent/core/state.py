@@ -212,3 +212,21 @@ def view() -> str:
     if facts:
         lines.append("Facts: " + str(facts))
     return "\n".join(lines)
+
+def get_slim_store(max_val_len: int = 500) -> dict:
+    slim = {}
+    for k, v in store.items():
+        s = str(v)
+        if len(s) > max_val_len:
+            slim[k] = s[:max_val_len] + "...[truncated]"
+        else:
+            slim[k] = v
+    return slim
+
+def prune_store():
+    global store
+    for k in list(store.keys()):
+        val_str = str(store[k])
+        if len(val_str) > 3000:
+            store[k] = val_str[:3000] + "\n...[truncated]"
+

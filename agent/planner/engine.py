@@ -81,16 +81,21 @@ class PlannerAgent(PentestAgent):
 
         # Format history
         if isinstance(history, (list, dict)):
-            history_str = json.dumps(history[-50:], indent=2)
+            history_str = json.dumps(history, indent=2)
         else:
             history_str = str(history)
 
-        # Format facts + warns
-        facts_str = (
-            json.dumps(facts, indent=2)
-            if facts
-            else "No facts collected yet."
-        )
+        # Format facts + warns (trim facts values > 500 chars to avoid token bloat)
+        if isinstance(facts, dict) and facts:
+            slim_facts = {
+                k: (str(v)[:500] + "...[truncated]") if len(str(v)) > 500 else v
+                for k, v in facts.items()
+            }
+            facts_str = json.dumps(slim_facts, indent=2)
+        elif facts:
+            facts_str = json.dumps(facts, indent=2)
+        else:
+            facts_str = "No facts collected yet."
         warns_str = (
             "\n".join(f"- {w}" for w in warns)
             if warns

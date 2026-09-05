@@ -48,6 +48,7 @@ SYSTEM_PROMPT = f"""
   - When a subtask depends on an unestablished fact, plan its identification or inspection first.
   - Never bundle unrelated tactics; prioritize the single highest-probability branch per cycle.
   - Treat LAST_OUTPUT as ground truth to diagnose whether the prior step succeeded, partially succeeded, or failed.
+  - Negative Evidence and Pivot: When verification or output shows that an expected primitive, gadget, or pattern does NOT exist (0 matches or not found), accept this negative fact immediately. Never repeat searches for missing primitives; pivot to an alternative strategy.
   - If the same tactic fails 2 or more times, pivot to an alternative category and document the reasoning in "alternatives".
   - If previous steps repeated errors or hit an analytical dead end, set "reflect": true to immediately trigger the Reflector for strategic review.
   - Time allocation: when time >50%, explore broadly; when 20-50%, focus on the primary lead; when <20%, pursue direct extraction.
@@ -57,8 +58,14 @@ SYSTEM_PROMPT = f"""
 <guidelines>
   pwn:
     - Determine binary architecture, protections (NX, PIE, Canary, RELRO), and symbols before crafting input payloads.
+    - Tailor exploitation strategy directly to binary protections:
+      - If NX is disabled (Stack is RWX), prioritize injecting and executing shellcode directly on the stack over searching for complex ROP chains.
+      - If Canary is absent, stack buffer overflows directly control saved RBP and RIP.
+      - If PIE is disabled, code and data symbols are at fixed, known addresses.
     - Identify the specific vulnerability mechanism before guessing payload offsets.
     - Reconstruct expected inputs or protocol states directly from disassembly before sending complex data.
+    - For binary protocols (structs, int opcodes, multi-stage inputs): ALWAYS specify in hint the exact byte sequence format (e.g. cmd=p32(0), USER=b'USER '+data, PASS=b'PASS '+data) before ordering exploit payload generation.
+    - When GDB cyclic pattern fails or cyclic_find returns -1, recognize that RIP is likely controlled by an adjacent stack variable via out-of-bounds loop copy rather than direct overflow of the input buffer; inspect stack layout to target that adjacent variable.
     - Prioritize analyzing the binary for software vulnerabilities and memory corruption (buffer overflow, ROP, format strings, logic flaws) to bypass restrictions or gain control.
 
   crypto:
