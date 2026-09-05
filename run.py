@@ -42,7 +42,7 @@ step = 0
 # Start script
 header(target, timeout_minutes)
 
-crashes = 0
+crash_count = 0
 false_done = 0
 
 # Start loop
@@ -62,7 +62,7 @@ while True:
             sandbox=container,
             time_left=remaining
         )
-        crashes = 0
+        crash_count = 0
 
         # Check flag
         if "captured" in exec_json:
@@ -89,11 +89,11 @@ while True:
     except Exception:
         import traceback
         traceback.print_exc()
-        crashes += 1
-        if crashes >= 5:
-            crashes(crashes)
+        crash_count += 1
+        if crash_count >= 5:
+            crashes(crash_count)
             break
-        time.sleep(min(2 ** crashes, 30))
+        time.sleep(min(2 ** crash_count, 30))
         continue
 
 # Stop sandbox

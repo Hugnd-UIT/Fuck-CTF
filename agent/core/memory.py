@@ -39,16 +39,19 @@ def query(desc, stage, findings, tasks):
             for doc in mem["documents"][0]:
                 memories.append(f"[MEMORY] {doc}")
 
-        # Query external knowledge
-        know = knowledge.query(query_texts=[q], n_results=50)
+        # Query external knowledge (retrieve top 5 most relevant snippets)
+        know = knowledge.query(query_texts=[q], n_results=5)
         if know and "documents" in know and know["documents"] and know["documents"][0]:
             for doc, dist in zip(know["documents"][0], know["distances"][0]):
-                if dist < 1.5:
-                    memories.append(f"[KNOWLEDGE] {doc}")
+                if dist < 1.2:
+                    snippet = doc[:800] + ("..." if len(doc) > 800 else "")
+                    memories.append(f"[KNOWLEDGE] {snippet}")
+                    if len(memories) >= 6:
+                        break
     except Exception as e:
         rag_ui.db(e)
         
-    return memories
+    return memories[:6]
 
 def execute(subtask, length):
     rag_ui.search()

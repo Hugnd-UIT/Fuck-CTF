@@ -48,7 +48,7 @@ class PlannerAgent(PentestAgent):
                     }
                 )
 
-        return notices + history[-20:]
+        return notices + history[-8:]
 
     def plan(
         self,
@@ -85,12 +85,13 @@ class PlannerAgent(PentestAgent):
         else:
             history_str = str(history)
 
-        # Format facts + warns (trim facts values > 500 chars to avoid token bloat)
+        # Format facts + warns (preserve source code and critical artifacts)
         if isinstance(facts, dict) and facts:
-            slim_facts = {
-                k: (str(v)[:500] + "...[truncated]") if len(str(v)) > 500 else v
-                for k, v in facts.items()
-            }
+            slim_facts = {}
+            for k, v in facts.items():
+                s = str(v)
+                limit = 4000 if any(w in k.lower() for w in ("inspect", "source", "code", "file")) else 1500
+                slim_facts[k] = (s[:limit] + "...[truncated]") if len(s) > limit else v
             facts_str = json.dumps(slim_facts, indent=2)
         elif facts:
             facts_str = json.dumps(facts, indent=2)
@@ -107,6 +108,9 @@ class PlannerAgent(PentestAgent):
             SYSTEM_PROMPT
             .replace("{playbook}", str(playbook))
         )
+
+        if memory and isinstance(memory, str) and len(memory) > 3000:
+            memory = memory[:3000] + "\n...[truncated]"
 
         user_content = USER_PROMPT.format(
             target=target,

@@ -27,6 +27,7 @@ def search_web(query: str, max_results: int = 5) -> dict:
         rag_ui.fail('DuckDuckGo', 'No URLs found')
         return {"error": "No URLs found from DuckDuckGo"}
 
+    urls = urls[:3]
     total_chunks = 0
     knowledge_preview = ""
     docs = []
@@ -38,7 +39,7 @@ def search_web(query: str, max_results: int = 5) -> dict:
         if md_text:
             chunks = [
                 md_text[i:i + 2000]
-                for i in range(0, len(md_text), 2000)
+                for i in range(0, min(len(md_text), 6000), 2000)
             ]
 
             ids = [
