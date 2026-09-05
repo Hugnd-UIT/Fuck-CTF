@@ -51,7 +51,7 @@ class RefinerAgent(PentestAgent):
             failed_command_str = str(failed)
 
         time_left_str = str(int(time_left)) if time_left is not None else "Unknown"
-        obs_str = f"\n<observation>\n  {obs}\n</observation>" if obs else ""
+        obs_str = f"\nObservation: {obs}" if obs else ""
 
         # Format user prompt
         user_content = USER_PROMPT.format(
@@ -79,25 +79,6 @@ class RefinerAgent(PentestAgent):
         # Call model
         text, in_tokens, out_tokens = self.call(messages)
 
-        # Check API error
-        if text.startswith("[!] API Exception"):
-            refine_data = {
-                "reason": {
-                    "analysis": text,
-                    "error": "api_error",
-                    "strategy": "none",
-                    "risk": "none"
-                },
-                "commands": [],
-                "abort": True
-            }
-            return {
-                "refine_data": refine_data,
-                "in_tokens": 0,
-                "out_tokens": 0,
-                "raw": text
-            }
-
         # Parse JSON
         try:
             if "```json" in text:
@@ -120,6 +101,7 @@ class RefinerAgent(PentestAgent):
                 refine_data = refine_data[0] if refine_data else {}
             if not isinstance(refine_data, dict):
                 refine_data = {}
+                
         except Exception as e:
 
             refine_data = {
@@ -129,7 +111,12 @@ class RefinerAgent(PentestAgent):
                     "strategy": "none",
                     "risk": "none"
                 },
-                "commands": []
+                "abort": True,
+                "commands": [],
+                "done": True,
+                "read": None,
+                "timeout": 10,
+                "success": "false"
             }
 
         return {

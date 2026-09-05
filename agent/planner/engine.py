@@ -26,28 +26,30 @@ class PlannerAgent(PentestAgent):
             tokens=tokens
         )
 
-    def build_history(self, history, fails):
+    def build(self, history, fails):
         notices = []
 
         for tactic, streak in fails.items():
             if streak >= 3:
                 notices.append(
                     {
-                        "step_id": "SYSTEM_NOTICE",
+                        "step_id": f"NOTICE {tactic.upper()}",
                         "tactic": tactic,
                         "plan": "N/A",
                         "observation": (
                             f"Tactic '{tactic}' has failed "
                             f"{streak} times with current approach. "
                             "Do NOT repeat the exact same payload or command. "
-                            "Pivot strategy: re-examine binary/source layout, "
-                            "verify multi-stage data flow, inspect stack/heap, "
-                            "or use GDB dynamic tracing."
+                            "Pivot strategy: your core assumption is flawed. "
+                            "Re-examine source or decompilation, verify input constraints, "
+                            "explore alternative attack surfaces or primitives, "
+                            "and test an alternative hypothesis."
                         ),
                         "result": "pivot_required"
                     }
                 )
 
+        # Get 8 history recently    
         return notices + history[-8:]
 
     def plan(
@@ -63,14 +65,22 @@ class PlannerAgent(PentestAgent):
         facts=None,
         warns=None
     ):
+        # Check playbook
         if playbook is None:
             playbook = {}
+
+        # Check facts
         if facts is None:
             facts = {}
+
+        # Check warns
         if warns is None:
             warns = []
 
-        history = self.build_history(history, fails)
+        # Build history
+        history = self.build(history, fails)
+        
+        # Get last output command
         last_output = ""
         for entry in reversed(history):
             raw = entry.get("raw", "")
@@ -78,25 +88,27 @@ class PlannerAgent(PentestAgent):
                 last_output = raw
                 break
 
-
         # Format history
         if isinstance(history, (list, dict)):
             history_str = json.dumps(history, indent=2)
         else:
             history_str = str(history)
 
-        # Format facts + warns (preserve source code and critical artifacts)
+        # Format facts
         if isinstance(facts, dict) and facts:
             slim_facts = {}
+            
+            # Truncate facts to 4000 characters
             for k, v in facts.items():
                 s = str(v)
-                limit = 4000 if any(w in k.lower() for w in ("inspect", "source", "code", "file")) else 1500
-                slim_facts[k] = (s[:limit] + "...[truncated]") if len(s) > limit else v
+                slim_facts[k] = (s[:4000] + "...[truncated]") if len(s) > 4000 else v
             facts_str = json.dumps(slim_facts, indent=2)
         elif facts:
             facts_str = json.dumps(facts, indent=2)
         else:
-            facts_str = "No facts collected yet."
+            facts_str = "No facts collected yet!"
+        
+        # Format warns
         warns_str = (
             "\n".join(f"- {w}" for w in warns)
             if warns
@@ -109,7 +121,10 @@ class PlannerAgent(PentestAgent):
             .replace("{playbook}", str(playbook))
         )
 
+        # Format memory
         if memory and isinstance(memory, str) and len(memory) > 3000:
+            
+            # Truncate memory to 3000 characters
             memory = memory[:3000] + "\n...[truncated]"
 
         user_content = USER_PROMPT.format(
@@ -156,6 +171,7 @@ class PlannerAgent(PentestAgent):
                 json_str = text.strip()
 
             plan_data = json_repair.loads(json_str)
+            
             if isinstance(plan_data, list):
                 plan_data = plan_data[0] if plan_data else {}
             if not isinstance(plan_data, dict):
@@ -163,7 +179,6 @@ class PlannerAgent(PentestAgent):
 
             plan = plan_data.get("plan", {})
             subtask = plan.get("subtask", plan_data.get("raw_text", "plan generated"))
-
 
         except Exception as e:
 
@@ -179,7 +194,17 @@ class PlannerAgent(PentestAgent):
                 },
                 "plan": {
                     "subtask": "Error parsing plan",
-                    "finished": False
+                    "target": "none",
+                    "tool": "none",
+                    "hint": None,
+                    "read": None,
+                    "rag": None,
+                    "reflect": False,
+                    "avoids": "none",
+                    "safety": "safe",
+                    "evidence": "none",
+                    "finished": False,
+                    "captured": None
                 }
             }
 

@@ -26,16 +26,21 @@ class SummarizerAgent(PentestAgent):
             tokens=tokens
         )
 
-    def summarize(self, tree, step):
+    def summarize(
+        self,
+        tree,
+        step
+    ):
+        # Format tree
+        tree_str = json.dumps(tree, indent=2) if isinstance(tree, (dict, list)) else (str(tree) if tree else "{}")
+
+        # Format step
+        step_str = step if isinstance(step, str) else json.dumps(step, indent=2)
 
         # Format prompts
         user_content = USER_PROMPT.format(
-            tree=tree,
-            step=(
-                step
-                if isinstance(step, str)
-                else json.dumps(step, indent=2)
-            )
+            tree=tree_str,
+            step=step_str
         )
 
         messages = [
@@ -74,6 +79,7 @@ class SummarizerAgent(PentestAgent):
                 summary_data = summary_data[0] if summary_data else {}
             if not isinstance(summary_data, dict):
                 summary_data = {}
+                
         except Exception as e:
 
             summary_data = {
@@ -81,8 +87,16 @@ class SummarizerAgent(PentestAgent):
                     "analysis": "Failed to parse JSON",
                     "classification": "inconclusive"
                 },
-                "tree": tree,
-                "summary": "Error parsing summary"
+                "tree": {
+                    "stage": "Reconnaissance",
+                    "done": [],
+                    "findings": [],
+                    "data": {},
+                    "next": [],
+                    "failed": [],
+                    "confidence": {}
+                },
+                "summary": "Failed to parse JSON"
             }
 
         return {

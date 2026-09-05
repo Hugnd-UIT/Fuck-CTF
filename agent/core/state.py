@@ -18,7 +18,7 @@ def init(playbook):
     
     # Set stage
     stage = "Reconnaissance"
-    step = ["Follow workflow in the playbook!"]
+    step = ["Follow workflow in the playbook if needed!"]
 
     # Init tree
     tree = {
@@ -213,7 +213,7 @@ def view() -> str:
         lines.append("Facts: " + str(facts))
     return "\n".join(lines)
 
-def get_slim_store(max_val_len: int = 8000) -> dict:
+def slim_store(max_val_len: int = 8000) -> dict:
     slim = {}
     for k, v in store.items():
         s = str(v)
@@ -231,4 +231,3 @@ def prune_store():
         limit = 15000 if any(w in k.lower() for w in ("inspect", "source", "code", "env", "file")) else 4000
         if len(val_str) > limit:
             store[k] = val_str[:limit] + "\n...[truncated]"
-

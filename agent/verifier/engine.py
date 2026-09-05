@@ -27,7 +27,13 @@ class VerifierAgent(PentestAgent):
             tokens=tokens
         )
 
-    def quick(self, subtask, commands, indicator, output):
+    def quick(
+        self,
+        subtask,
+        commands,
+        indicator,
+        output
+    ):
         # Quick timeout check
         if not output or output.startswith("[TIMEOUT]"):
             data = {
@@ -37,10 +43,17 @@ class VerifierAgent(PentestAgent):
                     "unmet": "No output observed"
                 },
                 "result": "fail",
-                "knowledge": ["Execution produced no output or hit timeout."],
+                "knowledge": [
+                    "Execution produced no output or hit timeout."
+                ],
                 "flag": False
             }
-            return {"verify_data": data, "in_tokens": 0, "out_tokens": 0, "raw": "[FAST_FAIL]"}
+            return {
+                "verify_data": data,
+                "in_tokens": 0,
+                "out_tokens": 0,
+                "raw": "[FAST_FAIL]"
+            }
 
         # Quick indicator match
         if indicator and len(indicator) >= 3 and indicator.lower() in output.lower():
@@ -51,24 +64,40 @@ class VerifierAgent(PentestAgent):
                     "unmet": ""
                 },
                 "result": "success",
-                "knowledge": [f"Indicator confirmed: {indicator[:120]}"],
+                "knowledge": [
+                    f"Indicator confirmed: {indicator[:120]}"
+                ],
                 "flag": False
             }
-            return {"verify_data": data, "in_tokens": 0, "out_tokens": 0, "raw": "[FAST_MATCH]"}
+            return {
+                "verify_data": data,
+                "in_tokens": 0,
+                "out_tokens": 0,
+                "raw": "[FAST_MATCH]"
+            }
 
         # Quick crash check
         if "segmentation fault" in output.lower() or "sigsegv" in output.lower():
+            sub = str(subtask).lower()
+            res = "success" if any(w in sub for w in ("crash", "overflow", "offset")) else "partial"
             data = {
                 "reason": {
-                    "analysis": "Process crashed with SIGSEGV (memory corruption / buffer overflow triggered)",
+                    "analysis": "Process crashed with SIGSEGV",
                     "discovery": "SIGSEGV crash observed",
                     "unmet": ""
                 },
-                "result": "success" if ("crash" in str(subtask).lower() or "overflow" in str(subtask).lower() or "offset" in str(subtask).lower()) else "partial",
-                "knowledge": ["Binary crashed with SIGSEGV (memory corruption)."],
+                "result": res,
+                "knowledge": [
+                    "Binary crashed with SIGSEGV"
+                ],
                 "flag": False
             }
-            return {"verify_data": data, "in_tokens": 0, "out_tokens": 0, "raw": "[FAST_CRASH]"}
+            return {
+                "verify_data": data,
+                "in_tokens": 0,
+                "out_tokens": 0,
+                "raw": "[FAST_CRASH]"
+            }
 
         return None
 
@@ -92,12 +121,12 @@ class VerifierAgent(PentestAgent):
             else "None"
         )
 
+        # Format facts
         if isinstance(facts, dict) and facts:
             slim_facts = {}
             for k, v in facts.items():
                 s = str(v)
-                limit = 15000 if any(w in k.lower() for w in ("inspect", "source", "code", "file")) else 4000
-                slim_facts[k] = (s[:limit] + "...[truncated]") if len(s) > limit else v
+                slim_facts[k] = (s[:4000] + "...[truncated]") if len(s) > 4000 else v
             fct = json.dumps(slim_facts, indent=2)
         else:
             fct = json.dumps(facts, indent=2) if facts else "None"
@@ -159,6 +188,9 @@ class VerifierAgent(PentestAgent):
                 },
                 "result": "fail",
                 "knowledge": [],
+                "read": None,
+                "rag": None,
+                "contradiction": False,
                 "flag": False
             }
 

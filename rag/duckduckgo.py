@@ -6,7 +6,7 @@ import cli.rag as rag_ui
 
 _search_cache = {}
 
-def search_web(query: str, max_results: int = 5) -> dict:
+def search_web(query: str, results: int = 5) -> dict:
     
     # Check cache
     if query in _search_cache:
@@ -15,8 +15,7 @@ def search_web(query: str, max_results: int = 5) -> dict:
     rag_ui.duckduckgo(query)
 
     try:
-        # Perform search
-        results = DDGS().text(query, max_results=max_results)
+        results = DDGS().text(query, max_results=results)
         urls = [r.get("href") for r in results if r.get("href")]
     except Exception as e:
         rag_ui.fail('DuckDuckGo error', e)
@@ -27,9 +26,9 @@ def search_web(query: str, max_results: int = 5) -> dict:
         rag_ui.fail('DuckDuckGo', 'No URLs found')
         return {"error": "No URLs found from DuckDuckGo"}
 
-    urls = urls[:3]
-    total_chunks = 0
-    knowledge_preview = ""
+    urls = urls[:results]
+    total = 0
+    previews = ""
     docs = []
     doc_ids = []
 
@@ -53,25 +52,26 @@ def search_web(query: str, max_results: int = 5) -> dict:
 
     # Scrape URLs
     with concurrent.futures.ThreadPoolExecutor(
-        max_workers=max_results
+        max_workers=results
     ) as executor:
         scrape_results = list(executor.map(scrape_web, urls))
 
     # Collect results
-    for chunks, ids, md_text in scrape_results:
-        if chunks:
-            docs.extend(chunks)
+    for parts, ids, md_text in scrape_results:
+        if parts:
+            docs.extend(parts)
             doc_ids.extend(ids)
-            total_chunks += len(chunks)
+            total += len(parts)
 
-            if not knowledge_preview:
-                knowledge_preview = md_text[:1500] + "...[truncated]"
+            if not previews:
+                previews = md_text[:1500] + "...[truncated]"
 
     res = {
         "docs": docs,
         "ids": doc_ids,
-        "total_chunks": total_chunks,
-        "preview": knowledge_preview
+        "total_chunks": total,
+        "chunks": total,
+        "preview": previews
     }
     
     _search_cache[query] = res

@@ -26,7 +26,7 @@ class ExecutorAgent(PentestAgent):
             tokens=tokens
         )
 
-    def execute_plan(
+    def execute(
         self,
         target,
         subtask,
@@ -38,25 +38,39 @@ class ExecutorAgent(PentestAgent):
     ):
 
         # Format history
-        slim = [
-            {
-                k: v for k, v in entry.items()
-                if k != "raw"
-            }
-            for entry in (history[-5:] if isinstance(history, list) else [])
-        ]
+        slim = []
+
+        # Get 5 history recently
+        for entry in (history[-5:] if isinstance(history, list) else []):
+            item = {}
+            for k, v in entry.items():
+
+                # Truncate raw output to 3000 characters 
+                if k == "raw":
+                    if entry.get("result") not in ("pass", "success"):
+                        item["raw"] = str(v)[-3000:]
+                else:
+                    item[k] = v
+            slim.append(item)
         history_str = json.dumps(slim, indent=2) if isinstance(slim, (list, dict)) else str(slim)
+
+        # Format facts
         if isinstance(facts, dict) and facts:
             slim_facts = {}
             for k, v in facts.items():
                 s = str(v)
-                limit = 15000 if any(w in k.lower() for w in ("inspect", "source", "code", "file")) else 4000
-                slim_facts[k] = (s[:limit] + "...[truncated]") if len(s) > limit else v
+
+                # Truncate facts to 4000 characters
+                slim_facts[k] = (s[:4000] + "...[truncated]") if len(s) > 4000 else v
             facts_str = json.dumps(slim_facts, indent=2)
         else:
             facts_str = json.dumps(facts, indent=2) if isinstance(facts, dict) else (str(facts) if facts else "{}")
+
+        # Format tree
         tree_str = json.dumps(tree, indent=2) if isinstance(tree, (dict, list)) else (str(tree) if tree else "{}")
-        obs_str = f"\n<observation>\n  {obs}\n</observation>" if obs else ""
+
+        # Format observation
+        obs_str = f"\nObservation: {obs}" if obs else ""
 
         # Format user prompt
         user = USER_PROMPT.format(
@@ -82,26 +96,6 @@ class ExecutorAgent(PentestAgent):
 
         # Call model
         text, in_tokens, out_tokens = self.call(messages)
-
-        # Check API error
-        if text.startswith("[!] API Exception"):
-            exec_data = {
-                "reason": {
-                    "analysis": text,
-                    "construction": "API error",
-                    "scope": "none"
-                },
-                "commands": [],
-                "done": True,
-                "timeout": 10,
-                "success": "false"
-            }
-            return {
-                "exec_data": exec_data,
-                "in_tokens": 0,
-                "out_tokens": 0,
-                "raw": text
-            }
 
         # Parse JSON
         try:
@@ -132,15 +126,16 @@ class ExecutorAgent(PentestAgent):
 
             exec_data = {
                 "reason": {
-                    "analysis": "Failed to parse JSON",
-                    "construction": "none",
-                    "scope": "none"
+                    "analysis": "Failed to parse JSON"
                 },
                 "commands": [
                     "echo 'Executor failed to parse JSON'"
                 ],
+                "done": True,
                 "timeout": 10,
-                "success": "false"
+                "success": "false",
+                "avoids": "none",
+                "rag": None
             }
 
         return {
