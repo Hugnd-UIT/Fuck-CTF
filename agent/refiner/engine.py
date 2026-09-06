@@ -35,49 +35,71 @@ class RefinerAgent(PentestAgent):
         history,
         discovered="",
         time_left=None,
-        obs=None
+        obs=None,
+        messages=None
     ):
 
-        # Format history
-        if isinstance(history, (list, dict)):
-            history_str = json.dumps(history, indent=2)
-        else:
-            history_str = str(history)
-
-        # Format commands
-        if isinstance(failed, list):
-            failed_command_str = json.dumps(failed)
-        else:
-            failed_command_str = str(failed)
-
-        time_left_str = str(int(time_left)) if time_left is not None else "Unknown"
-        obs_str = f"\nObservation: {obs}" if obs else ""
-
-        # Format user prompt
-        user_content = USER_PROMPT.format(
-            target=target,
-            discovered=discovered or "Not yet collected.",
-            subtask=subtask,
-            failed=failed_command_str,
-            error=error,
-            history=history_str,
-            time_left=time_left_str,
-            observation=obs_str
-        )
-
-        messages = [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT
-            },
-            {
+        # Handle multi-turn dialogue
+        if messages:
+            msg_list = list(messages)
+            turn_prompt = (
+                f"Observation:\n{obs}\n\n"
+                "Analyze this observation:\n"
+                "- If the fix succeeded and the subtask is now accomplished, set \"done\": true and \"commands\": [].\n"
+                "- If the fix produced a new error or needs further calibration, self-correct: set \"done\": false and output corrected commands."
+            )
+            msg_list.append({
                 "role": "user",
-                "content": user_content
-            }
-        ]
+                "content": turn_prompt
+            })
+
+        else:
+            # Format history
+            if isinstance(history, (list, dict)):
+                history_str = json.dumps(history, indent=2)
+            else:
+                history_str = str(history)
+
+            # Format commands
+            if isinstance(failed, list):
+                failed_command_str = json.dumps(failed)
+            else:
+                failed_command_str = str(failed)
+
+            time_left_str = str(int(time_left)) if time_left is not None else "Unknown"
+            obs_str = f"\nObservation: {obs}" if obs else ""
+
+            # Format user prompt
+            user_content = USER_PROMPT.format(
+                target=target,
+                discovered=discovered or "Not yet collected.",
+                subtask=subtask,
+                failed=failed_command_str,
+                error=error,
+                history=history_str,
+                time_left=time_left_str,
+                observation=obs_str
+            )
+
+            msg_list = [
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT
+                },
+                {
+                    "role": "user",
+                    "content": user_content
+                }
+            ]
 
         # Call model
-        text, in_tokens, out_tokens = self.call(messages)
+        text, in_tokens, out_tokens = self.call(msg_list)
+
+        # Append assistant response
+        msg_list.append({
+            "role": "assistant",
+            "content": text
+        })
 
         # Parse JSON
         try:
@@ -123,5 +145,6 @@ class RefinerAgent(PentestAgent):
             "refine_data": refine_data,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
-            "raw": text
+            "raw": text,
+            "messages": msg_list
         }

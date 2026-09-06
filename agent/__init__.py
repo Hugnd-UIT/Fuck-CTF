@@ -14,7 +14,6 @@ from .core import state
 from .core import memory
 from .core import sandbox as sb
 from .core.triage import triage
-from .core.flag import sniff, valid
 from .core.loop import (
     read,
     rag,
@@ -132,10 +131,6 @@ class Orchestrator:
         base = base_dir or self.target_dir or "/data"
         return sb.read(sandbox, target, base_dir=base)
 
-    # Handle sniff
-    def sniff(self, out, target):
-        return sniff(out, target)
-
     # Handle warning
     def warning(self, text):
         state.alerts.append(text)
@@ -182,12 +177,10 @@ class Orchestrator:
             cmds = []
 
         else:
-            cmds, out, ind, fast_flag, exec_json = exec_loop(
+            cmds, out, ind, exec_json = exec_loop(
                 self.executor, sandbox, target_str, sub, tool_hint,
                 state, memory, self.category, self.target_dir, target
             )
-            if fast_flag:
-                return fast_flag, {"captured": fast_flag}
 
             verif, flag, is_rag = verif_loop(
                 self.verifier, sandbox, sub, cmds, ind, out,
@@ -200,13 +193,13 @@ class Orchestrator:
                 return flag, {"captured": flag}
 
             if verif.get("result") == "fail":
-                cmds, out, verif, fast_flag, r_abort = refine_loop(
+                cmds, out, verif, flag, r_abort = refine_loop(
                     self.refiner, self.verifier, sandbox, target_str, sub,
                     cmds, out, ind, plan, state, self.category,
                     self.target_dir, target, exec_json
                 )
-                if fast_flag:
-                    return fast_flag, {"captured": fast_flag}
+                if flag:
+                    return flag, {"captured": flag}
 
             if verif.get("result") == "fail":
                 state.fails[tactic] = state.fails.get(tactic, 0) + 1

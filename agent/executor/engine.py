@@ -34,68 +34,90 @@ class ExecutorAgent(PentestAgent):
         history,
         facts=None,
         tree=None,
-        obs=None
+        obs=None,
+        messages=None
     ):
 
-        # Format history
-        slim = []
+        # Handle multi-turn dialogue
+        if messages:
+            msg_list = list(messages)
+            turn_prompt = (
+                f"Observation:\n{obs}\n\n"
+                "Analyze this observation:\n"
+                "- If the subtask objective is accomplished, set \"done\": true and \"commands\": [].\n"
+                "- If an error occurred or further action is required, self-correct: set \"done\": false and output the next surgical commands."
+            )
+            msg_list.append({
+                "role": "user",
+                "content": turn_prompt
+            })
 
-        # Get 5 history recently
-        for entry in (history[-5:] if isinstance(history, list) else []):
-            item = {}
-            for k, v in entry.items():
+        else:
+            # Format history
+            slim = []
 
-                # Truncate raw output to 3000 characters 
-                if k == "raw":
-                    if entry.get("result") not in ("pass", "success"):
-                        item["raw"] = str(v)[-3000:]
-                else:
-                    item[k] = v
-            slim.append(item)
-        history_str = json.dumps(slim, indent=2) if isinstance(slim, (list, dict)) else str(slim)
+            # Get 5 history recently
+            for entry in (history[-5:] if isinstance(history, list) else []):
+                item = {}
+                for k, v in entry.items():
 
-        # Format facts
-        if isinstance(facts, dict) and facts:
-            slim_facts = {}
-            for k, v in facts.items():
-                s = str(v)
+                    # Truncate raw output to 3000 characters
+                    if k == "raw":
+                        if entry.get("result") not in ("pass", "success"):
+                            item["raw"] = str(v)[-3000:]
+                    else:
+                        item[k] = v
+                slim.append(item)
+            history_str = json.dumps(slim, indent=2) if isinstance(slim, (list, dict)) else str(slim)
+
+            # Format facts
+            if isinstance(facts, dict) and facts:
+                slim_facts = {}
+                for k, v in facts.items():
+                    s = str(v)
 
                 # Truncate facts to 4000 characters
-                slim_facts[k] = (s[:4000] + "...[truncated]") if len(s) > 4000 else v
-            facts_str = json.dumps(slim_facts, indent=2)
-        else:
-            facts_str = json.dumps(facts, indent=2) if isinstance(facts, dict) else (str(facts) if facts else "{}")
+                    slim_facts[k] = (s[:4000] + "...[truncated]") if len(s) > 4000 else v
+                facts_str = json.dumps(slim_facts, indent=2)
+            else:
+                facts_str = json.dumps(facts, indent=2) if isinstance(facts, dict) else (str(facts) if facts else "{}")
 
-        # Format tree
-        tree_str = json.dumps(tree, indent=2) if isinstance(tree, (dict, list)) else (str(tree) if tree else "{}")
+            # Format tree
+            tree_str = json.dumps(tree, indent=2) if isinstance(tree, (dict, list)) else (str(tree) if tree else "{}")
 
-        # Format observation
-        obs_str = f"\nObservation: {obs}" if obs else ""
+            # Format observation
+            obs_str = f"\nObservation: {obs}" if obs else ""
 
-        # Format user prompt
-        user = USER_PROMPT.format(
-            target=target,
-            tree=tree_str,
-            facts=facts_str,
-            subtask=subtask,
-            tool_hint=tool_hint,
-            history=history_str,
-            observation=obs_str
-        )
+            # Format user prompt
+            user = USER_PROMPT.format(
+                target=target,
+                tree=tree_str,
+                facts=facts_str,
+                subtask=subtask,
+                tool_hint=tool_hint,
+                history=history_str,
+                observation=obs_str
+            )
 
-        messages = [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT
-            },
-            {
-                "role": "user",
-                "content": user
-            }
-        ]
+            msg_list = [
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT
+                },
+                {
+                    "role": "user",
+                    "content": user
+                }
+            ]
 
         # Call model
-        text, in_tokens, out_tokens = self.call(messages)
+        text, in_tokens, out_tokens = self.call(msg_list)
+
+        # Append assistant response
+        msg_list.append({
+            "role": "assistant",
+            "content": text
+        })
 
         # Parse JSON
         try:
@@ -142,5 +164,6 @@ class ExecutorAgent(PentestAgent):
             "exec_data": exec_data,
             "in_tokens": in_tokens,
             "out_tokens": out_tokens,
-            "raw": text
+            "raw": text,
+            "messages": msg_list
         }

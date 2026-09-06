@@ -2,7 +2,6 @@ import json
 import time
 import cli.agent as agent_ui
 from . import sandbox as sb
-from .flag import sniff, valid
 
 
 def read(sandbox, target, base_dir=None, role=None):
@@ -153,8 +152,10 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
 
 
 def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, category, target_dir, target):
-    # Prepare facts and state
+    # Prepare facts state
     data = {**state.tree.get("data", {}), **state.store}
+
+    # Initialize loop variables
     cmds = []
     out = ""
     obs = ""
@@ -163,38 +164,50 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
     turn = 0
     cap = 5
     exec_json = {"commands": [], "success": "none"}
+    messages = None
+    last_cmds = []
+    last_out = ""
+    last_ind = ""
+    last_exec_json = exec_json
 
-    # Start ReAct loop
+    # Start react loop
     while turn < cap:
+        # Display execute node
         agent_ui.execute()
 
         # Call executor agent
         res = executor.execute(
             target=target_str, subtask=sub, tool_hint=tool_hint,
-            history=state.compressed, facts=data, tree=state.tree, obs=obs
+            history=state.compressed, facts=data, tree=state.tree, obs=obs,
+            messages=messages
         )
+        messages = res.get("messages")
         exec_json = res.get("exec_data") or res.get("action_data", {})
         cmds = exec_json.get("commands", [])
         ind = exec_json.get("success", "")
 
-        # Handle RAG search
+        # Handle rag query
         exec_rag = exec_json.get("rag")
         if exec_rag and str(exec_rag).lower() not in ("none", "null", ""):
             rag(exec_rag, memory, state)
 
-        # Display action UI
+        # Display action rationale
         reason_dict = exec_json.get("reason", {}) if isinstance(exec_json.get("reason"), dict) else {}
         action = reason_dict.get("action", "") or exec_json.get("action", "")
         if action:
             agent_ui.action(action)
+
+        # Check completed turn
+        if turn > 0 and exec_json.get("done", False) and not cmds:
+            break
 
         # Check empty commands
         if not cmds:
             agent_ui.empty()
             break
 
-        # Display commands UI
-        is_last_turn = exec_json.get("done", True) or (turn >= cap - 1)
+        # Display command execution
+        is_last_turn = exec_json.get("done", False) or (turn >= cap - 1)
         for i, cmd in enumerate(cmds):
             agent_ui.command(cmd, is_last_turn and (i == len(cmds) - 1))
 
@@ -209,24 +222,24 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
             stagnant = 0
         prev = cur_str
 
-        # Run commands in sandbox
+        # Execute sandbox commands
         timeout = exec_json.get("timeout", 60)
         out = sb.run(sandbox, cmds, category, timeout, workdir=target_dir)
 
-        # Sniff fast flag
-        fast_flag = sniff(out, target)
-        if fast_flag:
-            agent_ui.passed()
-            return cmds, out, ind, fast_flag, exec_json
+        # Record command output
+        last_cmds = cmds
+        last_out = out
 
-        # Check done status
-        if exec_json.get("done", True):
+        # Check done flag
+        if exec_json.get("done", False):
             break
 
-        obs = out[-3000:] if out.strip() else "[Command executed with empty output / no stdout]"
+        # Update observation context
+        obs = out[-3000:] if out.strip() else "[Command executed with empty output]"
         turn += 1
 
-    return cmds, out, ind, None, exec_json
+    # Return execution result
+    return last_cmds or cmds, last_out or out, ind, exec_json
 
 
 def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, target_dir, target):
@@ -269,9 +282,9 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
             state.absorb({f"Verified_File ({t})": text[:8000]})
 
     # Check flag validity
-    flag = verif.get("flag", "")
-    if flag and valid(flag, target, state):
-        return verif, flag, False
+    flag = verif.get("flag")
+    if flag and str(flag).lower() not in ("false", "none", "null", ""):
+        return verif, str(flag).strip(), False
 
     # Display evaluated knowledge
     if verif.get("result") in ("pass", "success"):
@@ -285,11 +298,13 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
 
 
 def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, plan, state, category, target_dir, target, exec_json):
+    # Initialize refine variables
     r_obs = None
     r_turn = 0
     r_cap = 5
     r_abort = False
     r_data = {}
+    r_messages = None
     last_cmds = cmds
     last_out = out
 
@@ -313,7 +328,8 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
         while retry < 3:
             r_res = refiner.refine(
                 target=target_str, subtask=sub, failed=cmds, error=out,
-                history=state.compressed, discovered=discovered, obs=r_obs
+                history=state.compressed, discovered=discovered, obs=r_obs,
+                messages=r_messages
             )
             raw = r_res.get("raw", "")
             if "429" in raw:
@@ -324,12 +340,13 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
             break
 
         # Extract refinement data
+        r_messages = r_res.get("messages")
         r_data = r_res.get("refine_data", {})
         r_cmds = r_data.get("commands", [])
         r_abort = r_data.get("abort", False)
-        r_done = r_data.get("done", True)
+        r_done = r_data.get("done", False)
 
-        # Handle ground truth inspection
+        # Inspect ground truth
         r_read = r_data.get("read")
         if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
             out_map = read(sandbox, r_read, target_dir, role="Refiner")
@@ -342,18 +359,24 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                     more_discovered = discovered + "\n\nGround Truth Files Inspected:\n" + "\n".join(snippets)
                     r_res = refiner.refine(
                         target=target_str, subtask=sub, failed=cmds, error=out,
-                        history=state.compressed, discovered=more_discovered, obs=r_obs
+                        history=state.compressed, discovered=more_discovered, obs=r_obs,
+                        messages=r_messages
                     )
+                    r_messages = r_res.get("messages")
                     r_data = r_res.get("refine_data", {})
                     r_cmds = r_data.get("commands", [])
                     r_abort = r_data.get("abort", False)
-                    r_done = r_data.get("done", True)
+                    r_done = r_data.get("done", False)
 
         # Display thinking analysis
         r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
         r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
         if r_analysis:
             agent_ui.think(r_analysis)
+
+        # Check completed turn
+        if r_turn > 0 and r_data.get("done", False) and not r_cmds:
+            break
 
         # Check abort condition
         if r_abort or not r_cmds:
@@ -370,21 +393,19 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
             agent_ui.command(cmd, is_last_rturn and (i == len(r_cmds) - 1))
 
         # Execute refined commands
-        last_cmds = r_cmds
         timeout = r_data.get("timeout", exec_json.get("timeout", 30))
-        last_out = sb.run(sandbox, last_cmds, category, timeout, workdir=target_dir)
+        cur_out = sb.run(sandbox, r_cmds, category, timeout, workdir=target_dir)
 
-        # Sniff fast flag
-        fast_flag = sniff(last_out, target)
-        if fast_flag:
-            agent_ui.passed()
-            return last_cmds, last_out, {"result": "pass"}, fast_flag, False
+        # Record refined output
+        last_cmds = r_cmds
+        last_out = cur_out
 
-        # Check done status
-        if r_done:
+        # Check done flag
+        if r_data.get("done", False):
             break
 
-        r_obs = last_out[-3000:] if last_out.strip() else "[Command produced empty output]"
+        # Update observation context
+        r_obs = cur_out[-3000:] if cur_out.strip() else "[Command produced empty output]"
         r_turn += 1
 
     # Verify refined execution
@@ -417,9 +438,9 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
             state.absorb({f"Verified file ({t})": text[:8000]})
 
     # Check flag validity
-    flag = verif.get("flag", "")
-    if flag and valid(flag, target, state):
-        return last_cmds, last_out, verif, flag, False
+    flag = verif.get("flag")
+    if flag and str(flag).lower() not in ("false", "none", "null", ""):
+        return last_cmds, last_out, verif, str(flag).strip(), False
 
     # Record refinement strategy
     strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")

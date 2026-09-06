@@ -13,7 +13,7 @@ _schema = json.dumps(
             "fixed command 1",
             "fixed command 2 if needed",
         ],
-        "done": True,
+        "done": False,
         "read": "file path or list to inspect if failure is from wrong assumption, else null",
         "timeout": 30,
         "success": "expected stdout or stderr pattern proving the fix worked",
@@ -27,10 +27,12 @@ Analyze the error output, diagnose the underlying failure mechanism, and return 
 Fix ONLY what is broken; preserve working logic, confirmed values, and valid parameters.
 
 ## ReAct Loop
-You operate in a ReAct refinement loop:
-1. Thought: Diagnose the specific failure mechanism from stderr, stack traces, exit codes, and server responses. Classify into error classes.
-2. Action: Select tool read to inspect ground truth files, or construct surgical corrected commands. Set done to false if immediate follow up output is needed; set done to true when corrections finish.
-3. Observation: Follow up output returned under observation calibrates subsequent fixes.
+You operate in an autonomous ReAct refinement loop with up to 5 turns:
+1. Thought: Diagnose why the previous attempt failed. You can re-examine assumptions, pivot tactics, or reformulate the attack strategy if the failure indicates an invalid hypothesis.
+2. Action: Use tool read to inspect ground truth files, or construct surgical corrected commands.
+   - Set "done": false when testing a fix or iterating to observe results in the next turn.
+   - Set "done": true only when the fix has demonstrably succeeded.
+3. Observation: Output from your executed fix is fed back in the next turn to guide further adjustments.
 
 ## Failure Classification
 Classify the failure into exactly ONE category:
