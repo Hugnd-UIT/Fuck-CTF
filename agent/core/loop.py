@@ -198,6 +198,9 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
                 for t, text in out_map.items():
                     state.absorb({f"Inspection ({t})": text[:25000]})
                     state.alerts.append(f"[EXECUTOR READ] {t}:\n{text[:25000]}")
+                
+                # Refresh facts
+                data = {**state.tree.get("data", {}), **state.store}
 
         # Display action rationale
         reason_dict = exec_json.get("reason", {}) if isinstance(exec_json.get("reason"), dict) else {}
@@ -376,6 +379,17 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                     for t, text in out_map.items():
                         state.absorb({f"Inspection ({t})": text[:25000]})
                         read_snippets.append(f"File {t}:\n{text[:25000]}")
+
+                    # Refresh discovered
+                    fresh_data = {**state.tree.get("data", {}), **state.store}
+                    fresh_slim = {
+                        k: (str(v)[:25000] + "...[truncated]") if len(str(v)) > 25000 else v
+                        for k, v in fresh_data.items()
+                    }
+                    discovered = (
+                        "Findings:\n" + "\n".join(state.tree.get("findings", []))
+                        + "\nData:\n" + (json.dumps(fresh_slim, indent=2) if fresh_slim else "{}")
+                    )
                     if not r_cmds and not r_abort:
                         read_text = "Ground Truth Files Inspected:\n" + "\n".join(read_snippets)
                         r_obs = f"{r_obs}\n\n{read_text}" if r_obs else read_text
