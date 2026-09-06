@@ -70,12 +70,12 @@ Return ONLY the following JSON object. Fully populate every field. No markdown, 
 
 USER_PROMPT = """<input>
   target          = {target}
-  facts           = {discovered}
   subtask         = {subtask}
   failed_commands = {failed}
   error_output    = {error}
   history         = {history}
   time_left       = {time_left} s{observation}
+  facts           = {discovered}
 </input>
 
 <instruction>

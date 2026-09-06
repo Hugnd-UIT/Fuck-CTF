@@ -139,10 +139,17 @@ def absorb(data: dict):
             store[k] = real
             locked.discard(k)
             seen[k] = 1
+
+        # Overwrite source
+        elif k.startswith("Inspection (") or k.startswith("Target Source ("):
+            store[k] = v
+            seen[k] = 1
+        
         # Store data
         elif k not in store or store[k] is None:
             store[k] = v
             seen[k] = 1
+        
         # Lock confirmed
         elif store[k] == v:
             count = seen.get(k, 1) + 1

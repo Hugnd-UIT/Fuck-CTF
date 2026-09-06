@@ -133,9 +133,9 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
                     "step_id": id,
                     "tactic": "Inspection",
                     "plan": f"Read {plan_read}",
-                    "observation": obs[:8000],
+                    "observation": obs[:25000],
                     "result": "pass",
-                    "raw": obs[:15000]
+                    "raw": obs[:25000]
                 })
                 return None, False, target_str, sub, "read"
 
@@ -189,6 +189,15 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
         exec_rag = exec_json.get("rag")
         if exec_rag and str(exec_rag).lower() not in ("none", "null", ""):
             rag(exec_rag, memory, state)
+
+        # Handle read inspection
+        exec_read = exec_json.get("read")
+        if exec_read and str(exec_read).lower() not in ("none", "null", "", "false", "[]"):
+            out_map = read(sandbox, exec_read, target_dir, role="Executor")
+            if out_map:
+                for t, text in out_map.items():
+                    state.absorb({f"Inspection ({t})": text[:25000]})
+                    state.alerts.append(f"[EXECUTOR READ] {t}:\n{text[:25000]}")
 
         # Display action rationale
         reason_dict = exec_json.get("reason", {}) if isinstance(exec_json.get("reason"), dict) else {}
@@ -540,8 +549,18 @@ def sum_loop(summarizer, sub, cmds, out, verif, tactic, state):
     # Compress history observation
     obs = sum_data.get("summary", "")
     state.compressed += f"\n[{id}] {obs}"
-    if len(state.compressed) > 3000:
-        state.compressed = "...[TRUNCATED]...\n" + state.compressed[-3000:]
+    if len(state.compressed) > 15000:
+        src_pins = []
+        for k, v in state.store.items():
+            if k.startswith("Inspection (") or k.startswith("Target Source ("):
+                src_pins.append(f"[PINNED {k}]\n{str(v)[:2000]}")
+        pin_str = "\n".join(src_pins)
+        
+        state.compressed = "...[TRUNCATED]...\n" + state.compressed[-12000:]
+        if pin_str:
+            state.compressed += f"\n\nPINNED SOURCE FILES\n{pin_str}"
+            
+        state.alerts.append("[CONTEXT OVERFLOW] History truncated. Source files pinned above. Re-inspect via tool read before next action!")
 
     return obs
 
@@ -574,8 +593,8 @@ def ref_loop(reflector, sandbox, state, memory, target_str, time_left, plan_refl
         has_read = bool(out_map)
         agent_ui.reflect(ref_time, read=list(out_map.keys()) if has_read else None)
         for t, text in out_map.items():
-            state.absorb({f"Inspection ({t})": text[:8000]})
-            state.alerts.append(f"[REFLECTOR READ] {t}:\n{text[:8000]}")
+            state.absorb({f"Inspection ({t})": text[:25000]})
+            state.alerts.append(f"[REFLECTOR READ] {t}:\n{text[:25000]}")
     else:
         agent_ui.reflect(ref_time, read=None)
 

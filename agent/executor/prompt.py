@@ -14,6 +14,7 @@ _schema = json.dumps(
         "success": "expected pattern in stdout or stderr proving success",
         "avoids": "step_id of failed command to avoid, or none",
         "rag": "search query if tool or API syntax unknown, else null",
+        "read": "file path or list to inspect if confused about implementation, else null",
     },
     indent=2,
 )
@@ -80,10 +81,10 @@ Return ONLY the following JSON object. Fully populate every field. No markdown, 
 USER_PROMPT = """<input>
   target    = {target}
   tree      = {tree}
-  facts     = {facts}
   task      = {subtask}
   tool_hint = {tool_hint}
   history   = {history}{observation}
+  facts     = {facts}
 </input>
 
 <instruction>

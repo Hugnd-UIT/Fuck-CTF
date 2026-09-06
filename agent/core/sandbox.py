@@ -76,7 +76,7 @@ def read(sandbox, target, base_dir=None):
                 ;;
             text/*|application/json|application/x-sh|application/javascript|application/xml)
                 echo "[CONTENT]"
-                head -n 600 "{path}"
+                head -n 2000 "{path}"
                 ;;
             *)
                 case "{path}" in
@@ -90,7 +90,7 @@ def read(sandbox, target, base_dir=None):
                         ;;
                     *.txt|*.py|*.c|*.cpp|*.h|*.sh|*.php|*.html|*.log|*.dis|*.go|*.java|*.json|*.yml|*.yaml|*.sql|*.md|*.env|*Makefile*|*Dockerfile*)
                         echo "[CONTENT]"
-                        head -n 600 "{path}"
+                        head -n 2000 "{path}"
                         ;;
                     *)
                         echo "[HEX/HEADER (first 256 bytes)]"
