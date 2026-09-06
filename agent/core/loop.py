@@ -365,8 +365,8 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                 out_map = read(sandbox, r_read, target_dir, role="Refiner")
                 if out_map:
                     for t, text in out_map.items():
-                        state.absorb({f"Inspection ({t})": text[:8000]})
-                        read_snippets.append(f"File {t}:\n{text[:4000]}")
+                        state.absorb({f"Inspection ({t})": text[:15000]})
+                        read_snippets.append(f"File {t}:\n{text[:15000]}")
                     if not r_cmds and not r_abort:
                         read_text = "Ground Truth Files Inspected:\n" + "\n".join(read_snippets)
                         r_obs = f"{r_obs}\n\n{read_text}" if r_obs else read_text
