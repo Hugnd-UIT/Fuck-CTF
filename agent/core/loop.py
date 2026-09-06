@@ -231,7 +231,7 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
         last_out = out
 
         # Check done flag
-        if exec_json.get("done", False):
+        if exec_json.get("done", False) and (turn > 0 or (ind and str(ind).lower() in out.lower())):
             break
 
         # Update observation context
