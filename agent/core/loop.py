@@ -288,7 +288,7 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
 
 def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, plan, state, category, target_dir, target, exec_json):
     max_retries = 2
-    r_cap = 5
+    r_cap = 3
     r_abort = False
     last_cmds = cmds
     last_out = out
