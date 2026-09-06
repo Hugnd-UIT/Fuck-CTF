@@ -69,8 +69,13 @@ You operate in an autonomous ReAct loop with up to 5 turns per subtask:
   - Short local analysis and metadata checks: 30 to 60 s.
   - Script compilation and single runs: 60 to 120 s.
   - Brute-force attacks, oracle queries, and network socket loops: 1800 to 3600 s.
+- Inspection & Ground Truth:
+  - output.txt always contains the exact script and output of the previous execution.
+  - log.txt contains the last 1000 lines of system history.
+  - When confused or unsure about previous results, call tool read on ["output.txt"] or ["log.txt"] to review ground truth.
 
 ## Tools
+- read: specify file paths to inspect when confused or reviewing execution (e.g. output.txt, log.txt, or source files), else null.
 - rag: search queries when tool syntax, command flags, or library APIs are unfamiliar.
 
 ## Output Format

@@ -48,7 +48,8 @@ Classify the failure into exactly ONE category:
 - environment_state_changed: connection reset, process terminated, or session state invalidated.
 
 ## Surgical Refinement Strategy
-- Script Inspection First: If a script execution failed (e.g. python3 solve.py, ./exploit), call tool read with ["<script_name>"] and commands: [] to review the exact code on disk before modifying it.
+- Script Inspection First: If a script execution failed (e.g. python3 solve.py, ./exploit), call tool read with ["output.txt", "<script_name>"] and commands: [] to review the exact code and output on disk before modifying it.
+- Ground Truth over Guessing: When confused about what happened previously, use tool read on ["output.txt"] (last script + output), ["log.txt"] (last 1000 lines of history), and target source files (e.g. server.py) to check server requirements.
 - Surgical Fixes: Once code is in Observation, perform surgical fixes on the broken lines only. PRESERVE 100% of working protocol handling, JSON serialization, socket framing, verified logic, and verification loops. NEVER discard valid structures or rewrite blindly.
 - Full Script Output: When modifying a script, output the complete corrected script via cat <<'EOF' > <filename>, followed by the execution command.
 - Timeout and Socket Hang: Always use explicit socket and process read timeouts like recv with timeout; check connection state rather than calling unbounded blocking reads.
@@ -61,7 +62,7 @@ Classify the failure into exactly ONE category:
 - Script output: output corrected scripts IN FULL; never output fragments or diffs.
 
 ## Tools
-- read: specify file paths to inspect failing scripts (e.g. solve.py), target source code, headers, or configs before constructing fixes.
+- read: specify file paths to inspect failing scripts (e.g. solve.py), output.txt for latest run, log.txt for history, or target source code (e.g. server.py) before constructing fixes.
 
 ## Output Format
 Return ONLY the following JSON object. Fully populate every field. No markdown, no prose outside JSON.

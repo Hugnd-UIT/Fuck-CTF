@@ -7,6 +7,7 @@ from .verifier.engine import VerifierAgent
 from .refiner.engine import RefinerAgent
 from .summarizer.engine import SummarizerAgent
 from .reflector.engine import ReflectorAgent
+from .pentest import set_dir
 
 import cli.agent as agent_ui
 
@@ -140,6 +141,10 @@ class Orchestrator:
         req_dir = target.get("dir", "/data") if isinstance(target, dict) else "/data"
         self.target_dir, env_str = triage(self.workspace, req_dir)
         state.absorb({"Environment": env_str})
+        if self.target_dir and self.target_dir.startswith("/data"):
+            rel = os.path.relpath(self.target_dir, "/data")
+            host_target = os.path.join(self.workspace, rel) if rel != "." else self.workspace
+            set_dir(host_target)
 
         plan, done, target_str, sub, action = plan_loop(
             self.planner, sandbox, target, state, memory,

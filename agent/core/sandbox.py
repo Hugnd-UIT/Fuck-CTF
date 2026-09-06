@@ -28,6 +28,32 @@ def run(sandbox, commands, category, timeout=30, workdir="/data"):
             out = f"[TIMEOUT] Command execution failed: {e}"
 
         output += f"--- Output of '{cmd}' ---\n{out}\n"
+
+    # Save output.txt and append to log.txt
+    try:
+        import os
+        ws = os.path.join(os.getcwd(), "workspace")
+        rel = os.path.relpath(wd, "/data") if wd.startswith("/data") else ""
+        host_target = os.path.join(ws, rel) if (rel and rel != ".") else ws
+        if not os.path.exists(host_target):
+            for root, dirs, files in os.walk(ws):
+                if "server.py" in files or "solve.py" in files:
+                    host_target = root
+                    break
+
+        if os.path.exists(host_target):
+            out_file = os.path.join(host_target, "output.txt")
+            cmd_text = "\n".join(commands) if isinstance(commands, list) else str(commands)
+            content = f"[SCRIPT]\n{cmd_text}\n\n[OUTPUT]\n{output}\n"
+            with open(out_file, "w", encoding="utf-8", errors="ignore") as f:
+                f.write(content)
+
+            log_file = os.path.join(host_target, "log.txt")
+            with open(log_file, "a", encoding="utf-8", errors="ignore") as f:
+                f.write(content + "\n")
+    except Exception:
+        pass
+
     return output
 
 def read(sandbox, target, base_dir=None):
@@ -75,11 +101,23 @@ def read(sandbox, target, base_dir=None):
                 tshark -r "{path}" -c 20 2>&1 || tcpdump -r "{path}" -c 20 2>&1
                 ;;
             text/*|application/json|application/x-sh|application/javascript|application/xml)
-                echo "[CONTENT]"
-                head -n 2000 "{path}"
+                case "{path}" in
+                    *log.txt|*.log)
+                        echo "[CONTENT]"
+                        tail -n 1000 "{path}"
+                        ;;
+                    *)
+                        echo "[CONTENT]"
+                        head -n 2000 "{path}"
+                        ;;
+                esac
                 ;;
             *)
                 case "{path}" in
+                    *log.txt|*.log)
+                        echo "[CONTENT]"
+                        tail -n 1000 "{path}"
+                        ;;
                     *.zip)
                         echo "[ARCHIVE CONTENTS]"
                         unzip -v "{path}" 2>&1 | head -n 45
@@ -88,7 +126,7 @@ def read(sandbox, target, base_dir=None):
                         echo "[PCAP PACKET SUMMARY]"
                         tshark -r "{path}" -c 20 2>&1 || tcpdump -r "{path}" -c 20 2>&1
                         ;;
-                    *.txt|*.py|*.c|*.cpp|*.h|*.sh|*.php|*.html|*.log|*.dis|*.go|*.java|*.json|*.yml|*.yaml|*.sql|*.md|*.env|*Makefile*|*Dockerfile*)
+                    *.txt|*.py|*.c|*.cpp|*.h|*.sh|*.php|*.html|*.dis|*.go|*.java|*.json|*.yml|*.yaml|*.sql|*.md|*.env|*Makefile*|*Dockerfile*)
                         echo "[CONTENT]"
                         head -n 2000 "{path}"
                         ;;
@@ -105,8 +143,11 @@ def read(sandbox, target, base_dir=None):
     try:
         res = sandbox.exec_run(["/bin/bash", "-c", script], stdout=True, stderr=True)
         out = res.output.decode("utf-8", errors="ignore").strip()
-        if len(out) > 15000:
-            out = out[:15000] + "\n...[TRUNCATED]"
+        if len(out) > 30000:
+            if "log.txt" in target or target.endswith(".log"):
+                out = "...[TRUNCATED TRACE]...\n" + out[-30000:]
+            else:
+                out = out[:30000] + "\n...[TRUNCATED]"
         return out
     except Exception as e:
         return f"Failed to read '{target}': {e}"

@@ -57,7 +57,7 @@ Your job is NOT to suggest another minor tweak of the latest attempt.
    - Pivot tactic to an entirely different vulnerability class (e.g. PRNG prediction, seed recovery, logic flaw, command injection, timing/side-channel).
 
 ## Tools
-- read: specify file paths to inspect source code, headers, or configs to verify ground truth before continuing.
+- read: specify file paths to inspect source code, headers, configs, output.txt (latest script + output), or log.txt (last 1000 lines of history) to verify ground truth before continuing.
 - rag: search queries to discover alternative attack vectors, CVE writeups, or bypass techniques when stuck.
 
 ## Output Format
