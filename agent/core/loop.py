@@ -299,18 +299,18 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
 
 def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, plan, state, category, target_dir, target, exec_json):
     # Initialize refine variables
-    r_obs = None
-    r_turn = 0
+    max_retries = 2
     r_cap = 5
     r_abort = False
-    r_data = {}
-    r_messages = None
     last_cmds = cmds
     last_out = out
+    verif = {"result": "fail"}
 
-    # Start refinement loop
-    agent_ui.refine()
-    while r_turn < r_cap:
+    # Start retry attempts
+    for attempt in range(max_retries):
+        # Display refine node
+        agent_ui.refine(attempt + 1, max_retries)
+
         # Prepare discovered context
         findings = state.tree.get("findings", [])
         data = {**state.tree.get("data", {}), **state.store}
@@ -323,129 +323,139 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
             + "\nData:\n" + (json.dumps(slim_data, indent=2) if slim_data else "{}")
         )
 
-        # Call refiner agent
-        retry = 0
-        while retry < 3:
-            r_res = refiner.refine(
-                target=target_str, subtask=sub, failed=cmds, error=out,
-                history=state.compressed, discovered=discovered, obs=r_obs,
-                messages=r_messages
-            )
-            raw = r_res.get("raw", "")
-            if "429" in raw:
-                agent_ui.retry(retry + 1)
-                retry += 1
-                time.sleep(2 * retry)
-                continue
+        r_obs = None
+        r_turn = 0
+        r_messages = None
+        r_data = {}
+
+        # Start react loop
+        while r_turn < r_cap:
+            # Call refiner agent
+            retry_api = 0
+            while retry_api < 3:
+                r_res = refiner.refine(
+                    target=target_str, subtask=sub, failed=last_cmds, error=last_out,
+                    history=state.compressed, discovered=discovered, obs=r_obs,
+                    messages=r_messages
+                )
+                raw = r_res.get("raw", "")
+                if "429" in raw:
+                    agent_ui.retry(retry_api + 1)
+                    retry_api += 1
+                    time.sleep(2 * retry_api)
+                    continue
+                break
+
+            # Extract refinement data
+            r_messages = r_res.get("messages")
+            r_data = r_res.get("refine_data", {})
+            r_cmds = r_data.get("commands", [])
+            r_abort = r_data.get("abort", False)
+
+            # Inspect ground truth
+            r_read = r_data.get("read")
+            if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
+                out_map = read(sandbox, r_read, target_dir, role="Refiner")
+                if out_map:
+                    snippets = []
+                    for t, text in out_map.items():
+                        state.absorb({f"Inspection ({t})": text[:8000]})
+                        snippets.append(f"File {t}:\n{text[:4000]}")
+                    if not r_cmds and not r_abort:
+                        more_discovered = discovered + "\n\nGround Truth Files Inspected:\n" + "\n".join(snippets)
+                        r_res = refiner.refine(
+                            target=target_str, subtask=sub, failed=last_cmds, error=last_out,
+                            history=state.compressed, discovered=more_discovered, obs=r_obs,
+                            messages=r_messages
+                        )
+                        r_messages = r_res.get("messages")
+                        r_data = r_res.get("refine_data", {})
+                        r_cmds = r_data.get("commands", [])
+                        r_abort = r_data.get("abort", False)
+
+            # Display thinking analysis
+            r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
+            r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
+            if r_analysis:
+                agent_ui.think(r_analysis)
+
+            # Check completed turn
+            if r_turn > 0 and r_data.get("done", False) and not r_cmds:
+                break
+
+            # Check abort condition
+            if r_abort or not r_cmds:
+                if r_abort:
+                    err_reason = r_reason.get("error") or "dead end detected"
+                    agent_ui.abort(err_reason)
+                else:
+                    agent_ui.empty()
+                return last_cmds, last_out, {"result": "fail"}, None, r_abort
+
+            # Display refined commands
+            is_last_rturn = r_data.get("done", False) or (r_turn >= r_cap - 1)
+            for i, cmd in enumerate(r_cmds):
+                agent_ui.command(cmd, is_last_rturn and (i == len(r_cmds) - 1))
+
+            # Execute refined commands
+            timeout = r_data.get("timeout", exec_json.get("timeout", 30))
+            cur_out = sb.run(sandbox, r_cmds, category, timeout, workdir=target_dir)
+
+            # Record refined output
+            last_cmds = r_cmds
+            last_out = cur_out
+
+            # Check done flag
+            if r_data.get("done", False):
+                break
+
+            # Update observation context
+            r_obs = cur_out[-3000:] if cur_out.strip() else "[Command produced empty output]"
+            r_turn += 1
+
+        # Verify refined execution
+        hypothesis = plan.get("reason", {}).get("hypothesis", {}) if isinstance(plan.get("reason"), dict) else {}
+        v_res = verifier.verify(
+            subtask=sub, commands=last_cmds, indicator=ind,
+            output=last_out, hypothesis=hypothesis, facts=state.store
+        )
+        verif = v_res.get("verify_data", {})
+        if isinstance(verif, list):
+            verif = verif[0]
+        if not isinstance(verif, dict):
+            verif = {}
+
+        # Display verification verdict
+        if verif.get("result") in ("pass", "success"):
+            know = verif.get("knowledge", [])
+            agent_ui.passed(know[0] if know else None)
+        else:
+            v_reason = verif.get("reason", {}) if isinstance(verif.get("reason"), dict) else {}
+            err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+            agent_ui.failed(err_msg)
+
+        # Handle read verification
+        vr_read = verif.get("read")
+        if vr_read and str(vr_read).lower() not in ("none", "null", "", "false", "[]"):
+            out_map = read(sandbox, vr_read, target_dir, role="Verifier")
+            for t, text in out_map.items():
+                verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:2000]}")
+                state.absorb({f"Verified file ({t})": text[:8000]})
+
+        # Check flag validity
+        flag = verif.get("flag")
+        if flag and str(flag).lower() not in ("false", "none", "null", ""):
+            return last_cmds, last_out, verif, str(flag).strip(), False
+
+        # Record refinement strategy
+        strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
+        verif.setdefault("knowledge", []).append(f"strategy: {strat}")
+
+        # Check verification success
+        if verif.get("result") in ("pass", "success"):
             break
 
-        # Extract refinement data
-        r_messages = r_res.get("messages")
-        r_data = r_res.get("refine_data", {})
-        r_cmds = r_data.get("commands", [])
-        r_abort = r_data.get("abort", False)
-        r_done = r_data.get("done", False)
-
-        # Inspect ground truth
-        r_read = r_data.get("read")
-        if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
-            out_map = read(sandbox, r_read, target_dir, role="Refiner")
-            if out_map:
-                snippets = []
-                for t, text in out_map.items():
-                    state.absorb({f"Inspection ({t})": text[:8000]})
-                    snippets.append(f"File {t}:\n{text[:4000]}")
-                if not r_cmds and not r_abort:
-                    more_discovered = discovered + "\n\nGround Truth Files Inspected:\n" + "\n".join(snippets)
-                    r_res = refiner.refine(
-                        target=target_str, subtask=sub, failed=cmds, error=out,
-                        history=state.compressed, discovered=more_discovered, obs=r_obs,
-                        messages=r_messages
-                    )
-                    r_messages = r_res.get("messages")
-                    r_data = r_res.get("refine_data", {})
-                    r_cmds = r_data.get("commands", [])
-                    r_abort = r_data.get("abort", False)
-                    r_done = r_data.get("done", False)
-
-        # Display thinking analysis
-        r_reason = r_data.get("reason", {}) if isinstance(r_data.get("reason"), dict) else {}
-        r_analysis = r_reason.get("analysis", "") or r_reason.get("strategy", "")
-        if r_analysis:
-            agent_ui.think(r_analysis)
-
-        # Check completed turn
-        if r_turn > 0 and r_data.get("done", False) and not r_cmds:
-            break
-
-        # Check abort condition
-        if r_abort or not r_cmds:
-            if r_abort:
-                err_reason = r_reason.get("error") or "dead end detected"
-                agent_ui.abort(err_reason)
-            else:
-                agent_ui.empty()
-            return last_cmds, last_out, {"result": "fail"}, None, r_abort
-
-        # Display refined commands
-        is_last_rturn = r_done or (r_turn >= r_cap - 1)
-        for i, cmd in enumerate(r_cmds):
-            agent_ui.command(cmd, is_last_rturn and (i == len(r_cmds) - 1))
-
-        # Execute refined commands
-        timeout = r_data.get("timeout", exec_json.get("timeout", 30))
-        cur_out = sb.run(sandbox, r_cmds, category, timeout, workdir=target_dir)
-
-        # Record refined output
-        last_cmds = r_cmds
-        last_out = cur_out
-
-        # Check done flag
-        if r_data.get("done", False):
-            break
-
-        # Update observation context
-        r_obs = cur_out[-3000:] if cur_out.strip() else "[Command produced empty output]"
-        r_turn += 1
-
-    # Verify refined execution
-    hypothesis = plan.get("reason", {}).get("hypothesis", {}) if isinstance(plan.get("reason"), dict) else {}
-    v_res = verifier.verify(
-        subtask=sub, commands=last_cmds, indicator=ind,
-        output=last_out, hypothesis=hypothesis, facts=state.store
-    )
-    verif = v_res.get("verify_data", {})
-    if isinstance(verif, list):
-        verif = verif[0]
-    if not isinstance(verif, dict):
-        verif = {}
-
-    # Display verification verdict
-    if verif.get("result") in ("pass", "success"):
-        know = verif.get("knowledge", [])
-        agent_ui.passed(know[0] if know else None)
-    else:
-        v_reason = verif.get("reason", {}) if isinstance(verif.get("reason"), dict) else {}
-        err_msg = v_reason.get("unmet") or v_reason.get("analysis")
-        agent_ui.failed(err_msg)
-
-    # Handle read verification
-    vr_read = verif.get("read")
-    if vr_read and str(vr_read).lower() not in ("none", "null", "", "false", "[]"):
-        out_map = read(sandbox, vr_read, target_dir, role="Verifier")
-        for t, text in out_map.items():
-            verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:2000]}")
-            state.absorb({f"Verified file ({t})": text[:8000]})
-
-    # Check flag validity
-    flag = verif.get("flag")
-    if flag and str(flag).lower() not in ("false", "none", "null", ""):
-        return last_cmds, last_out, verif, str(flag).strip(), False
-
-    # Record refinement strategy
-    strat = r_data.get("reason", {}).get("strategy", "No strategy provided!")
-    verif.setdefault("knowledge", []).append(f"strategy: {strat}")
-
+    # Return refinement result
     return last_cmds, last_out, verif, None, r_abort
 
 
