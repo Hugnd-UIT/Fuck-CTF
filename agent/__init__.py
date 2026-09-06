@@ -225,6 +225,8 @@ class Orchestrator:
                     "If the target service rejected the payload, the hypothesis is invalid. "
                     "Do NOT tweak script parameters. Inspect source code from line 1 and pivot."
                 )
+                dead_set = {t.lower().strip() for t, s in state.fails.items() if s >= 2}
+                state.prune_history(dead_set)
                 if self.fails >= 3 or state.fails.get(norm_tac, 0) >= 3:
                     r_abort = True
 

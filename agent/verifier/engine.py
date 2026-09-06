@@ -123,10 +123,11 @@ class VerifierAgent(PentestAgent):
 
         # Format facts
         if isinstance(facts, dict) and facts:
-            slim_facts = {}
-            for k, v in facts.items():
-                s = str(v)
-                slim_facts[k] = (s[:4000] + "...[truncated]") if len(s) > 4000 else v
+            # Truncate facts to 25000 characters
+            slim_facts = {
+                k: (str(v)[:25000] + "...[truncated]") if len(str(v)) > 25000 else v
+                for k, v in facts.items()
+            }
             fct = json.dumps(slim_facts, indent=2)
         else:
             fct = json.dumps(facts, indent=2) if facts else "None"

@@ -277,8 +277,8 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
     if v_read and str(v_read).lower() not in ("none", "null", "", "false", "[]"):
         out_map = read(sandbox, v_read, target_dir, role="Verifier")
         for t, text in out_map.items():
-            verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:2000]}")
-            state.absorb({f"Verified_File ({t})": text[:8000]})
+            verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:25000]}")
+            state.absorb({f"Verified File ({t})": text[:25000]})
 
     # Check flag validity
     flag = verif.get("flag")
@@ -314,7 +314,7 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
         findings = state.tree.get("findings", [])
         data = {**state.tree.get("data", {}), **state.store}
         slim_data = {
-            k: (str(v)[:500] + "...[truncated]") if len(str(v)) > 500 else v
+            k: (str(v)[:25000] + "...[truncated]") if len(str(v)) > 25000 else v
             for k, v in data.items()
         }
         discovered = (
@@ -365,8 +365,8 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                 out_map = read(sandbox, r_read, target_dir, role="Refiner")
                 if out_map:
                     for t, text in out_map.items():
-                        state.absorb({f"Inspection ({t})": text[:15000]})
-                        read_snippets.append(f"File {t}:\n{text[:15000]}")
+                        state.absorb({f"Inspection ({t})": text[:25000]})
+                        read_snippets.append(f"File {t}:\n{text[:25000]}")
                     if not r_cmds and not r_abort:
                         read_text = "Ground Truth Files Inspected:\n" + "\n".join(read_snippets)
                         r_obs = f"{r_obs}\n\n{read_text}" if r_obs else read_text
@@ -451,8 +451,8 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
         if vr_read and str(vr_read).lower() not in ("none", "null", "", "false", "[]"):
             out_map = read(sandbox, vr_read, target_dir, role="Verifier")
             for t, text in out_map.items():
-                verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:2000]}")
-                state.absorb({f"Verified file ({t})": text[:8000]})
+                verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:25000]}")
+                state.absorb({f"Verified file ({t})": text[:25000]})
 
         # Check flag validity
         flag = verif.get("flag")

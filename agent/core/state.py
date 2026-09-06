@@ -213,13 +213,12 @@ def view() -> str:
         lines.append("Facts: " + str(facts))
     return "\n".join(lines)
 
-def slim_store(max_val_len: int = 8000) -> dict:
+def slim_store(max_val_len: int = 25000) -> dict:
     slim = {}
     for k, v in store.items():
         s = str(v)
-        limit = max_val_len if not any(w in k.lower() for w in ("inspect", "source", "code", "file")) else 15000
-        if len(s) > limit:
-            slim[k] = s[:limit] + "...[truncated]"
+        if len(s) > max_val_len:
+            slim[k] = s[:max_val_len] + "...[truncated]"
         else:
             slim[k] = v
     return slim
@@ -228,6 +227,32 @@ def prune_store():
     global store
     for k in list(store.keys()):
         val_str = str(store[k])
-        limit = 15000 if any(w in k.lower() for w in ("inspect", "source", "code", "env", "file")) else 4000
-        if len(val_str) > limit:
-            store[k] = val_str[:limit] + "\n...[truncated]"
+        if len(val_str) > 25000:
+            store[k] = val_str[:25000] + "\n...[truncated]"
+
+def prune_history(dead_tactics: set):
+    global history, compressed
+    if not dead_tactics:
+        return
+    cleaned = []
+    seen_dead = set()
+    for entry in history:
+        tac = str(entry.get("tactic", "")).lower().strip()
+        matched = None
+        for dt in dead_tactics:
+            if dt and (dt in tac or tac in dt):
+                matched = dt
+                break
+        if matched:
+            if matched not in seen_dead:
+                seen_dead.add(matched)
+                cleaned.append({
+                    "step_id": f"FAILED_{matched.upper()}",
+                    "tactic": entry.get("tactic", matched),
+                    "plan": f"All attempts on {matched}",
+                    "observation": f"[FAILED HYPOTHESIS: {matched} completely rejected by target. Vector is DEAD. Do NOT propose variants.]",
+                    "result": "dead_end"
+                })
+        else:
+            cleaned.append(entry)
+    history = cleaned

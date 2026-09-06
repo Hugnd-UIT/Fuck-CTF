@@ -27,30 +27,38 @@ class PlannerAgent(PentestAgent):
         )
 
     def build(self, history, fails):
+        dead_tactics = set()
         notices = []
 
+        # Identify dead tactics
         for tactic, streak in fails.items():
-            if streak >= 3:
+            if streak >= 2:
+                dead_tactics.add(tactic.lower().strip())
                 notices.append(
                     {
-                        "step_id": f"NOTICE {tactic.upper()}",
+                        "step_id": f"FAILED_{tactic.upper()}",
                         "tactic": tactic,
-                        "plan": "N/A",
+                        "plan": f"All attempts on {tactic}",
                         "observation": (
-                            f"Tactic '{tactic}' has failed "
-                            f"{streak} times with current approach. "
-                            "Do NOT repeat the exact same payload or command. "
-                            "Pivot strategy: your core assumption is flawed. "
-                            "Re-examine source or decompilation, verify input constraints, "
-                            "explore alternative attack surfaces or primitives, "
-                            "and test an alternative hypothesis."
+                            f"[FAILED HYPOTHESIS] Tactic '{tactic}' has been completely REJECTED "
+                            f"by the target service after {streak} failed attempts. "
+                            "This attack vector is DEAD. Do NOT repeat or propose minor variants of this tactic. "
+                            "Pivot immediately to a completely new hypothesis or inspect source code from line 1."
                         ),
-                        "result": "pivot_required"
+                        "result": "dead_end"
                     }
                 )
 
-        # Get 8 history recently    
-        return notices + history[-8:]
+        # Filter discredited history
+        filtered = []
+        for entry in history:
+            e_tac = str(entry.get("tactic", "")).lower().strip()
+            if any(dt in e_tac or e_tac in dt for dt in dead_tactics if dt):
+                continue
+            filtered.append(entry)
+
+        # Return pruned history
+        return notices + filtered[-6:]
 
     def plan(
         self,
@@ -96,12 +104,11 @@ class PlannerAgent(PentestAgent):
 
         # Format facts
         if isinstance(facts, dict) and facts:
-            slim_facts = {}
-            
-            # Truncate facts to 4000 characters
-            for k, v in facts.items():
-                s = str(v)
-                slim_facts[k] = (s[:4000] + "...[truncated]") if len(s) > 4000 else v
+            # Truncate facts to 25000 characters
+            slim_facts = {
+                k: (str(v)[:25000] + "...[truncated]") if len(str(v)) > 25000 else v
+                for k, v in facts.items()
+            }
             facts_str = json.dumps(slim_facts, indent=2)
         elif facts:
             facts_str = json.dumps(facts, indent=2)

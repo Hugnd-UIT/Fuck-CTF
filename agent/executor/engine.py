@@ -73,12 +73,11 @@ class ExecutorAgent(PentestAgent):
 
             # Format facts
             if isinstance(facts, dict) and facts:
-                slim_facts = {}
-                for k, v in facts.items():
-                    s = str(v)
-
-                # Truncate facts to 4000 characters
-                    slim_facts[k] = (s[:4000] + "...[truncated]") if len(s) > 4000 else v
+                # Truncate facts to 25000 characters
+                slim_facts = {
+                    k: (str(v)[:25000] + "...[truncated]") if len(str(v)) > 25000 else v
+                    for k, v in facts.items()
+                }
                 facts_str = json.dumps(slim_facts, indent=2)
             else:
                 facts_str = json.dumps(facts, indent=2) if isinstance(facts, dict) else (str(facts) if facts else "{}")
