@@ -48,7 +48,8 @@ def run(sandbox, commands, category, timeout=30, workdir="/data"):
             with open(out_file, "w", encoding="utf-8", errors="ignore") as f:
                 f.write(content)
 
-            log_file = os.path.join(host_target, "log.txt")
+            # Write log
+            log_file = os.path.join(ws, "log.txt")
             with open(log_file, "a", encoding="utf-8", errors="ignore") as f:
                 f.write(content + "\n")
     except Exception:
@@ -72,6 +73,10 @@ def read(sandbox, target, base_dir=None):
     path = target if target.startswith("/") else f"{base}/{target}"
 
     script = f'''
+        if [ ! -e "{path}" ] && [ -e "/data/{target}" ]; then
+            path="/data/{target}"
+        fi
+
         if [ ! -e "{path}" ]; then
             echo "File '{path}' does not exist."
             echo "Available in {base}: $(ls -m "{base}" 2>/dev/null)"
