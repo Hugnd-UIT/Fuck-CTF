@@ -78,6 +78,7 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
     mem_str = "\n".join(memories) if memories else "No relevant memories found."
 
     # Call planner agent
+    state.alerts = [a for a in state.alerts if "Re-inspect via tool read" not in a]
     start = time.time()
     plan_res = planner.plan(
         history=state.history, fails=state.fails, target=target_str, tree=state.tree,
@@ -119,9 +120,31 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
     # Handle read inspection
     plan_read = plan_dict.get("read") or plan.get("read")
     if plan_read and str(plan_read).lower() not in ("none", "null", "", "false", "[]"):
-        is_repeat = state.history and state.history[-1].get("plan") == f"Read {plan_read}"
-        if not is_repeat:
-            out_map = read(sandbox, plan_read, target_dir, role="Planner")
+        # Format targets list
+        if isinstance(plan_read, list):
+            targets = [str(f).strip() for f in plan_read if str(f).strip()]
+        elif "," in str(plan_read):
+            targets = [p.strip() for p in str(plan_read).split(",") if p.strip()]
+        else:
+            targets = [str(plan_read).strip()]
+        targets = [t for t in targets if t and t.lower() not in ("none", "null", "", "false", "[]")]
+
+        # Filter out targets that have already been inspected
+        def _is_inspected(t, store):
+            t_norm = t.strip("'\"").replace("\\", "/").rstrip("/")
+            t_name = t_norm.split("/")[-1]
+            for k in store:
+                if k.startswith("Inspection (") or k.startswith("Target Source ("):
+                    inner = k[k.find("(") + 1 : k.rfind(")")].strip().replace("\\", "/").rstrip("/")
+                    if inner == t_norm or inner.split("/")[-1] == t_name:
+                        return True
+            return False
+
+        unread = [t for t in targets if not _is_inspected(t, state.store)]
+
+        # Only interrupt for read inspection if there are genuinely unread files
+        if unread:
+            out_map = read(sandbox, unread, target_dir, role="Planner")
             if out_map:
                 combined = []
                 for t, text in out_map.items():
@@ -132,12 +155,14 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
                 state.history.append({
                     "step_id": id,
                     "tactic": "Inspection",
-                    "plan": f"Read {plan_read}",
+                    "plan": f"Read {unread}",
                     "observation": obs[:25000],
                     "result": "pass",
                     "raw": obs[:25000]
                 })
-                return None, False, target_str, sub, "read"
+                recent_inspections = sum(1 for h in state.history[-2:] if h.get("tactic") == "Inspection")
+                if recent_inspections < 2:
+                    return None, False, target_str, sub, "read"
 
     # Handle RAG search
     plan_rag = plan_dict.get("rag")
@@ -574,7 +599,7 @@ def sum_loop(summarizer, sub, cmds, out, verif, tactic, state):
         if pin_str:
             state.compressed += f"\n\nPINNED SOURCE FILES\n{pin_str}"
             
-        state.alerts.append("[CONTEXT OVERFLOW] History truncated. Source files pinned above. Re-inspect via tool read before next action!")
+        state.alerts.append("[CONTEXT OVERFLOW] History truncated. Key source files are pinned above.")
 
     return obs
 

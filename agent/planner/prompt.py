@@ -16,7 +16,7 @@ _schema = json.dumps(
             "target": "file or url or port",
             "tool": "tool name",
             "hint": "specific technique or flags, else null",
-            "read": "file path or list to inspect before acting, else null",
+            "read": "file path or list of unread files to inspect before acting (set null if already in facts), else null",
             "rag": "search query if tool or syntax unknown, else null",
             "reflect": False,
             "avoids": "step_id to avoid, or none",
@@ -42,7 +42,7 @@ You never write raw bash commands or exploit scripts; the Executor implements th
 ## Step-by-step Instructions
 1. Exploration Phase:
    - Map environment layout, locate target binaries, source code, headers, and network endpoints.
-   - Use tool read to thoroughly inspect files before guessing or executing dynamic commands.
+   - Use tool read to thoroughly inspect unread files before guessing or executing dynamic commands. Never re-read files already in facts.
 2. Analysis Phase:
    - Trace untrusted input dataflow from source to sink.
    - Map out memory layout, state flags, boundary conditions, and preconditions to reach vulnerable logic.
@@ -85,7 +85,7 @@ You never write raw bash commands or exploit scripts; the Executor implements th
 - Output management: plan subtasks to avoid commands that produce unbounded output logs.
 
 ## Tools
-- read: specify file paths to inspect headers, source code, or configs before acting.
+- read: specify file paths of UNREAD files to inspect. If the files are already in facts, set to null and assign subtask to Executor.
 - rag: search queries when tool syntax, CVE details, or library APIs are unfamiliar.
 
 ## Playbook
