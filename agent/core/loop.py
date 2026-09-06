@@ -119,9 +119,8 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
     # Handle read inspection
     plan_read = plan_dict.get("read") or plan.get("read")
     if plan_read and str(plan_read).lower() not in ("none", "null", "", "false", "[]"):
-        read_key = "read_" + str(plan_read)
-        state.attempts[read_key] = state.attempts.get(read_key, 0) + 1
-        if state.attempts[read_key] <= 2:
+        is_repeat = state.history and state.history[-1].get("plan") == f"Read {plan_read}"
+        if not is_repeat:
             out_map = read(sandbox, plan_read, target_dir, role="Planner")
             if out_map:
                 combined = []
@@ -551,7 +550,7 @@ def ref_loop(reflector, sandbox, state, memory, target_str, time_left, plan_refl
     # Check reflection triggers
     count = len(state.history)
     max_fails = max(state.fails.values()) if state.fails else 0
-    reflect = plan_reflect or (r_abort and count > 3) or (fails >= 5) or (count > 8 and count % 8 == 0 and max_fails >= 3)
+    reflect = plan_reflect or (r_abort and count > 3) or (fails >= 3) or (count > 6 and count % 4 == 0 and max_fails >= 2)
     if not reflect:
         return False
 
@@ -568,7 +567,7 @@ def ref_loop(reflector, sandbox, state, memory, target_str, time_left, plan_refl
     adv = review.get("advice", "")
     tac = review.get("tactic", "")
 
-    # Handle ground truth inspection
+    # Handle ground inspection
     ref_read = review.get("read")
     if ref_read and str(ref_read).lower() not in ("none", "null", "", "false", "[]"):
         out_map = read(sandbox, ref_read, target_dir, role="Reflector")
@@ -580,10 +579,24 @@ def ref_loop(reflector, sandbox, state, memory, target_str, time_left, plan_refl
     else:
         agent_ui.reflect(ref_time, read=None)
 
-    # Handle RAG search
+    # Handle rag search
     ref_rag = review.get("rag")
     if ref_rag and str(ref_rag).lower() not in ("none", "null", ""):
         rag(ref_rag, memory, state)
+
+    # Blacklist failed hypothesis
+    rep = review.get("repeat")
+    if rep and str(rep).lower() not in ("none", "null", ""):
+        state.alerts.append(f"[FORBIDDEN] Discredited assumption: {rep}")
+        failed_list = state.tree.setdefault("failed", [])
+        if f"FORBIDDEN: {rep}" not in failed_list:
+            failed_list.append(f"FORBIDDEN: {rep}")
+
+    # Record root cause
+    reason_dict = review.get("reason", {}) if isinstance(review.get("reason"), dict) else {}
+    cause = reason_dict.get("cause", "")
+    if cause:
+        state.alerts.append(f"[ROOT CAUSE] {cause}")
 
     # Append advice alert
     if adv or tac:

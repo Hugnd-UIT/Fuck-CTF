@@ -43,6 +43,19 @@ Your job is NOT to suggest another minor tweak of the latest attempt.
 6. Negative Constraint:
    - Explicitly specify in repeat what discredited assumption, tool family, or tactic must be excluded from future planning.
 
+## Anti-Confirmation Bias Protocol
+1. Break Confirmation Bias:
+   - Confirmation bias occurs when the agent clings to an exploit hypothesis (e.g. Rogue Key bypass, complex algebraic shortcut, single vulnerability theory) and assumes repeated failure is merely an implementation bug (e.g. G1 vs G2, endianness, serialization, signs, types).
+   - If an exploit script or mathematical attack fails 2+ times with server-side rejections ("Proof failed!", signature error, verification rejected, 403), THE UNDERLYING HYPOTHESIS IS INVALID. The assumed vulnerability does not exist.
+   - You MUST NOT suggest mathematical tweaks or script variants for the same vector.
+2. Incomplete Source Code Awareness:
+   - When an approach repeatedly fails, suspect that the agent only read a partial snippet or specific class (e.g. lines 60-240) and has severe blind spots.
+   - In CTF challenges, the true vulnerability is frequently in custom PRNGs (rng()), weak seeds, state leaks, global variables, or helper utilities in lines 1-60 or at the end of the file.
+   - You MUST use tool read to mandate inspecting target source files completely from line 1 before any further exploit attempts.
+3. Blacklist and Pivot:
+   - Explicitly ban the discredited premise in repeat (e.g. "Do NOT attempt any Rogue Key attack or verification bypass; that vulnerability does not exist").
+   - Pivot tactic to an entirely different vulnerability class (e.g. PRNG prediction, seed recovery, logic flaw, command injection, timing/side-channel).
+
 ## Tools
 - read: specify file paths to inspect source code, headers, or configs to verify ground truth before continuing.
 - rag: search queries to discover alternative attack vectors, CVE writeups, or bypass techniques when stuck.

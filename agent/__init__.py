@@ -158,18 +158,22 @@ class Orchestrator:
         if not plan:
             return "Step completed", {"commands": [], "success": "none"}
 
+        # Extract plan parameters
         plan_dict = plan.get("plan", {}) if isinstance(plan.get("plan"), dict) else {}
         plan_reflect = plan_dict.get("reflect", False) or plan.get("reflect", False)
         tool_hint = plan_dict.get("hint", "") or plan.get("hint", "") or plan_dict.get("tool", "") or plan.get("tool", "")
         tactic = plan.get("reason", {}).get("hypothesis", {}).get("tactic", "Unknown") if isinstance(plan.get("reason"), dict) else "Unknown"
 
+        # Check subtask repetition
         norm = state.normalize(sub)
+        norm_tac = state.normalize(tactic)
         state.attempts[norm] = state.attempts.get(norm, 0) + 1
         r_abort = False
 
         if state.attempts[norm] > 3:
             agent_ui.breaker(state.attempts[norm])
             state.fails[tactic] = state.fails.get(tactic, 0) + 1
+            state.fails[norm_tac] = state.fails.get(norm_tac, 0) + 1
             self.fails += 1
             exec_json = {"commands": [], "success": "none"}
             verif = {"result": "fail", "knowledge": ["subtask repeated too many times!"]}
@@ -177,11 +181,13 @@ class Orchestrator:
             cmds = []
 
         else:
+            # Execute sandbox commands
             cmds, out, ind, exec_json = exec_loop(
                 self.executor, sandbox, target_str, sub, tool_hint,
                 state, memory, self.category, self.target_dir, target
             )
 
+            # Verify execution output
             verif, flag, is_rag = verif_loop(
                 self.verifier, sandbox, sub, cmds, ind, out,
                 plan, state, memory, self.target_dir, target
@@ -192,6 +198,7 @@ class Orchestrator:
             if flag:
                 return flag, {"captured": flag}
 
+            # Refine failed execution
             if verif.get("result") == "fail":
                 cmds, out, verif, flag, r_abort = refine_loop(
                     self.refiner, self.verifier, sandbox, target_str, sub,
@@ -201,17 +208,32 @@ class Orchestrator:
                 if flag:
                     return flag, {"captured": flag}
 
+            # Record failure state
             if verif.get("result") == "fail":
                 state.fails[tactic] = state.fails.get(tactic, 0) + 1
+                state.fails[norm_tac] = state.fails.get(norm_tac, 0) + 1
                 self.fails += 1
-            elif verif.get("result") in ("pass", "success", "partial"):
+            elif verif.get("result") in ("pass", "success"):
                 state.fails[tactic] = 0
+                state.fails[norm_tac] = 0
                 self.fails = 0
 
+            # Check confirmation bias
+            if self.fails >= 2 or state.fails.get(norm_tac, 0) >= 2:
+                state.alerts.append(
+                    f"[CONFIRMATION BIAS WARNING] Repeated failure on '{tactic}'. "
+                    "If the target service rejected the payload, the hypothesis is invalid. "
+                    "Do NOT tweak script parameters. Inspect source code from line 1 and pivot."
+                )
+                if self.fails >= 3 or state.fails.get(norm_tac, 0) >= 3:
+                    r_abort = True
+
+        # Summarize step output
         obs = sum_loop(
             self.summarizer, sub, cmds, out, verif, tactic, state
         )
 
+        # Review execution trajectory
         ref_loop(
             self.reflector, sandbox, state, memory, target_str,
             time_left, plan_reflect, r_abort, self.fails, self.target_dir
