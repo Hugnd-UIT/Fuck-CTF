@@ -41,8 +41,9 @@ class ExecutorAgent(PentestAgent):
         # Handle multi-turn dialogue
         if messages:
             msg_list = list(messages)
+            obs_content = str(obs) if obs else "[No command output]"
             turn_prompt = (
-                f"Observation:\n{obs}\n\n"
+                f"Observation:\n{obs_content}\n\n"
                 "Analyze this observation:\n"
                 "- If the subtask objective is accomplished, set \"done\": true and \"commands\": [].\n"
                 "- If an error occurred or further action is required, self-correct: set \"done\": false and output the next surgical commands."

@@ -42,8 +42,14 @@ class RefinerAgent(PentestAgent):
         # Handle multi-turn dialogue
         if messages:
             msg_list = list(messages)
+            obs_parts = []
+            if obs:
+                obs_parts.append(str(obs))
+            if discovered and "Ground Truth Files Inspected:" in discovered:
+                obs_parts.append(discovered)
+            obs_content = "\n\n".join(obs_parts) if obs_parts else "[No command output]"
             turn_prompt = (
-                f"Observation:\n{obs}\n\n"
+                f"Observation:\n{obs_content}\n\n"
                 "Analyze this observation:\n"
                 "- If the fix succeeded and the subtask is now accomplished, set \"done\": true and \"commands\": [].\n"
                 "- If the fix produced a new error or needs further calibration, self-correct: set \"done\": false and output corrected commands."

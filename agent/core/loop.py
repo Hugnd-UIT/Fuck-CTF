@@ -198,7 +198,7 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
             agent_ui.action(action)
 
         # Check completed turn
-        if turn > 0 and exec_json.get("done", False) and not cmds:
+        if exec_json.get("done", False) and not cmds:
             break
 
         # Check empty commands
@@ -323,6 +323,13 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
             + "\nData:\n" + (json.dumps(slim_data, indent=2) if slim_data else "{}")
         )
 
+        # Append verification feedback
+        if attempt > 0 and verif.get("result") in ("fail", "partial"):
+            v_reason = verif.get("reason", {}) if isinstance(verif.get("reason"), dict) else {}
+            unmet = v_reason.get("unmet") or v_reason.get("analysis", "")
+            if unmet:
+                discovered += f"\n\nPrevious Verification Feedback (Retry {attempt}): {unmet}"
+
         r_obs = None
         r_turn = 0
         r_messages = None
@@ -354,18 +361,19 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
 
             # Inspect ground truth
             r_read = r_data.get("read")
+            read_snippets = []
             if r_read and str(r_read).lower() not in ("none", "null", "", "false", "[]"):
                 out_map = read(sandbox, r_read, target_dir, role="Refiner")
                 if out_map:
-                    snippets = []
                     for t, text in out_map.items():
                         state.absorb({f"Inspection ({t})": text[:8000]})
-                        snippets.append(f"File {t}:\n{text[:4000]}")
+                        read_snippets.append(f"File {t}:\n{text[:4000]}")
                     if not r_cmds and not r_abort:
-                        more_discovered = discovered + "\n\nGround Truth Files Inspected:\n" + "\n".join(snippets)
+                        read_text = "Ground Truth Files Inspected:\n" + "\n".join(read_snippets)
+                        r_obs = f"{r_obs}\n\n{read_text}" if r_obs else read_text
                         r_res = refiner.refine(
                             target=target_str, subtask=sub, failed=last_cmds, error=last_out,
-                            history=state.compressed, discovered=more_discovered, obs=r_obs,
+                            history=state.compressed, discovered=discovered + "\n\n" + read_text, obs=r_obs,
                             messages=r_messages
                         )
                         r_messages = r_res.get("messages")
@@ -380,7 +388,7 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                 agent_ui.think(r_analysis)
 
             # Check completed turn
-            if r_turn > 0 and r_data.get("done", False) and not r_cmds:
+            if r_data.get("done", False) and not r_cmds:
                 break
 
             # Check abort condition
@@ -388,9 +396,10 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                 if r_abort:
                     err_reason = r_reason.get("error") or "dead end detected"
                     agent_ui.abort(err_reason)
+                    return last_cmds, last_out, {"result": "fail"}, None, r_abort
                 else:
                     agent_ui.empty()
-                return last_cmds, last_out, {"result": "fail"}, None, r_abort
+                    break
 
             # Display refined commands
             is_last_rturn = r_data.get("done", False) or (r_turn >= r_cap - 1)
@@ -410,7 +419,11 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                 break
 
             # Update observation context
-            r_obs = cur_out[-3000:] if cur_out.strip() else "[Command produced empty output]"
+            cmd_obs = cur_out[-3000:] if cur_out.strip() else "[Command produced empty output]"
+            if read_snippets:
+                r_obs = "Inspected Files:\n" + "\n".join(read_snippets) + f"\n\nCommand Output:\n{cmd_obs}"
+            else:
+                r_obs = cmd_obs
             r_turn += 1
 
         # Verify refined execution
