@@ -237,7 +237,7 @@ class Orchestrator:
 
         # Summarize step output
         obs = sum_loop(
-            self.summarizer, sub, cmds, out, verif, tactic, state
+            self.summarizer, sub, cmds, out, verif, tactic, state, sandbox, self.target_dir
         )
 
         # Review execution trajectory

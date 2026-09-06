@@ -10,7 +10,7 @@ _schema = json.dumps(
         },
         "tactic": "completely new attack surface or primitive, not a variant of what failed",
         "advice": "specific directive for Planner, starting with ground truth verification",
-        "read": "file path or list to inspect ground truth before continuing, else null",
+        "read": "file path or list to inspect ground truth (e.g. output.txt for latest run, log.txt for history, or target source files), else null",
         "rag": "search query for new exploit tactics or bypasses if stuck, else null",
         "repeat": "specific technique or flawed assumption to exclude going forward",
     },

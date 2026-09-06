@@ -16,7 +16,7 @@ _schema = json.dumps(
             "target": "file or url or port",
             "tool": "tool name",
             "hint": "specific technique or flags, else null",
-            "read": "file path or list of unread files to inspect before acting (set null if already in facts), else null",
+            "read": "file path or list to inspect (e.g. source files, output.txt for latest run, or log.txt for history), else null",
             "rag": "search query if tool or syntax unknown, else null",
             "reflect": False,
             "avoids": "step_id to avoid, or none",

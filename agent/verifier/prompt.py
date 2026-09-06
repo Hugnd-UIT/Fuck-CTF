@@ -9,7 +9,7 @@ _schema = json.dumps(
         },
         "result": "success or partial or fail",
         "knowledge": ["concise fact 1", "concise fact 2"],
-        "read": "file path or list to inspect created or extracted files for verification, else null",
+        "read": "file path or list to inspect (e.g. output.txt for latest raw script + output, log.txt for history, or created/source files), else null",
         "rag": "search query if error or signal unfamiliar, else null",
         "contradiction": False,
         "flag": "extracted flag string or false",

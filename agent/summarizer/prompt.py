@@ -17,6 +17,7 @@ _schema = json.dumps(
                 "<key>": "confirmed_by_direct_evidence or inferred or unverified_hypothesis"
             },
         },
+        "read": "file path or list to inspect if needed (e.g. output.txt or log.txt), else null",
         "summary": "1 to 2 sentence summary of concrete result of this step",
     },
     indent=2,
@@ -55,6 +56,9 @@ Merge newly observed evidence into the existing tree; never rebuild from scratch
 ## Rules and Constraints
 - Never erase valid existing entries in done, findings, or data.
 - Update stage, done, and failed only when directly supported by observable evidence.
+
+## Tools
+- read: specify file paths to inspect (e.g. output.txt for latest raw execution output or log.txt for history) if the step output was truncated or unclear, else null.
 
 ## Output Format
 Return ONLY the following JSON object. Fully populate every field. No markdown, no prose outside JSON.

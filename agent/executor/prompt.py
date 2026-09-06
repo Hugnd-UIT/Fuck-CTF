@@ -14,7 +14,7 @@ _schema = json.dumps(
         "success": "expected pattern in stdout or stderr proving success",
         "avoids": "step_id of failed command to avoid, or none",
         "rag": "search query if tool or API syntax unknown, else null",
-        "read": "file path or list to inspect if confused about implementation, else null",
+        "read": "file path or list to inspect (e.g. output.txt for latest raw run, log.txt for history, or source files), else null",
     },
     indent=2,
 )

@@ -14,7 +14,7 @@ _schema = json.dumps(
             "fixed command 2 if needed",
         ],
         "done": False,
-        "read": "file path or list to inspect if failure is from wrong assumption, else null",
+        "read": "file path or list to inspect (e.g. output.txt for latest raw script and output, log.txt for history, or source files), else null",
         "timeout": 30,
         "success": "expected stdout or stderr pattern proving the fix worked",
     },
