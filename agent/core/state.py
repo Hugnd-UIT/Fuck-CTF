@@ -179,10 +179,10 @@ def diff(data: dict) -> list:
         if normalize(str(old)) == normalize(str(v)):
             continue
             
-        # Flag changes
-        level = "CRITICAL" if k in locked else "WARNING"
+        if k not in locked:
+            continue
         out.append(
-            f"[{level}] CONTRADICTION: '{k}' was '{old}', "
+            f"[CRITICAL] CONTRADICTION: '{k}' was '{old}', "
             f"now '{v}'. Session-state may have changed!"
         )
     return out

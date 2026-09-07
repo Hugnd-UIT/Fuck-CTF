@@ -1,4 +1,12 @@
-from .core import node, line, error, clock
+from .core import node, line, error, clock, console, _current_color
+
+def empty_line():
+    from . import core
+    if core._last_was_empty:
+        return
+    core._last_was_empty = True
+    from rich.text import Text
+    console.print(Text("│  ", style=f"bold {core._current_color}") + Text("│", style=f"bold {core._current_color}"))
 
 # Log planning phase
 def plan(elapsed):
@@ -8,7 +16,7 @@ def plan(elapsed):
 def think(rationale=None, header=False):
     if rationale:
         line(f"├─ {rationale}")
-        line()
+        empty_line()
 
 # Log verifying phase
 def verify(elapsed):
@@ -17,10 +25,10 @@ def verify(elapsed):
 # Log current subtask
 def subtask(sub, rag=False):
     if not rag:
-        line()
         prefix = "└─ "
         line(f"{prefix}{sub}")
     else:
+        empty_line()
         prefix = "├─ "
         line(f"{prefix}Searching \"{sub}\"...")
 
@@ -33,7 +41,7 @@ def read(target, last=False):
         target_str = str(target)
     line(f"{branch}Reading \"{target_str}\"...")
     if not last:
-        line()
+        empty_line()
 
 # Log circuit breaker
 def breaker(attempts):
@@ -48,7 +56,7 @@ def action(act):
     if act:
         text = act if act.lower().startswith("action:") else f"Action: {act}"
         line(f"├─ {text}")
-        line()
+        empty_line()
 
 # Log stagnant execution
 def stagnant(attempts):
@@ -83,7 +91,7 @@ def command(cmd, last):
     from . import core
     core._last_was_empty = False
     if not last:
-        line()
+        empty_line()
 
 # Log verification success
 def passed(know=None):

@@ -224,15 +224,15 @@ class Orchestrator:
                 self.fails = 0
 
             # Check confirmation bias
-            if self.fails >= 2 or state.fails.get(norm_tac, 0) >= 2:
+            if self.fails >= 5 or state.fails.get(norm_tac, 0) >= 5:
                 state.alerts.append(
                     f"[CONFIRMATION BIAS WARNING] Repeated failure on '{tactic}'. "
                     "If the target service rejected the payload, the hypothesis is invalid. "
                     "Do NOT tweak script parameters. Inspect source code from line 1 and pivot."
                 )
-                dead_set = {t.lower().strip() for t, s in state.fails.items() if s >= 2}
+                dead_set = {t.lower().strip() for t, s in state.fails.items() if s >= 5}
                 state.prune_history(dead_set)
-                if self.fails >= 3 or state.fails.get(norm_tac, 0) >= 3:
+                if self.fails >= 6 or state.fails.get(norm_tac, 0) >= 6:
                     r_abort = True
 
         # Summarize step output
