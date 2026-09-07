@@ -95,7 +95,7 @@ def rag(query, memory, state):
 
 
 def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, time_left):
-    desc = target.get("description", "") if isinstance(target, dict) else str(target)
+    desc = (target.get("desc") or target.get("description", "")) if isinstance(target, dict) else str(target)
     target_str = format_target(target, target_dir)
 
     next_str = " ".join(state.tree.get("next", [])) if isinstance(state.tree.get("next"), list) else str(state.tree.get("next", ""))
@@ -502,7 +502,7 @@ def sum_loop(summarizer, sub, cmds, out, verif, tactic, state, sandbox=None, tar
 def ref_loop(reflector, sandbox, state, memory, target_str, time_left, plan_reflect, r_abort, fails, target_dir):
     count = len(state.history)
     max_fails = max(state.fails.values()) if state.fails else 0
-    reflect = plan_reflect or (r_abort and count > 3) or (fails >= 3) or (count > 6 and count % 4 == 0 and max_fails >= 2)
+    reflect = plan_reflect or (r_abort and count > 3) or (fails >= 3) or (count > 5 and count % 3 == 0)
     if not reflect:
         return False
 

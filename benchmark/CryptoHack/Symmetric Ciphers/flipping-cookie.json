@@ -37,7 +37,7 @@
         "temperature": 0.3,
         "top": 1.0,
         "sample": false,
-        "tokens": 1024
+        "tokens": 2048
     },
     "reflector": {
         "model": "deepseek/deepseek-v4-pro",

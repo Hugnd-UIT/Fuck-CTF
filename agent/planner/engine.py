@@ -57,8 +57,8 @@ class PlannerAgent(PentestAgent):
                 continue
             filtered.append(entry)
 
-        # Return pruned history
-        return notices + filtered[-6:]
+        # Get 10 history recently
+        return notices + filtered[-10:]
 
     def plan(
         self,

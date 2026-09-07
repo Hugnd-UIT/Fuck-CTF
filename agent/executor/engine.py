@@ -57,8 +57,8 @@ class ExecutorAgent(PentestAgent):
             # Format history
             slim = []
 
-            # Get 5 history recently
-            for entry in (history[-5:] if isinstance(history, list) else []):
+            # Get 8 history recently
+            for entry in (history[-8:] if isinstance(history, list) else []):
                 item = {}
                 for k, v in entry.items():
 

@@ -80,7 +80,7 @@ class Orchestrator:
             temperature=s.get("temperature", 0.3), 
             top=s.get("top", 1.0), 
             sample=s.get("sample", False), 
-            tokens=s.get("tokens", 1024)
+            tokens=s.get("tokens", 2048)
         )
 
         self.reflector = ReflectorAgent(
