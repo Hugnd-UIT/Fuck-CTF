@@ -32,6 +32,8 @@ def subtask(sub, rag=False, last=False):
         line(f"{prefix}Searching \"{sub}\"...")
         if not last:
             empty_line()
+        from . import rag as rag_ui
+        rag_ui.set_last(last)
 
 # Log reading phase
 def read(target, last=False):
@@ -156,7 +158,7 @@ def summarize(elapsed):
 
 # Log state contradictions
 def contradict(count):
-    line(f"└─ Contradiction: {count} item(s) vanished or changed", color="red")
+    line(f"└─ Contradiction: {count} item(s) vanished or changed")
 
 # Log clean state
 def clean():

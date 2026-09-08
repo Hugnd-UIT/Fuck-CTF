@@ -195,7 +195,8 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
         # Handle rag query
         exec_rag = exec_json.get("rag")
         if exec_rag and str(exec_rag).lower() not in ("none", "null", ""):
-            rag(exec_rag, memory, state)
+            is_last = (exec_json.get("done", False) or (turn >= cap - 1))
+            rag(exec_rag, memory, state, last=is_last)
 
         # Handle read inspection
         exec_read = exec_json.get("read")
@@ -257,7 +258,7 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
     v_rag = verif.get("rag")
     if v_rag and str(v_rag).lower() not in ("none", "null", ""):
         agent_ui.verify(time.time() - v_start)
-        rag(v_rag, memory, state)
+        rag(v_rag, memory, state, last=True)
         return verif, None, True
 
     # Handle read verification

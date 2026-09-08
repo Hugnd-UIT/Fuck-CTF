@@ -1,15 +1,10 @@
 from .core import line, error, node, clock
 
-_last_empty = False
+_is_last = False
 
-def empty_line():
-    global _last_empty
-    if _last_empty:
-        return
-    _last_empty = True
-    from . import core
-    from rich.text import Text
-    core.console.print(Text("│  │  │", style=f"bold {core._current_color}"))
+def set_last(last: bool = False):
+    global _is_last
+    _is_last = last
 
 # Log database error
 def db(err):
@@ -22,41 +17,30 @@ def retrieve(elapsed, err):
 
 # Log search start
 def search():
-    global _last_empty
-    _last_empty = False
-    empty_line()
+    pass
 
 # Log search complete
 def done():
-    global _last_empty
-    _last_empty = False
-    line("│  └─ Completed!")
+    tree = "" if _is_last else "│"
+    line("   └─ Completed!", tree=tree)
 
 # Log web query
 def duckduckgo(query):
-    global _last_empty
-    _last_empty = False
-    line(f"│  ├─ DuckDuckGo: {query}")
-    empty_line()
+    tree = "" if _is_last else "│"
+    line(f"   ├─ DuckDuckGo: {query}", tree=tree)
 
 # Log URL scrape
 def firecrawl(url):
-    global _last_empty
-    _last_empty = False
+    tree = "" if _is_last else "│"
     display_url = url if len(url) <= 70 else url[:67] + "..."
-    line(f"│  ├─ Firecrawl: {display_url}")
-    empty_line()
+    line(f"   ├─ Firecrawl: {display_url}", tree=tree)
 
 # Log API retry
 def retry(attempt, retries):
-    global _last_empty
-    _last_empty = False
-    line(f"│  ├─ Firecrawl retry: {attempt}/{retries}")
-    empty_line()
+    tree = "" if _is_last else "│"
+    line(f"   ├─ Firecrawl retry: {attempt}/{retries}", tree=tree)
 
 # Log search error
 def fail(source, msg):
-    global _last_empty
-    _last_empty = False
-    line(f"│  ├─ {source}: {msg}")
-    empty_line()
+    tree = "" if _is_last else "│"
+    line(f"   ├─ {source}: {msg}", tree=tree)
