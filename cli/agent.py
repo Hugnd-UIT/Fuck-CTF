@@ -94,23 +94,33 @@ def command(cmd, last):
     if not last:
         empty_line()
 
+def _log_verif_body(final_msg=None, read=None):
+    msg_str = str(final_msg).strip() if final_msg is not None else None
+    if read:
+        target_str = ", ".join(str(t) for t in read) if isinstance(read, list) else str(read)
+        if msg_str:
+            line(f"├─ Reading \"{target_str}\"...")
+            empty_line()
+            line(f"└─ {msg_str}")
+        else:
+            line(f"└─ Reading \"{target_str}\"...")
+    elif msg_str:
+        line(f"└─ {msg_str}")
+
 # Log verification success
-def passed(know=None):
+def passed(know=None, read=None):
     node("Verifying...", "[ Pass ]", "green")
-    if know:
-        line(f"└─ {know}")
+    _log_verif_body(final_msg=know, read=read)
 
 # Log verification partial
-def partial(reason=None):
+def partial(reason=None, read=None):
     node("Verifying...", "[ Partial ]", "yellow")
-    if reason:
-        line(f"└─ {reason}")
+    _log_verif_body(final_msg=reason, read=read)
 
 # Log verification failure
-def failed(reason=None):
+def failed(reason=None, read=None):
     node("Verifying...", "[ Fail ]", "red")
-    if reason:
-        line(f"└─ {reason}")
+    _log_verif_body(final_msg=reason, read=read)
 
 # Log verified knowledge
 def knowledge(know):

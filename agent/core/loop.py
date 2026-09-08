@@ -260,35 +260,31 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
         rag(v_rag, memory, state)
         return verif, None, True
 
-    v_reason = as_dict(verif, "reason")
-    res = str(verif.get("result", "")).lower()
-    if res in ("pass", "success"):
-        agent_ui.passed()
-    elif res == "partial":
-        err_msg = v_reason.get("unmet") or v_reason.get("analysis")
-        agent_ui.partial(err_msg)
-    else:
-        err_msg = v_reason.get("unmet") or v_reason.get("analysis")
-        agent_ui.failed(err_msg)
-
     # Handle read verification
     v_read = verif.get("read")
-    if parse_targets(v_read):
-        out_map = read(sandbox, v_read, target_dir, role="Verifier")
+    v_targets = parse_targets(v_read)
+    if v_targets:
+        out_map = read(sandbox, v_read, target_dir, role="Verifier", silent=True)
         for t, text in out_map.items():
             verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:25000]}")
             state.absorb({f"Verified File ({t})": text[:25000]})
 
+    v_reason = as_dict(verif, "reason")
+    res = str(verif.get("result", "")).lower()
+    if res in ("pass", "success"):
+        know = verif.get("knowledge", [])
+        final_msg = know[0] if know else f"Evaluated {len(cmds)} command(s)"
+        agent_ui.passed(final_msg, read=v_targets)
+    elif res == "partial":
+        err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+        agent_ui.partial(err_msg, read=v_targets)
+    else:
+        err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+        agent_ui.failed(err_msg, read=v_targets)
+
     flag = verif.get("flag")
     if flag and str(flag).lower() not in ("false", "none", "null", ""):
         return verif, str(flag).strip(), False
-
-    if verif.get("result") in ("pass", "success"):
-        know = verif.get("knowledge", [])
-        if know:
-            agent_ui.knowledge(know[0])
-        else:
-            agent_ui.evaluated(len(cmds))
 
     return verif, None, False
 
@@ -402,25 +398,27 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
         )
         verif = as_dict(v_res.get("verify_data"))
 
-        res = str(verif.get("result", "")).lower()
-        if res in ("pass", "success"):
-            know = verif.get("knowledge", [])
-            agent_ui.passed(know[0] if know else None)
-        elif res == "partial":
-            v_reason = as_dict(verif, "reason")
-            err_msg = v_reason.get("unmet") or v_reason.get("analysis")
-            agent_ui.partial(err_msg)
-        else:
-            v_reason = as_dict(verif, "reason")
-            err_msg = v_reason.get("unmet") or v_reason.get("analysis")
-            agent_ui.failed(err_msg)
-
         vr_read = verif.get("read")
-        if parse_targets(vr_read):
-            out_map = read(sandbox, vr_read, target_dir, role="Verifier")
+        vr_targets = parse_targets(vr_read)
+        if vr_targets:
+            out_map = read(sandbox, vr_read, target_dir, role="Verifier", silent=True)
             for t, text in out_map.items():
                 verif.setdefault("knowledge", []).append(f"File {t}:\n{text[:25000]}")
                 state.absorb({f"Verified file ({t})": text[:25000]})
+
+        res = str(verif.get("result", "")).lower()
+        if res in ("pass", "success"):
+            know = verif.get("knowledge", [])
+            final_msg = know[0] if know else f"Evaluated {len(last_cmds)} command(s)"
+            agent_ui.passed(final_msg, read=vr_targets)
+        elif res == "partial":
+            v_reason = as_dict(verif, "reason")
+            err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+            agent_ui.partial(err_msg, read=vr_targets)
+        else:
+            v_reason = as_dict(verif, "reason")
+            err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+            agent_ui.failed(err_msg, read=vr_targets)
 
         flag = verif.get("flag")
         if flag and str(flag).lower() not in ("false", "none", "null", ""):
