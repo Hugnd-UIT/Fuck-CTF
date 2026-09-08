@@ -20,7 +20,7 @@ def think(rationale=None, header=False):
 
 # Log verifying phase
 def verify(elapsed):
-    node("Verifying...", clock(elapsed), "red")
+    node("Verifying...", clock(elapsed), "yellow")
 
 # Log current subtask
 def subtask(sub, rag=False, last=False):
@@ -99,6 +99,12 @@ def passed(know=None):
     node("Verifying...", "[ Pass ]", "green")
     if know:
         line(f"└─ {know}")
+
+# Log verification partial
+def partial(reason=None):
+    node("Verifying...", "[ Partial ]", "yellow")
+    if reason:
+        line(f"└─ {reason}")
 
 # Log verification failure
 def failed(reason=None):

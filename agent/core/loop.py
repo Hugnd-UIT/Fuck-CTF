@@ -260,8 +260,12 @@ def verif_loop(verifier, sandbox, sub, cmds, ind, out, plan, state, memory, targ
         return verif, None, True
 
     v_reason = as_dict(verif, "reason")
-    if verif.get("result") in ("pass", "success"):
+    res = str(verif.get("result", "")).lower()
+    if res in ("pass", "success"):
         agent_ui.passed()
+    elif res == "partial":
+        err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+        agent_ui.partial(err_msg)
     else:
         err_msg = v_reason.get("unmet") or v_reason.get("analysis")
         agent_ui.failed(err_msg)
@@ -397,9 +401,14 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
         )
         verif = as_dict(v_res.get("verify_data"))
 
-        if verif.get("result") in ("pass", "success"):
+        res = str(verif.get("result", "")).lower()
+        if res in ("pass", "success"):
             know = verif.get("knowledge", [])
             agent_ui.passed(know[0] if know else None)
+        elif res == "partial":
+            v_reason = as_dict(verif, "reason")
+            err_msg = v_reason.get("unmet") or v_reason.get("analysis")
+            agent_ui.partial(err_msg)
         else:
             v_reason = as_dict(verif, "reason")
             err_msg = v_reason.get("unmet") or v_reason.get("analysis")

@@ -203,8 +203,8 @@ class Orchestrator:
             if flag:
                 return flag, {"captured": flag}
 
-            # Refine failed execution
-            if verif.get("result") == "fail":
+            # Refine failed/partial execution
+            if verif.get("result") in ("fail", "partial"):
                 cmds, out, verif, flag, r_abort = refine_loop(
                     self.refiner, self.verifier, sandbox, target_str, sub,
                     cmds, out, ind, plan, state, self.category,
