@@ -55,13 +55,14 @@ def as_dict(val, key=None):
     return val if isinstance(val, dict) else {}
 
 
-def read(sandbox, target, base_dir=None, role=None, last=False):
+def read(sandbox, target, base_dir=None, role=None, last=False, silent=False):
     base = base_dir or "/data"
     targets = parse_targets(target)
     if not targets:
         return {}
 
-    agent_ui.read(targets, last=last)
+    if not silent:
+        agent_ui.read(targets, last=last)
     out_map = {}
     for t in targets:
         if any(b in t.lower() for b in ("venv", ".venv", "site-packages", "node_modules")):
@@ -72,8 +73,8 @@ def read(sandbox, target, base_dir=None, role=None, last=False):
     return out_map
 
 
-def inspect_files(sandbox, target, target_dir, state, role="Inspection", alert_prefix=None):
-    out_map = read(sandbox, target, target_dir, role=role)
+def inspect_files(sandbox, target, target_dir, state, role="Inspection", alert_prefix=None, last=False, silent=False):
+    out_map = read(sandbox, target, target_dir, role=role, last=last, silent=silent)
     if not out_map:
         return {}
     for t, text in out_map.items():
@@ -467,10 +468,14 @@ def sum_loop(summarizer, sub, cmds, out, verif, tactic, state, sandbox=None, tar
 
     res = summarizer.summarize(tree=state.tree, step=step)
     sum_data = res["summary_data"]
+    sum_time = time.time() - t0
+
+    agent_ui.summarize(sum_time)
 
     sum_read = sum_data.get("read")
-    if parse_targets(sum_read) and sandbox:
-        inspect_files(sandbox, sum_read, target_dir or "/data", state, role="Summarizer")
+    targets = parse_targets(sum_read) if sandbox else []
+    if targets:
+        inspect_files(sandbox, targets, target_dir or "/data", state, role="Summarizer", last=False)
 
     new_tree = sum_data.get("tree", {})
     new_data = new_tree.get("data", {})
@@ -481,7 +486,6 @@ def sum_loop(summarizer, sub, cmds, out, verif, tactic, state, sandbox=None, tar
     state.snap()
     state.prune_store()
 
-    agent_ui.summarize(time.time() - t0)
     if state.alerts:
         agent_ui.contradict(len(state.alerts))
     else:
@@ -530,15 +534,23 @@ def ref_loop(reflector, sandbox, state, memory, target_str, time_left, plan_refl
     tac = review.get("tactic", "")
 
     ref_read = review.get("read")
-    if parse_targets(ref_read):
-        out_map = inspect_files(sandbox, ref_read, target_dir, state, role="Reflector", alert_prefix="REFLECTOR READ")
-        agent_ui.reflect(ref_time, read=list(out_map.keys()) if out_map else None)
-    else:
-        agent_ui.reflect(ref_time, read=None)
-
+    targets = parse_targets(ref_read)
     ref_rag = review.get("rag")
-    if ref_rag and str(ref_rag).lower() not in ("none", "null", ""):
-        rag(ref_rag, memory, state)
+    has_rag = bool(ref_rag and str(ref_rag).lower() not in ("none", "null", ""))
+    has_read = bool(targets)
+
+    # Output Reflecting node first
+    has_children = has_read or has_rag
+    agent_ui.reflect(ref_time, has_children=has_children)
+
+    # Inspect files under Reflecting node
+    if has_read:
+        is_last = not has_rag
+        inspect_files(sandbox, targets, target_dir, state, role="Reflector", alert_prefix="REFLECTOR READ", last=is_last)
+
+    # Search RAG under Reflecting node
+    if has_rag:
+        rag(ref_rag, memory, state, last=True)
 
     rep = review.get("repeat")
     if rep and str(rep).lower() not in ("none", "null", ""):

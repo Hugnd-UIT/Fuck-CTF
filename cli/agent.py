@@ -143,22 +143,25 @@ def abort(reason=None):
 # Log summarize phase
 def summarize(elapsed):
     node("Summarizing...", clock(elapsed), "green")
-    line("Updating...")
 
 # Log state contradictions
 def contradict(count):
-    error(f"Contradiction: {count} item(s) vanished or changed")
+    line(f"└─ Contradiction: {count} item(s) vanished or changed", color="red")
 
 # Log clean state
 def clean():
     line("└─ ✓ No contradictions detected")
 
 # Log reflection phase
-def reflect(elapsed, read=None):
+def reflect(elapsed, has_children=False, read=None):
     node("Reflecting...", clock(elapsed), "magenta")
     if read:
         read_str = ", ".join(str(r) for r in read) if isinstance(read, list) else str(read)
         line("├─ Stuck state analyzed and replanned")
+        empty_line()
         line(f"└─ Reading \"{read_str}\"...")
+    elif has_children:
+        line("├─ Stuck state analyzed and replanned")
+        empty_line()
     else:
         line("└─ Stuck state analyzed and replanned")
