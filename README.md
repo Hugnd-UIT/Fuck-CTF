@@ -888,7 +888,6 @@ cp .env_example .env
 |:---|:---|:---:|
 | `OPENAI_API_KEY` | OpenAI key, or an OpenRouter / DeepSeek proxy key | ✅ |
 | `OPENAI_BASE_URL` | API base URL, needed for proxy providers | ✅ |
-| `GITHUB_API_KEY` | GitHub Personal Access Token for RAG search | ✅ |
 | `FIRECRAWL_API_KEY` | Firecrawl API key for web scraping | ✅ |
 | `HF_TOKEN` | Hugging Face token, local models only | Optional |
 | `CUDA_VISIBLE_DEVICES` | GPU IDs for local model inference, e.g. `0,1` | Optional |
