@@ -23,14 +23,15 @@ def verify(elapsed):
     node("Verifying...", clock(elapsed), "red")
 
 # Log current subtask
-def subtask(sub, rag=False):
+def subtask(sub, rag=False, last=False):
     if not rag:
         prefix = "└─ "
         line(f"{prefix}{sub}")
     else:
-        empty_line()
-        prefix = "├─ "
+        prefix = "└─ " if last else "├─ "
         line(f"{prefix}Searching \"{sub}\"...")
+        if not last:
+            empty_line()
 
 # Log reading phase
 def read(target, last=False):

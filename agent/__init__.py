@@ -119,7 +119,7 @@ class Orchestrator:
         self.fails = 0
 
         state.init(self.book)
-        memory.init()
+        memory.init(model=s.get("model") or p.get("model"))
 
     @property
 

@@ -55,13 +55,13 @@ def as_dict(val, key=None):
     return val if isinstance(val, dict) else {}
 
 
-def read(sandbox, target, base_dir=None, role=None):
+def read(sandbox, target, base_dir=None, role=None, last=False):
     base = base_dir or "/data"
     targets = parse_targets(target)
     if not targets:
         return {}
 
-    agent_ui.read(targets, last=False)
+    agent_ui.read(targets, last=last)
     out_map = {}
     for t in targets:
         if any(b in t.lower() for b in ("venv", ".venv", "site-packages", "node_modules")):
@@ -83,11 +83,11 @@ def inspect_files(sandbox, target, target_dir, state, role="Inspection", alert_p
     return out_map
 
 
-def rag(query, memory, state):
+def rag(query, memory, state, last=False):
     if not query or str(query).lower() in ("none", "null", ""):
         return None
 
-    agent_ui.subtask(query, rag=True)
+    agent_ui.subtask(query, rag=True, last=last)
     rag_out = memory.execute(query, len(state.history))
     if rag_out:
         state.history.append(rag_out)
@@ -139,7 +139,9 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
     unread = [t for t in targets if not is_inspected(t, state.store)]
 
     if unread:
-        out_map = read(sandbox, unread, target_dir, role="Planner")
+        recent_inspections = sum(1 for h in state.history[-2:] if h.get("tactic") == "Inspection")
+        is_last = (recent_inspections < 1)
+        out_map = read(sandbox, unread, target_dir, role="Planner", last=is_last)
         if out_map:
             combined = []
             for t, text in out_map.items():
@@ -161,7 +163,7 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
     # Handle RAG search
     plan_rag = plan_dict.get("rag")
     if plan_rag and str(plan_rag).lower() not in ("none", "null", ""):
-        rag(plan_rag, memory, state)
+        rag(plan_rag, memory, state, last=True)
         return None, False, target_str, sub, "rag"
 
     agent_ui.subtask(sub, rag=False)
