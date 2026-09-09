@@ -152,6 +152,10 @@ class Orchestrator:
         )
 
         if done:
+            plan_dict = plan.get("plan", {}) if isinstance(plan.get("plan"), dict) else {}
+            captured = plan_dict.get("captured") or plan.get("captured")
+            if captured and str(captured).lower() not in ("none", "null", "false", ""):
+                return "Goal Achieved", {"captured": str(captured).strip()}
             return "Goal Achieved", plan
 
         if action == "read":

@@ -50,13 +50,13 @@
     "sandbox": "ctf",
     "timeout": 60,
     "limit": 2000,
-    "flag": "crypto{FLAG}",
+    "flag": "247CTF{32-hex}",
     "target": {
         "category": "crypto",
-        "desc": "If you want my flag, you better vote for Pedro! Can you sign your vote to the server as Alice?",
+        "desc": "We put together a substitution-flag-permutation network. We encrypted the flag with the network, but forgot to write down the key. Can you reverse the network and recover the flag plaintext?",
         "dir": "/data",
-        "host": "socket.cryptohack.org",
-        "port": 13375
+        "host": "",
+        "port": ""
     },
     "cmd_time": 30,
     "max_time": 600

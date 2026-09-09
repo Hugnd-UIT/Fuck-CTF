@@ -48,15 +48,15 @@
         "tokens": 4096
     },
     "sandbox": "ctf",
-    "timeout": 300,
+    "timeout": 60,
     "limit": 2000,
-    "flag": "crypto{FLAG}",
+    "flag": "247CTF{32-hex}",
     "target": {
         "category": "crypto",
-        "desc": "This oracle lies! Can you still recover the message XOR are you going to have to give up?",
+        "desc": "We XOR encrypted this file, but forgot to save the password. Can you recover the password for us and find the flag?",
         "dir": "/data",
-        "host": "socket.cryptohack.org",
-        "port": 13423
+        "host": "",
+        "port": ""
     },
     "cmd_time": 30,
     "max_time": 600
