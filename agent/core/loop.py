@@ -180,7 +180,8 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
     last_cmds, last_out, last_ind, last_exec_json = [], "", "", exec_json
 
     while turn < cap:
-        agent_ui.execute()
+        if turn == 0:
+            agent_ui.execute()
 
         res = executor.execute(
             target=target_str, subtask=sub, tool_hint=tool_hint,
@@ -213,12 +214,15 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
             break
 
         if not cmds:
-            agent_ui.empty()
+            if turn == 0:
+                agent_ui.empty()
             break
 
-        is_last_turn = exec_json.get("done", False) or (turn >= cap - 1)
+        if turn > 0:
+            agent_ui.execute(turn=turn)
+
         for i, cmd in enumerate(cmds):
-            agent_ui.command(cmd, is_last_turn and (i == len(cmds) - 1))
+            agent_ui.command(cmd, i == len(cmds) - 1)
 
         cur_str = json.dumps(cmds)
         if cur_str == prev:
@@ -370,12 +374,12 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                     err_reason = r_reason.get("error") or "dead end detected"
                     agent_ui.abort(err_reason)
                     return last_cmds, last_out, {"result": "fail"}, None, r_abort
-                agent_ui.empty()
+                if r_turn == 0:
+                    agent_ui.empty()
                 break
 
-            is_last_rturn = r_data.get("done", False) or (r_turn >= r_cap - 1)
             for i, cmd in enumerate(r_cmds):
-                agent_ui.command(cmd, is_last_rturn and (i == len(r_cmds) - 1))
+                agent_ui.command(cmd, i == len(r_cmds) - 1)
 
             timeout = r_data.get("timeout", exec_json.get("timeout", 30))
             cur_out = sb.run(sandbox, r_cmds, category, timeout, workdir=target_dir)

@@ -51,8 +51,11 @@ def breaker(attempts):
     error(f"Guard: subtask repeated {attempts}x — skipped")
 
 # Log execution phase
-def execute():
-    node("Executing...", "", "magenta")
+def execute(turn=0):
+    if turn and turn > 0:
+        node("Executing...", f"Retry {turn}", "magenta")
+    else:
+        node("Executing...", "", "magenta")
 
 # Log action phase
 def action(act):
