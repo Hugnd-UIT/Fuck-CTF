@@ -1,12 +1,4 @@
-from .core import node, line, error, clock, console, _current_color
-
-def empty_line():
-    from . import core
-    if core._last_was_empty:
-        return
-    core._last_was_empty = True
-    from rich.text import Text
-    console.print(Text("│  ", style=f"bold {core._current_color}") + Text("│", style=f"bold {core._current_color}"))
+from .core import node, line, error, clock, console, _current_color, empty_line, get_wrap_width
 
 # Log planning phase
 def plan(elapsed):
@@ -24,14 +16,13 @@ def verify(elapsed):
 
 # Log current subtask
 def subtask(sub, rag=False, last=False):
+    branch = "└─ " if last else "├─ "
     if not rag:
-        prefix = "└─ "
-        line(f"{prefix}{sub}")
-    else:
-        prefix = "└─ " if last else "├─ "
-        line(f"{prefix}Searching \"{sub}\"...")
+        line(f"{branch}{sub}")
         if not last:
             empty_line()
+    else:
+        line(f"{branch}Searching \"{sub}\"...")
         from . import rag as rag_ui
         rag_ui.set_last(last)
 
@@ -48,14 +39,12 @@ def read(target, last=False):
 
 # Log circuit breaker
 def breaker(attempts):
-    error(f"Guard: subtask repeated {attempts}x — skipped")
+    node("Guard", f"Repeated {attempts}x", "red")
+    line("└─ Subtask repeated too many times — skipped", color="red")
 
 # Log execution phase
 def execute(turn=0):
-    if turn and turn > 0:
-        node("Executing...", f"Retry {turn}", "magenta")
-    else:
-        node("Executing...", "", "magenta")
+    node("Executing...", "", "magenta")
 
 # Log action phase
 def action(act):
@@ -66,41 +55,55 @@ def action(act):
 
 # Log stagnant execution
 def stagnant(attempts):
-    error(f"Guard: commands repeated {attempts}x — stopped")
+    node("Guard", f"Stagnant {attempts}x", "red")
+    line("└─ Commands repeated with no progress — stopped", color="red")
 
 # Log executed command
 def command(cmd, last):
-    from .core import console, _current_color, line
+    from .core import console, _current_color, get_wrap_width, empty_line
     from rich.text import Text
-    import shutil, textwrap
+    import textwrap
 
     cmd = cmd.strip()
     rows = cmd.split('\n')
     branch = "└─ " if last else "├─ "
     cont_prefix = "     " if last else "│    "
 
-    term_cols = shutil.get_terminal_size().columns
-    wrap_width = max(68, min(term_cols - 10, 80))
+    wrap_text_width = max(45, get_wrap_width() - 8)
 
     # First line
-    head = textwrap.wrap(f"{branch}$ {rows[0]}", width=wrap_width) or [f"{branch}$ {rows[0]}"]
+    head = textwrap.wrap(rows[0], width=wrap_text_width) or [rows[0]]
     for i, chunk in enumerate(head):
-        prefix = cont_prefix if i > 0 else ""
-        console.print(Text("│  ", style=f"bold {_current_color}") + Text(f"{prefix}{chunk}", style=f"bold {_current_color}"))
+        prefix = f"{branch}$ " if i == 0 else cont_prefix
+        console.print(
+            Text("│  ", style=f"bold {_current_color}") +
+            Text(f"{prefix}{chunk}", style=f"bold {_current_color}")
+        )
 
     # Heredoc body
     for row in rows[1:]:
-        wrapped = textwrap.wrap(row, width=wrap_width, drop_whitespace=False) or [""]
+        wrapped = textwrap.wrap(row, width=wrap_text_width, drop_whitespace=False) or [row]
         for chunk in wrapped:
-            console.print(Text("│  ", style=f"bold {_current_color}") + Text(f"{cont_prefix}{chunk}", style=f"bold {_current_color}"))
+            console.print(
+                Text("│  ", style=f"bold {_current_color}") +
+                Text(f"{cont_prefix}{chunk}", style=f"bold {_current_color}")
+            )
 
     from . import core
     core._last_was_empty = False
+    core._last_node = None
     if not last:
         empty_line()
 
 def _log_verif_body(final_msg=None, read=None):
     msg_str = str(final_msg).strip() if final_msg is not None else None
+    if msg_str:
+        lines = msg_str.splitlines()
+        if len(lines) > 4:
+            msg_str = "\n".join(lines[:3]) + f"\n... [truncated {len(lines) - 3} lines]"
+        elif len(msg_str) > 300:
+            msg_str = msg_str[:297] + "..."
+
     if read:
         target_str = ", ".join(str(t) for t in read) if isinstance(read, list) else str(read)
         if msg_str:
@@ -136,8 +139,10 @@ def evaluated(count):
     line(f"└─ Evaluated {count} command(s)")
 
 # Log refine phase
-def refine(retry=None, total=None):
-    if retry and total and total > 1:
+def refine(retry=None, total=None, step=None):
+    if step and step > 1:
+        node("Refining...", f"Retry {retry}/{total} (Turn {step})", "yellow")
+    elif retry and total and total > 1:
         node("Refining...", f"Retry {retry} / {total}", "yellow")
     else:
         node("Refining...", "", "yellow")

@@ -1,10 +1,14 @@
-from .core import line, error, node, clock
+from .core import line, error, node, clock, empty_line
 
 _is_last = False
 
 def set_last(last: bool = False):
     global _is_last
     _is_last = last
+
+def _get_branch_prefix(branch="├─ "):
+    parent_bar = "   " if _is_last else "│  "
+    return f"{parent_bar}{branch}"
 
 # Log database error
 def db(err):
@@ -13,7 +17,7 @@ def db(err):
 # Log retrieval error
 def retrieve(elapsed, err):
     node("Retrieving...", clock(elapsed), "blue")
-    error(str(err))
+    line(f"└─ [Error]: {err}", color="red")
 
 # Log search start
 def search():
@@ -21,26 +25,23 @@ def search():
 
 # Log search complete
 def done():
-    tree = "" if _is_last else "│"
-    line("   └─ Completed!", tree=tree)
+    line(f"{_get_branch_prefix('└─ ')}Completed!")
+    if not _is_last:
+        empty_line()
 
 # Log web query
 def duckduckgo(query):
-    tree = "" if _is_last else "│"
-    line(f"   ├─ DuckDuckGo: {query}", tree=tree)
+    line(f"{_get_branch_prefix('├─ ')}DuckDuckGo: {query}")
 
 # Log URL scrape
 def firecrawl(url):
-    tree = "" if _is_last else "│"
     display_url = url if len(url) <= 70 else url[:67] + "..."
-    line(f"   ├─ Firecrawl: {display_url}", tree=tree)
+    line(f"{_get_branch_prefix('├─ ')}Firecrawl: {display_url}")
 
 # Log API retry
 def retry(attempt, retries):
-    tree = "" if _is_last else "│"
-    line(f"   ├─ Firecrawl retry: {attempt}/{retries}", tree=tree)
+    line(f"{_get_branch_prefix('├─ ')}Firecrawl retry: {attempt}/{retries}")
 
 # Log search error
 def fail(source, msg):
-    tree = "" if _is_last else "│"
-    line(f"   ├─ {source}: {msg}", tree=tree)
+    line(f"{_get_branch_prefix('├─ ')}{source}: {msg}")

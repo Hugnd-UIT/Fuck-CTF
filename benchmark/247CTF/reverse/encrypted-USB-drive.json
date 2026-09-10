@@ -52,10 +52,10 @@
     "limit": 2000,
     "flag": "247CTF{32-hex}",
     "target": {
-        "category": "crypto",
-        "desc": "Can you abuse the flag HMAC implementation and forge a valid request?",
-        "dir": "",
-        "host": "https://9c729f30bb3ba025.247ctf.com/",
+        "category": "reverse",
+        "desc": "An important USB drive containing sensitive information has been encrypted by some new ransomware variant. Can you reverse the ransomware encryption function and recover the files?",
+        "dir": "/data",
+        "host": "",
         "port": ""
     },
     "cmd_time": 30,

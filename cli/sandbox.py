@@ -2,17 +2,20 @@ from .core import node, line
 
 # Log container creation
 def create(name):
-    node("Sandbox", "45.2s", "blue")
-    line(f"Creating new {name} This will take a few minutes If you interrupt\nthis process delete the {name} container and run the script again")
+    node("Sandbox", "Setup", "cyan")
+    line(f"├─ Initializing container '{name}' (may take a few minutes)...")
 
 # Log creation success
 def success():
-    line("Success!")
+    line("└─ Container ready", color="green")
 
 # Log missing curl
 def curlerr():
-    line("Failed to install curl please check the logs")
+    line("└─ [Warning] Failed to verify curl in container", color="yellow")
 
 # Log container output
 def output(out):
-    line(out)
+    lines = [l.strip() for l in out.strip().splitlines() if l.strip()]
+    if lines:
+        last_line = lines[-1][:60]
+        line(f"│  Setting up: {last_line}...")

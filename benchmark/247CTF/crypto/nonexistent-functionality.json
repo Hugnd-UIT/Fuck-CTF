@@ -55,7 +55,7 @@
         "category": "crypto",
         "desc": "We ran out of time to implement encryption for our cipher. Can you abuse the decryption implementation to recover the flag?",
         "dir": "",
-        "host": "https://3900d97eabbbbb57.247ctf.com/",
+        "host": "https://0f8447192ed85f89.247ctf.com/",
         "port": ""
     },
     "cmd_time": 30,

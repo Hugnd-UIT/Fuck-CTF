@@ -180,8 +180,7 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
     last_cmds, last_out, last_ind, last_exec_json = [], "", "", exec_json
 
     while turn < cap:
-        if turn == 0:
-            agent_ui.execute()
+        agent_ui.execute()
 
         res = executor.execute(
             target=target_str, subtask=sub, tool_hint=tool_hint,
@@ -211,15 +210,12 @@ def exec_loop(executor, sandbox, target_str, sub, tool_hint, state, memory, cate
             agent_ui.action(action)
 
         if exec_json.get("done", False) and not cmds:
+            agent_ui.empty()
             break
 
         if not cmds:
-            if turn == 0:
-                agent_ui.empty()
+            agent_ui.empty()
             break
-
-        if turn > 0:
-            agent_ui.execute(turn=turn)
 
         for i, cmd in enumerate(cmds):
             agent_ui.command(cmd, i == len(cmds) - 1)
@@ -317,6 +313,8 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
         r_messages = None
 
         while r_turn < r_cap:
+            if r_turn > 0:
+                agent_ui.refine(attempt + 1, max_retries, step=r_turn + 1)
             retry_api = 0
             while retry_api < 3:
                 r_res = refiner.refine(
@@ -367,6 +365,7 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                 agent_ui.think(r_analysis)
 
             if r_data.get("done", False) and not r_cmds:
+                agent_ui.empty()
                 break
 
             if r_abort or not r_cmds:
@@ -374,8 +373,7 @@ def refine_loop(refiner, verifier, sandbox, target_str, sub, cmds, out, ind, pla
                     err_reason = r_reason.get("error") or "dead end detected"
                     agent_ui.abort(err_reason)
                     return last_cmds, last_out, {"result": "fail"}, None, r_abort
-                if r_turn == 0:
-                    agent_ui.empty()
+                agent_ui.empty()
                 break
 
             for i, cmd in enumerate(r_cmds):

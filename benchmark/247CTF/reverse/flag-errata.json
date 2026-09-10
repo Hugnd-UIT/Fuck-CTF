@@ -52,10 +52,10 @@
     "limit": 2000,
     "flag": "247CTF{32-hex}",
     "target": {
-        "category": "crypto",
-        "desc": "Can you abuse the flag HMAC implementation and forge a valid request?",
-        "dir": "",
-        "host": "https://9c729f30bb3ba025.247ctf.com/",
+        "category": "reverse",
+        "desc": "We stored the flag within this binary, but made a few errors when trying to print it. Can you make use of these errors to recover the flag?",
+        "dir": "/data",
+        "host": "",
         "port": ""
     },
     "cmd_time": 30,

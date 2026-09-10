@@ -3,7 +3,7 @@ import shutil
 import re
 import textwrap
 
-if hasattr(sys.stdout, 'reconfigure') and getattr(sys.stdout, 'encoding', '').lower() != 'utf-8':
+if hasattr(sys.stdout, 'reconfigure'):
     try:
         sys.stdout.reconfigure(encoding='utf-8')
     except Exception:
@@ -14,8 +14,18 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.align import Align
 from rich.style import Style
+from rich import box
 
-console = Console()
+console = Console(legacy_windows=False)
+
+def get_terminal_width():
+    term = shutil.get_terminal_size().columns
+    if term <= 20:
+        return 78
+    return max(60, min(term - 2, 78))
+
+def get_wrap_width():
+    return get_terminal_width() - 3
 
 # Print CLI header
 def header(target, minutes):
@@ -31,15 +41,15 @@ def header(target, minutes):
 
     desc = target.get('desc', '-')
     words = []
-    line = ""
+    line_buf = ""
     for word in desc.split():
-        if len(line) + len(word) + 1 > 55:
-            words.append(line)
-            line = word
+        if len(line_buf) + len(word) + 1 > 55:
+            words.append(line_buf)
+            line_buf = word
         else:
-            line += (" " if line else "") + word
-    if line:
-        words.append(line)
+            line_buf += (" " if line_buf else "") + word
+    if line_buf:
+        words.append(line_buf)
 
     details = f"  Description   : {words[0]}" if words else "  Description   : -"
     for i in range(1, len(words)):
@@ -63,12 +73,9 @@ def header(target, minutes):
     ])
     
     info = "\n".join(info_lines)
-
     content = Text(art, style="bold cyan") + Text("\n") + Text(info)
     
-    from rich import box
-    term = shutil.get_terminal_size().columns
-    width = max(60, min(term - 2, 78)) if term > 20 else 78
+    width = get_terminal_width()
     panel = Panel(
         content,
         width=width,
@@ -80,7 +87,7 @@ def header(target, minutes):
 
 _first_node = True
 _current_color = "blue"
-_last_node = ""
+_last_node = None
 
 # Print timeline node
 def node(title, right="", color="blue"):
@@ -96,23 +103,30 @@ def node(title, right="", color="blue"):
     _current_color = color
     _last_node = node_key
     
+    target_width = get_terminal_width()
     left_part = Text(f"● {title}", style=f"bold {color}")
     right_part = Text(right, style="dim white")
     
-    spaces = 78 - len(left_part.plain) - len(right_part.plain)
-    if spaces < 0:
+    spaces = target_width - len(left_part.plain) - len(right_part.plain)
+    if spaces < 1:
         spaces = 1
         
-    line = left_part + Text(" " * spaces) + right_part
-    console.print(line)
-
-import textwrap
+    line_text = left_part + Text(" " * spaces) + right_part
+    console.print(line_text)
 
 _last_was_empty = False
 
+# Print empty branch line
+def empty_line():
+    global _last_was_empty, _current_color
+    if _last_was_empty:
+        return
+    _last_was_empty = True
+    console.print(Text("│  ", style=f"bold {_current_color}") + Text("│", style=f"bold {_current_color}"))
+
 # Print timeline line
 def line(content=None, tree="│", color=None):
-    global _current_color, _last_was_empty
+    global _current_color, _last_was_empty, _last_node
     use_color = color if color else _current_color
 
     if content is None or content == "" or content == "│":
@@ -124,28 +138,28 @@ def line(content=None, tree="│", color=None):
         return
 
     _last_was_empty = False
+    _last_node = None
         
-    import shutil
-    term = shutil.get_terminal_size().columns
-    wrap = min(term - 10, 65) if term > 20 else 65
+    wrap = get_wrap_width()
 
     base = ""
     for i, text in enumerate(content.split("\n")):
-        if "├─ " in text or "└─ " in text or text.startswith("│  "):
+        if "├─ " in text or "└─ " in text or "│  " in text:
             if "─ " in text:
                 pos = text.find("─ ") + 2
                 pref = text[:pos]
                 base = pref.replace("├─ ", "│  ").replace("└─ ", "   ")
             else:
-                pos = 3
-                pref = "│  "
-                base = "│  "
+                pos = text.find("│  ") + 3
+                pref = text[:pos]
+                base = pref
             
             # Extract the actual text body
             body = text[pos:]
+            wrap_sub = max(30, wrap - len(pref))
             
             # Wrap just the body
-            wrapped_body = textwrap.wrap(body, width=wrap - len(pref), drop_whitespace=False)
+            wrapped_body = textwrap.wrap(body, width=wrap_sub, drop_whitespace=False)
             if not wrapped_body:
                 wrapped = [pref]
             else:
@@ -158,7 +172,8 @@ def line(content=None, tree="│", color=None):
             
             body = text.lstrip()
             if body:
-                wrapped_body = textwrap.wrap(body, width=wrap - len(base), drop_whitespace=False)
+                wrap_sub = max(30, wrap - len(base))
+                wrapped_body = textwrap.wrap(body, width=wrap_sub, drop_whitespace=False)
                 wrapped = [base + chunk.lstrip() for chunk in wrapped_body]
             else:
                 wrapped = [base]
@@ -171,7 +186,7 @@ def line(content=None, tree="│", color=None):
 # Print error message
 def error(msg):
     global _current_color
-    console.print(Text("│  ", style=f"bold {_current_color}") + Text(f"[Error]: {msg}", style="bold red"))
+    line(f"└─ [Error]: {msg}", color="red")
 
 # Print CLI footer
 def footer(flag, elapsed):
@@ -189,11 +204,13 @@ def footer(flag, elapsed):
         f"  Time: {time_text}\n"
     )
     
+    width = get_terminal_width()
     panel = Panel(
         Text(content, style="bold green"),
-        width=78,
+        width=width,
         border_style="green",
-        padding=(0, 0)
+        padding=(0, 0),
+        box=box.ROUNDED
     )
     console.print(panel)
 
