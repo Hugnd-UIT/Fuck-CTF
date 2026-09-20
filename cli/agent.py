@@ -15,7 +15,7 @@ def verify(elapsed):
     node("Verifying...", clock(elapsed), "yellow")
 
 # Log current subtask
-def subtask(sub, rag=False, last=False):
+def subtask(sub, rag=False, last=True):
     branch = "└─ " if last else "├─ "
     if not rag:
         line(f"{branch}{sub}")
@@ -140,12 +140,7 @@ def evaluated(count):
 
 # Log refine phase
 def refine(retry=None, total=None, step=None):
-    if step and step > 1:
-        node("Refining...", f"Retry {retry}/{total} (Turn {step})", "yellow")
-    elif retry and total and total > 1:
-        node("Refining...", f"Retry {retry} / {total}", "yellow")
-    else:
-        node("Refining...", "", "yellow")
+    node("Refining...", "Retry", "yellow")
 
 # Log API retry
 def retry(ret):

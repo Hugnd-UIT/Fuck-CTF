@@ -167,7 +167,7 @@ def plan_loop(planner, sandbox, target, state, memory, target_dir, tools, book, 
         rag(plan_rag, memory, state, last=True)
         return None, False, target_str, sub, "rag"
 
-    agent_ui.subtask(sub, rag=False)
+    agent_ui.subtask(sub, rag=False, last=True)
     return plan, False, target_str, sub, None
 
 
