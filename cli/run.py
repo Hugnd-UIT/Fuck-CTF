@@ -3,22 +3,22 @@ from .core import header as core_header, footer as core_footer, node, line
 # Log timeout error
 def timeout(time):
     node("Timeout", f"{time}m limit", "red")
-    line(f"└─ Reached execution time limit ({time} minutes)", color="red")
+    line(f"└─ Reached execution time limit ({time} minutes)", tree="", color="red")
 
 # Log crash limit
 def crashes(crashes):
     node("Aborted", f"{crashes} crashes", "red")
-    line(f"└─ Stopped after {crashes} consecutive crashes", color="red")
+    line(f"└─ Stopped after {crashes} consecutive crashes", tree="", color="red")
 
 # Log missing flag
 def noflag():
     node("No Flag", "Completed", "yellow")
-    line("└─ Goal achieved, but no flag was found in the output!", color="yellow")
+    line("└─ Goal achieved, but no flag was found in the output!", tree="", color="yellow")
 
 # Log user interrupt
 def stop():
     node("Stopped", "Interrupt", "red")
-    line("└─ Process interrupted by user", color="red")
+    line("└─ Process interrupted by user", tree="", color="red")
     
 # Log execution header
 def header(target, time):

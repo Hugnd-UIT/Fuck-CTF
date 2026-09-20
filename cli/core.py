@@ -178,7 +178,7 @@ def line(content=None, tree="│", color=None):
             else:
                 wrapped = [base]
         
-        prefix = f"{tree}  " if tree else "   "
+        prefix = f"{tree}  " if tree else ""
         
         for chunk in wrapped:
             console.print(Text(prefix, style=f"bold {use_color}") + Text(chunk, style=f"bold {use_color}"))

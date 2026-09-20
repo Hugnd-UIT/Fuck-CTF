@@ -3,7 +3,7 @@ from .core import node, line
 # Log container creation
 def create(name):
     node("Sandbox", "Setup", "cyan")
-    line(f"├─ Initializing container '{name}' (may take a few minutes)...")
+    line(f"├─ Initializing container '{name}'...")
 
 # Log creation success
 def success():

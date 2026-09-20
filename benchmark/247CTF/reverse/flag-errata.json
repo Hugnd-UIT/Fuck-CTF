@@ -1,6 +1,6 @@
 {
     "planner": {
-        "model": "deepseek/deepseek-v4-pro",
+        "model": "qwen/qwen3.8-max:free",
         "local": false,
         "temperature": 0.7,
         "top": 0.9,
@@ -8,7 +8,7 @@
         "tokens": 4096
     },
     "executor": {
-        "model": "deepseek/deepseek-v4-pro",
+        "model": "qwen/qwen3-coder-plus:free",
         "local": false,
         "temperature": 0.2,
         "top": 1.0,
@@ -16,7 +16,7 @@
         "tokens": 4096
     },
     "verifier": {
-        "model": "deepseek/deepseek-v4-flash",
+        "model": "qwen/qwen3.7-flash:free",
         "local": false,
         "temperature": 0.1,
         "top": 1.0,
@@ -24,7 +24,7 @@
         "tokens": 1024
     },
     "refiner": {
-        "model": "deepseek/deepseek-v4-flash",
+        "model": "qwen/qwen3.7-flash:free",
         "local": false,
         "temperature": 0.2,
         "top": 1.0,
@@ -32,7 +32,7 @@
         "tokens": 4096
     },
     "summarizer": {
-        "model": "deepseek/deepseek-v4-flash",
+        "model": "qwen/qwen3.7-flash:free",
         "local": false,
         "temperature": 0.3,
         "top": 1.0,
@@ -40,7 +40,7 @@
         "tokens": 2048
     },
     "reflector": {
-        "model": "deepseek/deepseek-v4-pro",
+        "model": "qwen/qwen3.8-max:free",
         "local": false,
         "temperature": 0.7,
         "top": 1.0,
