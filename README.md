@@ -722,7 +722,6 @@ Here is a real example of how fuck ctf autonomously solves a crypto challenge. I
 │       sys.exit(1)
 │       PY
 │
-● Verifying...                                                        [ Pass ]
 ╭────────────────────────────────────────────────────────────────────────────╮
 │                                                                            │
 │  Flag: crypto{y0ur_v0t3_i5_my_v0t3}                                        │

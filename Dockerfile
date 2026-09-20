@@ -5,8 +5,7 @@ LABEL maintainer="Fuck CTF"
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    kali-linux-headless \
+RUN apt-get update && apt-get install -y --no-install-recommends -o Acquire::Retries=3 \
     curl \
     wget \
     netcat-traditional \
@@ -18,15 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     file \
     xxd \
     ca-certificates \
-
-    # Compilers 
     build-essential \
     pkg-config \
     libffi-dev \
     libssl-dev \
     python3-dev \
-
-    # Languages
     python3 \
     python3-pip \
     python3-venv \
@@ -34,16 +29,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     perl \
     ruby \
     ruby-dev \
-
-    # Web & Network
     nmap \
     rustscan \
     ffuf \
     gobuster \
     dirsearch \
     sqlmap \
-
-    # Pwn & Reverse
     gdb \
     gdbserver \
     strace \
@@ -53,8 +44,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     upx-ucl \
     radare2 \
     checksec \
-
-    # Crypto & Math
     python3-pwntools \
     python3-ropgadget \
     python3-pycryptodome \
@@ -62,8 +51,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-gmpy2 \
     python3-z3 \
     python3-requests \
-
-    # Password Cracking & Forensics
     john \
     hashcat \
     binwalk \
@@ -73,14 +60,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 
-RUN gem install --no-document one_gadget seccomp-tools
-RUN pip3 install --no-cache-dir ropper angr
+RUN gem install --no-document one_gadget seccomp-tools || true
+RUN pip3 install --no-cache-dir ropper || true
+RUN pip3 install --no-cache-dir angr || true
 
 RUN curl -L https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas.sh -o /usr/local/bin/linpeas && \
-    chmod +x /usr/local/bin/linpeas
+    chmod +x /usr/local/bin/linpeas || true
 
-RUN git clone --depth 1 https://github.com/pwndbg/pwndbg /opt/pwndbg && \
-    cd /opt/pwndbg && ./setup.sh
+RUN (git clone --depth 1 https://github.com/pwndbg/pwndbg /opt/pwndbg && \
+    cd /opt/pwndbg && ./setup.sh) || true
 
 RUN mkdir -p /root/.ssh && \
     ssh-keyscan -p 2220 bandit.labs.overthewire.org >> /root/.ssh/known_hosts 2>/dev/null || true && \
